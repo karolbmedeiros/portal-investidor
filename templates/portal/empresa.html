@@ -1,0 +1,152 @@
+{% extends "portal/layout.html" %}
+{% block title %}{{ empresa.nome if empresa else 'Usina' }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="flex-between">
+    <div>
+      <div class="page-title">{{ empresa.nome if empresa else 'Usina' }}</div>
+      <div class="page-subtitle">{{ empresa.tipo if empresa else '' }}</div>
+    </div>
+    <div class="period-tabs">
+      {% for d in [30, 90, 180, 365] %}
+      <a href="?dias={{ d }}" class="period-tab {{ 'active' if dias == d }}">{{ d }}d</a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+<div class="page-content">
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Saldo atual</div>
+      <div class="card-valor">
+        R$ {{ "%.2f"|format((resultado.total_receitas or 0) - (resultado.total_custos or 0))|replace('.', ',') }}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Receitas no período</div>
+      <div class="card-valor verde">
+        R$ {{ "%.2f"|format(resultado.total_receitas or 0)|replace('.', ',') }}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Custos no período</div>
+      <div class="card-valor vermelho">
+        R$ {{ "%.2f"|format(resultado.total_custos or 0)|replace('.', ',') }}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Resultado líquido</div>
+      <div class="card-valor {{ 'verde' if (resultado.resultado_liquido or 0) >= 0 else 'vermelho' }}">
+        R$ {{ "%.2f"|format(resultado.resultado_liquido or 0)|replace('.', ',') }}
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-24">
+    <div class="card-label">Evolução do saldo</div>
+    <canvas id="grafico-saldo" height="120" style="margin-top:14px;"></canvas>
+  </div>
+
+  <div class="card mb-24">
+    <div class="flex-between" style="margin-bottom:0;">
+      <div class="card-label" style="margin:0;">Resultado do período</div>
+      <button class="btn btn-ghost btn-sm" id="btn-detalhe" type="button"
+              onclick="toggleDetalhe()">Ver detalhes</button>
+    </div>
+
+    <div style="margin-top:16px;padding:16px;background:var(--bg2);border-radius:6px;">
+      <div class="text-muted text-sm">Resultado líquido</div>
+      <div style="font-size:24px;font-weight:700;letter-spacing:-.4px;margin-top:4px;
+           color:{{ 'var(--green)' if (resultado.resultado_liquido or 0) >= 0 else 'var(--red)' }};">
+        R$ {{ "%.2f"|format(resultado.resultado_liquido or 0)|replace('.', ',') }}
+      </div>
+    </div>
+
+    <div id="detalhe-completo" style="display:none;margin-top:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div class="text-muted text-sm mb-8" style="font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Receitas</div>
+          {% for tx in resultado.receitas %}
+          <div style="display:flex;justify-content:space-between;padding:7px 0;
+                      border-bottom:1px solid var(--border);font-size:13px;">
+            <span>{{ tx.descricao }}</span>
+            <span class="pos">R$ {{ "%.2f"|format(tx.valor or 0)|replace('.', ',') }}</span>
+          </div>
+          {% else %}
+          <div class="text-muted text-sm">Nenhuma receita no período.</div>
+          {% endfor %}
+          {% if resultado.receitas %}
+          <div style="display:flex;justify-content:space-between;padding:10px 0 0;font-weight:700;font-size:13px;">
+            <span>Total</span>
+            <span class="pos">R$ {{ "%.2f"|format(resultado.total_receitas or 0)|replace('.', ',') }}</span>
+          </div>
+          {% endif %}
+        </div>
+        <div>
+          <div class="text-muted text-sm mb-8" style="font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Custos</div>
+          {% for tx in resultado.custos %}
+          <div style="display:flex;justify-content:space-between;padding:7px 0;
+                      border-bottom:1px solid var(--border);font-size:13px;">
+            <span>{{ tx.descricao }}</span>
+            <span class="neg">R$ {{ "%.2f"|format((tx.valor or 0)|abs)|replace('.', ',') }}</span>
+          </div>
+          {% else %}
+          <div class="text-muted text-sm">Nenhum custo no período.</div>
+          {% endfor %}
+          {% if resultado.custos %}
+          <div style="display:flex;justify-content:space-between;padding:10px 0 0;font-weight:700;font-size:13px;">
+            <span>Total</span>
+            <span class="neg">R$ {{ "%.2f"|format(resultado.total_custos or 0)|replace('.', ',') }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-8">
+    <a href="{{ url_for('portal.extrato', empresa_id=empresa.id if empresa else '') }}"
+       class="btn btn-primary">Ver extrato completo</a>
+    <a href="{{ url_for('portal.documentos', empresa_id=empresa.id if empresa else '') }}"
+       class="btn btn-ghost">Documentos</a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const evolucao = {{ evolucao | tojson }};
+new Chart(document.getElementById('grafico-saldo'), {
+  type: 'line',
+  data: {
+    labels: evolucao.map(e => e.data ? e.data.slice(0,10) : ''),
+    datasets: [{
+      data: evolucao.map(e => parseFloat(e.saldo || 0)),
+      borderColor: '#E8621A',
+      backgroundColor: 'rgba(232,98,26,.06)',
+      fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280', maxTicksLimit: 6, font: { size: 11 } } },
+      y: { grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280', font: { size: 11 },
+           callback: v => 'R$ ' + v.toLocaleString('pt-BR') } }
+    }
+  }
+});
+
+function toggleDetalhe() {
+  var el  = document.getElementById('detalhe-completo');
+  var btn = document.getElementById('btn-detalhe');
+  var aberto = el.style.display !== 'none';
+  el.style.display  = aberto ? 'none' : 'block';
+  btn.textContent   = aberto ? 'Ver detalhes' : 'Ocultar detalhes';
+}
+</script>
+{% endblock %}

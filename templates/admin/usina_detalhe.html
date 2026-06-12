@@ -1,0 +1,1122 @@
+{% extends "admin/layout.html" %}
+{% block title %}{{ usina.nome }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="padding-bottom:0;">
+  <div class="flex-between">
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">
+        <a href="{{ url_for('admin.dashboard') }}" style="color:var(--muted);">← Usinas</a>
+      </div>
+      <div class="page-title">{{ usina.nome }}</div>
+      <div class="page-subtitle" style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+        {% if usina.modalidade_gd %}
+        <span class="badge badge-laranja">{{ usina.modalidade_gd }}</span>
+        {% endif %}
+        <span class="badge {{ 'badge-verde' if usina.status == 'Ativa' else 'badge-muted' }}">
+          {{ usina.status or 'N/D' }}
+        </span>
+        <span style="color:var(--muted);">{{ usina.cnpj or '' }}</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="abrirEditModal()">Editar dados</button>
+  </div>
+
+</div>
+
+<div class="page-content">
+
+{# ══════════════════════════════════════════════ SÓCIOS ═══ #}
+<div id="tab-socios" class="dtab-content {{ 'ativo' if tab == 'socios' }}">
+  {% if participacoes %}
+  <div class="card mb-24" style="max-width:600px;">
+    <div class="card-label">Distribuição de cotas</div>
+    <div class="socios-barra" style="margin-top:12px;">
+      {% for p in participacoes %}
+      <div style="height:12px;width:{{ (p.percentual * 100)|round(2) }}%;background:{{ p.cor }};border-radius:2px;"
+           title="{{ (p.investidores.nome if p.investidores else '?') }} — {{ (p.percentual*100)|round(1) }}%"></div>
+      {% endfor %}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;">
+      {% for p in participacoes %}
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:{{ p.cor }};flex-shrink:0;"></div>
+        <span>{{ (p.investidores.nome if p.investidores else '?') }} — {{ (p.percentual*100)|round(1) }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="tabela-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Sócio</th><th>CPF/CNPJ</th><th>E-mail</th><th>Cota</th><th>Valor investido</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in participacoes %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:26px;height:26px;border-radius:50%;background:{{ p.cor }};
+                   display:flex;align-items:center;justify-content:center;
+                   font-size:10px;font-weight:700;color:#fff;flex-shrink:0;">{{ p.iniciais }}</div>
+              <span style="font-weight:600;">{{ p.investidores.nome if p.investidores else '—' }}</span>
+            </div>
+          </td>
+          <td class="text-muted">{{ (p.investidores.cpf_cnpj if p.investidores else '') or '—' }}</td>
+          <td class="text-muted text-sm">{{ (p.investidores.email if p.investidores else '') or '—' }}</td>
+          <td><span style="font-weight:700;color:var(--accent);">{{ (p.percentual*100)|round(2) }}%</span></td>
+          <td class="text-muted">
+            {% if p.valor_investido_total %}{{ p.valor_investido_total|brl }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="vazio">Nenhuma participação cadastrada.</div>
+  {% endif %}
+</div>
+
+{# ══════════════════════════════════════════════ CLIENTES ═══ #}
+<div id="tab-clientes" class="dtab-content {{ 'ativo' if tab == 'clientes' }}">
+
+  {% set ativos   = clientes | selectattr('status','equalto','Ativo') | list %}
+  {% set inativos = clientes | rejectattr('status','equalto','Ativo') | list %}
+
+  <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+    <div class="kpi-card" style="flex:0 0 auto;min-width:140px;">
+      <div class="kpi-label">Total de clientes</div>
+      <div class="kpi-val">{{ clientes|length }}</div>
+    </div>
+    <div class="kpi-card" style="flex:0 0 auto;min-width:140px;">
+      <div class="kpi-label">Ativos</div>
+      <div class="kpi-val" style="color:var(--green);">{{ ativos|length }}</div>
+    </div>
+    {% if inativos %}
+    <div class="kpi-card" style="flex:0 0 auto;min-width:140px;">
+      <div class="kpi-label">Inativos / Encerrados</div>
+      <div class="kpi-val" style="color:#EF4444;">{{ inativos|length }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if clientes %}
+  <div class="tabela-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>CPF/CNPJ</th>
+          <th>UC</th>
+          <th>Contrato</th>
+          <th>Desconto</th>
+          <th>Venc.</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in clientes %}
+        <tr>
+          <td>
+            <div style="font-weight:600;font-size:13px;">{{ c.nome_cliente }}</div>
+            {% if c.apelido_uc and c.apelido_uc != c.nome_cliente %}
+            <div style="font-size:11px;color:var(--muted);">{{ c.apelido_uc }}</div>
+            {% endif %}
+            {% if c.email_cliente %}
+            <div style="font-size:11px;color:var(--muted);">{{ c.email_cliente }}</div>
+            {% endif %}
+          </td>
+          <td class="text-muted text-sm">{{ c.cpf_cnpj }}</td>
+          <td>
+            <div style="font-size:13px;font-weight:600;">{{ c.codigo_uc }}</div>
+            {% if c.classificacao_uc %}
+            <div style="font-size:11px;color:var(--muted);">{{ c.classificacao_uc }}
+              {% if c.endereco_uc %} · {{ c.endereco_uc[:40] }}{% if c.endereco_uc|length > 40 %}…{% endif %}{% endif %}
+            </div>
+            {% endif %}
+          </td>
+          <td class="text-muted text-sm">{{ c.numero_contrato or '—' }}</td>
+          <td style="font-weight:700;color:var(--accent);">
+            {% if c.percentual_desconto %}
+              {{ (c.percentual_desconto * 100)|round(1) }}%
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-muted">
+            {% if c.dia_vencimento %}dia {{ c.dia_vencimento }}{% else %}—{% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'badge-verde' if c.status == 'Ativo' else 'badge-muted' }}">
+              {{ c.status or '—' }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="vazio">Nenhum contrato cadastrado para esta usina.</div>
+  {% endif %}
+</div>
+
+{# ══════════════════════════════════════════════ EXTRATO BANCÁRIO ═══ #}
+<div id="tab-extrato" class="dtab-content {{ 'ativo' if tab == 'extrato' }}">
+{% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+{% set _conta_atual = contas | selectattr('id','equalto',conta_id) | first | default(contas[0] if contas else none) %}
+
+{# ── Pré-computa por mês (operacionais = sem transf/neutro) ── #}
+{% set _meses_ns = namespace(lista=[]) %}
+{% for l in lancamentos %}
+  {% if l.data_transacao and l.data_transacao[:7] not in _meses_ns.lista %}
+    {% set _meses_ns.lista = _meses_ns.lista + [l.data_transacao[:7]] %}
+  {% endif %}
+{% endfor %}
+{% set _meses = _meses_ns.lista | sort %}
+
+{# saldo acumulado por mês para gráfico de fluxo #}
+{% set _fl = namespace(acc=saldo_inicial, pts=[]) %}
+{% for m in _meses %}
+  {% set _mn = namespace(e=0,s=0) %}
+  {% for l in lancamentos if l.data_transacao[:7] == m and not l._transferencia and not l._neutro %}
+    {% if l.tipo=='credito' %}{% set _mn.e = _mn.e + (l.valor|abs) %}
+    {% else %}{% set _mn.s = _mn.s + (l.valor|abs) %}{% endif %}
+  {% endfor %}
+  {% set _fl.acc = _fl.acc + _mn.e - _mn.s %}
+  {% set _fl.pts = _fl.pts + [_fl.acc] %}
+{% endfor %}
+
+{# totais por mês para gráfico mensal e fluxo de caixa #}
+{% set _mdata = namespace(ent={}, sai={}) %}
+{% for l in lancamentos if not l._transferencia and not l._neutro %}
+  {% set _m = l.data_transacao[:7] if l.data_transacao else '' %}
+  {% if l.tipo=='credito' %}
+    {% set _mdata.ent = dict(_mdata.ent, **{_m: (_mdata.ent.get(_m) or 0) + (l.valor|abs)}) %}
+  {% else %}
+    {% set _mdata.sai = dict(_mdata.sai, **{_m: (_mdata.sai.get(_m) or 0) + (l.valor|abs)}) %}
+  {% endif %}
+{% endfor %}
+
+{# saldo atual total — exclui neutros (APLICACAO FUNDO / RESGATE FUNDOS) para refletir o saldo operacional real #}
+{% set _bal = namespace(v=saldo_inicial) %}
+{% for l in lancamentos if not l._neutro %}
+  {% if l.tipo=='credito' %}{% set _bal.v = _bal.v + (l.valor|abs) %}
+  {% else %}{% set _bal.v = _bal.v - (l.valor|abs) %}{% endif %}
+{% endfor %}
+
+{# ════════════════════════════════════════════════════════
+   SEÇÃO 1 — Saldo + Fluxo de caixa
+   ════════════════════════════════════════════════════════ #}
+<div class="nb-resumo">
+
+  {# Saldo #}
+  <div class="nb-card nb-saldo-card">
+    <div class="nb-card-header">
+      <span class="nb-card-icon">💰</span>
+      <span class="nb-card-title">Saldo</span>
+      <span class="nb-card-total {{ 'nb-positivo' if _bal.v >= 0 else 'nb-negativo' }}">
+        {{ _bal.v|brl }}
+      </span>
+    </div>
+    <div class="nb-contas-lista">
+      {% for c in contas %}
+      {% set _link = url_for('admin.usina_detalhe', usina_id=usina.id, conta_id=c.id, tab='extrato') %}
+      <a href="{{ _link }}" class="nb-conta-item {{ 'nb-conta-ativo' if c.id == conta_id }}">
+        <div class="nb-conta-esq">
+          <div class="nb-conta-nome">{{ c.titular_nome or c.apelido }}</div>
+          <div class="nb-conta-info">{{ c.banco }} · ag {{ c.agencia }} / cc {{ c.numero_conta }}</div>
+        </div>
+        <div class="nb-conta-saldo {{ 'nb-positivo' if (c.saldo_inicial or 0) >= 0 else 'nb-negativo' }}">
+          {% if c.id == conta_id %}{{ _bal.v|brl }}{% else %}{{ (c.saldo_inicial or 0)|brl }}{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    <div class="nb-mes-bar">
+      <label class="nb-mes-label">Período</label>
+      <select class="input-sm" id="filtro-mes" onchange="filtrarExtrato()" style="width:110px;">
+        <option value="">Todos</option>
+        {% for m in _meses %}
+        <option value="{{ m }}">{{ _ma[m[5:7]|int] }}/{{ m[:4] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  {# Fluxo de caixa #}
+  <div class="nb-card nb-fluxo-card">
+    <div class="nb-card-header">
+      <span class="nb-card-icon">📈</span>
+      <span class="nb-card-title">Fluxo de caixa</span>
+      <div class="fluxo-nav">
+        <button class="fluxo-nav-btn" id="fluxo-prev" onclick="navFluxo(-1)">&#8249;</button>
+        <span class="fluxo-nav-label" id="fluxo-mes-label">—</span>
+        <button class="fluxo-nav-btn" id="fluxo-next" onclick="navFluxo(1)">&#8250;</button>
+      </div>
+    </div>
+    <div style="position:relative;height:200px;">
+      <canvas id="chart-fluxo"></canvas>
+    </div>
+    <div class="nb-fluxo-resumo">
+      <div class="nb-fr-item">
+        <span class="nb-fr-label">Saldo anterior</span>
+        <span class="nb-fr-val" id="fluxo-saldo-ini">{% if saldo_inicial %}{{ saldo_inicial|brl }}{% else %}—{% endif %}</span>
+      </div>
+      <div class="nb-fr-item">
+        <span class="nb-fr-label" style="color:#166534;">+ Entradas</span>
+        <span class="nb-fr-val nb-positivo" id="fluxo-ent">R$ 0,00</span>
+      </div>
+      <div class="nb-fr-item">
+        <span class="nb-fr-label" style="color:#991B1B;">- Saídas</span>
+        <span class="nb-fr-val nb-negativo" id="fluxo-sai">R$ 0,00</span>
+      </div>
+      <div class="nb-fr-sep"></div>
+      <div class="nb-fr-item nb-fr-total">
+        <span class="nb-fr-label">Resultado</span>
+        <span class="nb-fr-val" id="fluxo-resultado">—</span>
+      </div>
+    </div>
+  </div>
+
+</div>{# /nb-resumo #}
+
+{% if lancamentos %}
+
+{# ════════════════════════════════════════════════════════
+   SEÇÃO 2 — Entradas & Saídas
+   ════════════════════════════════════════════════════════ #}
+{% set _ent = namespace(tot=0) %}
+{% set _sai = namespace(tot=0) %}
+{% for l in lancamentos %}
+  {% if not l._transferencia and not l._neutro %}
+    {% if l.tipo=='credito' %}{% set _ent.tot = _ent.tot + (l.valor|abs) %}{% endif %}
+    {% if l.tipo=='debito'  %}{% set _sai.tot = _sai.tot + (l.valor|abs) %}{% endif %}
+  {% endif %}
+{% endfor %}
+
+<div class="nb-lancamentos">
+
+  {# ↑ Entradas #}
+  <div class="nb-card nb-panel">
+    <div class="nb-panel-header nb-ent-header">
+      <span class="nb-panel-arrow">↑</span>
+      <span class="nb-panel-title">Entradas</span>
+      <span class="nb-panel-total nb-positivo" id="tot-entradas">{{ _ent.tot|brl }}</span>
+    </div>
+    <div class="nb-panel-body">
+      {% set _ents = lancamentos | selectattr('tipo','equalto','credito') | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
+      {% if _ents %}
+      {% for l in _ents %}
+      {% set conciliado = l.conciliado %}
+      {% set cat = l.categorias_financeiras %}
+      <div class="nb-item ext-row ext-row-ent"
+           data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
+           data-valor="{{ l.valor|abs }}"
+           data-conciliado="{{ 'true' if conciliado else 'false' }}">
+        <div class="nb-item-data {{ '' if conciliado else 'nb-pendente-data' }}">
+          {{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] if l.data_transacao else '—' }}
+        </div>
+        <div class="nb-item-centro">
+          <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+          <div class="nb-item-cat">{{ cat.nome if cat else '—' }}</div>
+        </div>
+        <div class="nb-item-dir">
+          <div class="nb-item-val nb-positivo">{{ (l.valor or 0)|abs|brl }}</div>
+          {% if not conciliado %}
+          <button class="btn btn-secondary btn-sm nb-btn-conciliar"
+                  onclick="abrirConciliarModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor or 0) }}','{{ l.tipo }}')">
+            Conciliar
+          </button>
+          {% else %}
+          <span class="nb-item-status">✓</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="nb-vazio">Nenhuma entrada no período.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ↓ Saídas #}
+  <div class="nb-card nb-panel">
+    <div class="nb-panel-header nb-sai-header">
+      <span class="nb-panel-arrow">↓</span>
+      <span class="nb-panel-title">Saídas</span>
+      <span class="nb-panel-total nb-negativo" id="tot-saidas">{{ _sai.tot|brl }}</span>
+    </div>
+    <div class="nb-panel-body">
+      {% set _sais = lancamentos | selectattr('tipo','equalto','debito') | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
+      {% if _sais %}
+      {% for l in _sais %}
+      {% set conciliado = l.conciliado %}
+      {% set cat = l.categorias_financeiras %}
+      <div class="nb-item ext-row ext-row-sai"
+           data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
+           data-valor="{{ l.valor|abs }}"
+           data-conciliado="{{ 'true' if conciliado else 'false' }}">
+        <div class="nb-item-data {{ '' if conciliado else 'nb-pendente-data' }}">
+          {{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] if l.data_transacao else '—' }}
+        </div>
+        <div class="nb-item-centro">
+          <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+          <div class="nb-item-cat">{{ cat.nome if cat else '—' }}</div>
+        </div>
+        <div class="nb-item-dir">
+          <div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div>
+          {% if not conciliado %}
+          <button class="btn btn-secondary btn-sm nb-btn-conciliar"
+                  onclick="abrirConciliarModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor or 0) }}','{{ l.tipo }}')">
+            Conciliar
+          </button>
+          {% else %}
+          <span class="nb-item-status">✓</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="nb-vazio">Nenhuma saída no período.</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>{# /nb-lancamentos #}
+
+{# ════════════════════════════════════════════════════════
+   SEÇÃO 3 — Resultado Operacional
+   ════════════════════════════════════════════════════════ #}
+<div class="nb-resultado-titulo">Resultado Operacional</div>
+<div class="nb-resultado">
+  <div class="nb-card">
+    <div class="nb-res-label">Evolução mensal</div>
+    <div style="position:relative;height:220px;"><canvas id="chart-mensal"></canvas></div>
+  </div>
+  <div class="nb-card">
+    <div class="nb-res-label">Classificação <span id="chart-cat-mes-label">—</span></div>
+    <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
+      <canvas id="chart-cat"></canvas>
+    </div>
+  </div>
+</div>
+
+{# ════════════════════════════════════════════════════════
+   SEÇÃO 4 — Extrato Consolidado
+   ════════════════════════════════════════════════════════ #}
+<details class="nb-consolidado">
+  <summary class="nb-consolidado-summary">
+    <span>Extrato Consolidado</span>
+    <span style="font-size:11px;font-weight:400;color:var(--muted);">inclui transferências e fundos</span>
+    <span class="nb-positivo" id="extrato-saldo" style="margin-left:auto;font-weight:800;font-size:15px;">
+      {{ (_ent.tot - _sai.tot)|brl }}
+    </span>
+  </summary>
+  <div class="tabela-wrap" style="margin-top:12px;">
+    <table>
+      <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Natureza</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for l in lancamentos %}
+        {% set especial = l._transferencia or l._neutro %}
+        <tr class="ext-row ext-row-cons"
+            data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
+            data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}"
+            data-conciliado="{{ 'true' if l.conciliado else 'false' }}"
+            data-especial="{{ 'true' if especial else 'false' }}"
+            style="{% if especial %}color:#9CA3AF;{% elif not l.conciliado %}background:#FEFCE8;{% endif %}">
+          <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
+          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ l.descricao or l.descricao_original }}">
+            {% if especial %}<span class="badge-transf">{{ 'Transf.' if l._transferencia else 'Fundo' }}</span>{% endif %}
+            {{ l.descricao or l.descricao_original or '—' }}
+          </td>
+          <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">
+            {{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}
+          </td>
+          <td style="font-size:12px;color:var(--muted);">
+            {% set _cat = l.categorias_financeiras %}
+            {{ _cat.nome if _cat else ('Transferência' if l._transferencia else ('Fundo' if l._neutro else '—')) }}
+          </td>
+          <td>
+            {% if especial %}<span class="badge badge-cinza" style="font-size:10px;">Auto</span>
+            {% elif l.conciliado %}<span class="badge badge-verde" style="font-size:10px;">Conciliado</span>
+            {% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+
+{% else %}
+<div class="vazio">Nenhum lançamento encontrado.</div>
+{% endif %}
+</div>{# /tab-extrato #}
+
+{# ══════════════════════════════════════════════ DRE ═══ #}
+<div id="tab-dre" class="dtab-content {{ 'ativo' if tab == 'dre' }}">
+
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label style="font-size:12px;color:var(--muted);font-weight:600;">Período</label>
+      <input type="month" id="dre-mes" class="input-sm"
+             value="{{ kpi_mes }}" onchange="carregarDre(this.value)" />
+    </div>
+    <button class="btn btn-ghost" onclick="exportarDrePdf()" style="margin-left:auto;">↓ Exportar PDF</button>
+  </div>
+
+  <div id="dre-corpo">
+    {% include 'admin/_dre_corpo.html' %}
+  </div>
+</div>
+
+</div>{# /page-content #}
+
+{# ══ MODAL EDITAR USINA ══ #}
+<div id="edit-modal" class="modal-overlay" onclick="if(event.target===this)fecharEditModal()" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span style="font-weight:700;font-size:15px;">Editar usina</span>
+      <button class="modal-close" onclick="fecharEditModal()">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.usina_editar', usina_id=usina.id) }}">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group"><label>Razão Social</label>
+            <input type="text" name="razao_social" value="{{ usina.razao_social or '' }}" /></div>
+          <div class="form-group"><label>Nome Fantasia</label>
+            <input type="text" name="nome_fantasia" value="{{ usina.nome_fantasia or '' }}" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>CNPJ</label>
+            <input type="text" name="cnpj" value="{{ usina.cnpj or '' }}" /></div>
+          <div class="form-group"><label>Status</label>
+            <select name="status">
+              <option value="Ativa" {{ 'selected' if usina.status == 'Ativa' }}>Ativa</option>
+              <option value="Inativa" {{ 'selected' if usina.status == 'Inativa' }}>Inativa</option>
+              <option value="Em implantação" {{ 'selected' if usina.status == 'Em implantação' }}>Em implantação</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Modalidade GD</label>
+            <select name="modalidade_gd">
+              <option value="GD I"  {{ 'selected' if usina.modalidade_gd == 'GD I' }}>GD I</option>
+              <option value="GD II" {{ 'selected' if usina.modalidade_gd == 'GD II' }}>GD II</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Potência (kWp)</label>
+            <input type="number" name="potencia_instalada_kwp" step="0.1"
+                   value="{{ usina.potencia_instalada_kwp or '' }}" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Geração Média (kWh/mês)</label>
+            <input type="number" name="geracao_media_mensal_kwh" step="1"
+                   value="{{ usina.geracao_media_mensal_kwh or '' }}" /></div>
+          <div class="form-group"><label>Início operação</label>
+            <input type="date" name="data_inicio_operacao"
+                   value="{{ usina.data_inicio_operacao or '' }}" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Banco</label>
+            <input type="text" name="banco" value="{{ usina.banco or '' }}" /></div>
+          <div class="form-group"><label>Agência</label>
+            <input type="text" name="agencia" value="{{ usina.agencia or '' }}" /></div>
+          <div class="form-group"><label>Conta Corrente</label>
+            <input type="text" name="conta_corrente" value="{{ usina.conta_corrente or '' }}" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>PIX Tipo</label>
+            <select name="pix_tipo">
+              <option value="">—</option>
+              <option value="CNPJ"      {{ 'selected' if usina.pix_tipo == 'CNPJ' }}>CNPJ</option>
+              <option value="CPF"       {{ 'selected' if usina.pix_tipo == 'CPF' }}>CPF</option>
+              <option value="EMAIL"     {{ 'selected' if usina.pix_tipo == 'EMAIL' }}>E-mail</option>
+              <option value="ALEATORIA" {{ 'selected' if usina.pix_tipo == 'ALEATORIA' }}>Aleatória</option>
+            </select>
+          </div>
+          <div class="form-group"><label>PIX Chave</label>
+            <input type="text" name="pix_chave" value="{{ usina.pix_chave or '' }}" /></div>
+        </div>
+        <div class="form-group">
+          <label>Observações</label>
+          <textarea name="observacoes" rows="2"
+            style="width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:6px;font-size:14px;font-family:inherit;resize:vertical;">{{ usina.observacoes or '' }}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="fecharEditModal()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{# ══ MODAL CONCILIAR ══ #}
+<div id="conciliar-modal" class="modal-overlay" onclick="if(event.target===this)fecharConciliarModal()" style="display:none;">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <span style="font-weight:700;font-size:15px;">Conciliar lançamento</span>
+      <button class="modal-close" onclick="fecharConciliarModal()">✕</button>
+    </div>
+    <form id="conciliar-form" method="POST" enctype="multipart/form-data">
+      <div class="modal-body">
+        <div id="conciliar-info" style="background:#F7F8FA;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;"></div>
+        <div class="form-group">
+          <label>Categoria *</label>
+          <select name="categoria_id" required>
+            <option value="">Selecione…</option>
+            {% for cat in categorias %}
+            <option value="{{ cat.id }}">[{{ 'Receita' if cat.tipo == 'receita' else 'Despesa' }}] {{ cat.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observação</label>
+          <input type="text" name="observacao" placeholder="Opcional" />
+        </div>
+        <div class="form-group">
+          <label>Comprovante <span style="font-weight:400;color:var(--muted);">(opcional)</span></label>
+          <input type="file" name="comprovante" accept=".pdf,.jpg,.jpeg,.png" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="fecharConciliarModal()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Confirmar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* ── Abas ── */
+.detalhe-tabs { display:flex; gap:4px; border-bottom:0.5px solid rgba(23,33,28,0.10); }
+.dtab {
+  padding:9px 16px; font-size:13px; font-weight:400;
+  background:none; border:none; border-bottom:2px solid transparent;
+  color:var(--muted); cursor:pointer; margin-bottom:-1px;
+  transition:color .15s, border-color .15s;
+}
+.dtab.ativo, .dtab:hover { color:var(--accent2); }
+.dtab.ativo { border-bottom-color:var(--accent); font-weight:500; }
+.dtab-content { display:none; padding-top:24px; }
+.dtab-content.ativo { display:block; }
+
+/* ── KPI ── */
+.kpi-filter { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.kpi-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:14px;
+}
+@media(max-width:900px){ .kpi-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:580px){ .kpi-grid { grid-template-columns:1fr; } }
+
+.kpi-card {
+  background:#fff; border:0.5px solid rgba(23,33,28,0.12); border-radius:15px;
+  padding:18px 19px; display:flex; flex-direction:column; gap:4px;
+}
+.kpi-card.destaque { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.kpi-card.alerta   { border-color:var(--red); }
+.kpi-label  { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
+.kpi-val    { font-size:22px; font-weight:500; color:var(--text); line-height:1.2; letter-spacing:-0.02em; }
+.kpi-val small { font-size:13px; font-weight:400; color:var(--muted); }
+.neg-val    { color:var(--red) !important; }
+.kpi-var    { font-size:11px; font-weight:500; margin-top:2px; }
+.kpi-var.pos { color:var(--green); }
+.kpi-var.neg { color:var(--red); }
+
+/* ── Extrato ── */
+.extrato-rodape {
+  display:flex; gap:0; margin-top:12px; border:1px solid var(--border);
+  border-radius:8px; overflow:hidden;
+}
+.extrato-total {
+  flex:1; padding:12px 16px; display:flex; flex-direction:column;
+  gap:3px; border-right:1px solid var(--border);
+}
+.extrato-total:last-child { border-right:none; }
+.extrato-total-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+.extrato-total-val   { font-size:16px; font-weight:800; }
+
+/* ── DRE ── */
+.dre-section-header {
+  display:flex; align-items:center; gap:10px;
+  font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--muted);
+  padding:10px 0 6px; border-bottom:2px solid var(--border);
+  margin-top:20px;
+}
+.dre-section-header:first-child { margin-top:0; }
+.dre-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 12px; font-size:13px; border-radius:4px;
+}
+.dre-row:hover { background:#F7F8FA; }
+.dre-row.total {
+  font-weight:700; font-size:14px;
+  border-top:1px solid var(--border); margin-top:4px;
+  background:#F7F8FA; border-radius:6px; padding:10px 12px;
+}
+.dre-row.result {
+  font-weight:500; font-size:15px; color:var(--accent2);
+  border:0.5px solid var(--accent); border-radius:10px;
+  padding:10px 12px; margin-top:8px; background:#EAF6F1;
+}
+.dre-val { font-weight:700; white-space:nowrap; }
+.dre-var { font-size:11px; font-weight:600; margin-left:8px; }
+.dre-var.pos { color:var(--green); }
+.dre-var.neg { color:#EF4444; }
+
+/* ── Shared ── */
+.input-sm {
+  padding:5px 10px; font-size:13px; border:1px solid var(--border);
+  border-radius:6px; background:#fff;
+}
+.detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+@media(max-width:900px){ .detail-grid { grid-template-columns:1fr 1fr; } }
+@media(max-width:600px){ .detail-grid { grid-template-columns:1fr; } }
+.detail-fields { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.df-row { display:flex; gap:10px; font-size:13px; align-items:baseline; }
+.df-label { color:var(--muted); font-size:11px; font-weight:600; min-width:100px; flex-shrink:0; text-transform:uppercase; letter-spacing:.04em; }
+.df-val   { color:var(--text); font-weight:500; }
+.socios-barra { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--bg3); gap:2px; }
+.mt-24 { margin-top:24px; }
+
+/* ── Extrato Bancário — Layout Nibo ── */
+.nb-card { background:#fff; border:0.5px solid rgba(23,33,28,0.12); border-radius:15px; overflow:hidden; }
+.nb-card-header { display:flex; align-items:center; gap:10px; padding:18px 20px 14px; }
+.nb-card-icon   { font-size:18px; }
+.nb-card-title  { font-size:14.5px; font-weight:500; color:var(--text); flex:1; }
+.nb-card-total  { font-size:20px; font-weight:500; letter-spacing:-0.02em; }
+.nb-positivo { color:#1D9E75; }
+.nb-negativo { color:var(--red); }
+
+/* Seção 1: Saldo + Fluxo */
+.nb-resumo { display:grid; grid-template-columns:340px 1fr; gap:16px; margin-bottom:20px; align-items:start; }
+@media(max-width:900px){ .nb-resumo { grid-template-columns:1fr; } }
+
+.nb-saldo-card .nb-contas-lista { padding:0 12px 8px; display:flex; flex-direction:column; gap:2px; }
+.nb-conta-item {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 8px; border-radius:10px; text-decoration:none; color:var(--text);
+  transition:background .12s; border-bottom:0.5px solid rgba(23,33,28,0.07);
+}
+.nb-conta-item:hover { background:var(--bg2); }
+.nb-conta-item.nb-conta-ativo { background:#EAF6F1; }
+.nb-conta-nome  { font-size:13px; font-weight:500; }
+.nb-conta-info  { font-size:11px; color:var(--muted); margin-top:2px; }
+.nb-conta-saldo { font-size:13px; font-weight:500; white-space:nowrap; letter-spacing:-0.01em; }
+.nb-mes-bar { display:flex; align-items:center; gap:8px; padding:12px 20px; border-top:0.5px solid rgba(23,33,28,0.08); background:var(--bg2); }
+.nb-mes-label { font-size:11px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+
+.nb-fluxo-card .nb-fluxo-resumo { display:flex; gap:0; border-top:0.5px solid rgba(23,33,28,0.08); }
+.fluxo-nav { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.fluxo-nav-btn { background:none; border:0.5px solid rgba(23,33,28,0.14); border-radius:6px; width:26px; height:26px; cursor:pointer; font-size:16px; line-height:1; color:var(--muted); display:flex; align-items:center; justify-content:center; }
+.fluxo-nav-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); background:#EAF6F1; }
+.fluxo-nav-btn:disabled { opacity:0.3; cursor:default; }
+.fluxo-nav-label { font-size:12px; font-weight:500; color:var(--text); min-width:60px; text-align:center; }
+.nb-fr-item   { flex:1; padding:12px 14px; display:flex; flex-direction:column; gap:2px; border-right:0.5px solid rgba(23,33,28,0.08); }
+.nb-fr-item:last-child { border-right:none; }
+.nb-fr-sep    { display:none; }
+.nb-fr-label  { font-size:11px; color:var(--muted); font-weight:500; }
+.nb-fr-val    { font-size:14px; font-weight:500; letter-spacing:-0.01em; }
+.nb-fr-total .nb-fr-label { color:var(--text); }
+.nb-fr-total .nb-fr-val   { font-size:16px; }
+
+/* Seção 2: Entradas & Saídas */
+.nb-lancamentos { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; align-items:start; }
+@media(max-width:860px){ .nb-lancamentos { grid-template-columns:1fr; } }
+.nb-panel { }
+.nb-panel-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:0.5px solid rgba(23,33,28,0.08); }
+.nb-ent-header { background:#EAF6F1; }
+.nb-sai-header { background:#FEF2F2; }
+.nb-panel-arrow { font-size:18px; font-weight:600; }
+.nb-ent-header .nb-panel-arrow { color:#1D9E75; }
+.nb-sai-header .nb-panel-arrow { color:var(--red); }
+.nb-panel-title { font-size:14.5px; font-weight:500; flex:1; }
+.nb-ent-header .nb-panel-title { color:#15805F; }
+.nb-sai-header .nb-panel-title { color:#991B1B; }
+.nb-panel-total { font-size:15px; font-weight:500; letter-spacing:-0.01em; }
+.nb-panel-body  { max-height:440px; overflow-y:auto; }
+.nb-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px; border-bottom:0.5px solid rgba(23,33,28,0.07);
+  transition:background .1s;
+}
+.nb-item:hover { background:var(--bg2); }
+.nb-item-data { font-size:12px; font-weight:500; color:var(--muted); min-width:42px; text-align:center; }
+.nb-pendente-data { color:var(--red); }
+.nb-item-centro { flex:1; min-width:0; }
+.nb-item-desc { font-size:13px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nb-item-cat  { font-size:11px; color:var(--muted); margin-top:2px; }
+.nb-item-dir  { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+.nb-item-val  { font-size:13px; font-weight:500; white-space:nowrap; }
+.nb-item-status { font-size:12px; color:#1D9E75; }
+.nb-btn-conciliar { font-size:10px; padding:2px 8px; }
+.nb-vazio { padding:24px; text-align:center; color:var(--muted); font-size:13px; }
+
+/* Seção 3: Resultado Operacional */
+.nb-resultado-titulo { font-size:15px; font-weight:500; color:var(--text); margin:8px 0 14px; letter-spacing:-0.01em; }
+.nb-resultado { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+@media(max-width:860px){ .nb-resultado { grid-template-columns:1fr; } }
+.nb-res-label { font-size:12px; font-weight:500; color:var(--muted); padding:14px 16px 8px; text-transform:uppercase; letter-spacing:.04em; }
+
+/* Seção 4: Consolidado */
+.nb-consolidado { border:0.5px solid rgba(23,33,28,0.12); border-radius:15px; overflow:hidden; background:#fff; margin-bottom:24px; }
+.nb-consolidado-summary {
+  display:flex; align-items:center; gap:10px;
+  padding:14px 20px; cursor:pointer; list-style:none;
+  font-weight:500; font-size:13px; background:var(--bg2);
+  user-select:none;
+}
+.nb-consolidado-summary::-webkit-details-marker { display:none; }
+.nb-consolidado-summary::before { content:'▶'; font-size:10px; color:var(--muted); margin-right:4px; transition:transform .15s; }
+details[open] .nb-consolidado-summary::before { transform:rotate(90deg); }
+.nb-consolidado .tabela-wrap { border-radius:0; border:none; }
+
+.badge-transf {
+  display:inline-block; font-size:10px; font-weight:500;
+  padding:1px 7px; border-radius:8px;
+  background:#EFF6FF; color:#1D4ED8; margin-right:5px; vertical-align:middle;
+}
+.badge-cinza { background:var(--bg3); color:var(--muted); }
+
+/* ── Modal ── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.45);
+  z-index:999; display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.modal-box {
+  background:#fff; border-radius:12px; width:100%; max-width:720px;
+  max-height:90vh; display:flex; flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+}
+.modal-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 24px 16px; border-bottom:1px solid var(--border);
+}
+.modal-close { background:none; border:none; font-size:16px; cursor:pointer; color:var(--muted); padding:4px; }
+.modal-body  { padding:20px 24px; overflow-y:auto; flex:1; }
+.modal-footer{ display:flex; justify-content:flex-end; gap:10px; padding:16px 24px; border-top:1px solid var(--border); }
+</style>
+
+<script>
+/* ── Dados dos gráficos (server-rendered) ── */
+const _SALDO_INI     = {{ saldo_inicial }};
+const _MESES         = {{ chart_meses | tojson }};
+const _FLUXO_DATES   = {{ chart_fluxo_dates | tojson }};
+const _FLUXO_PTS     = {{ chart_fluxo_pts | tojson }};
+const _MESES_ABREV   = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+let _chartsIniciados = false;
+let _chartCat        = null;
+let _chartFluxo      = null;
+let _fluxoMesIdx     = 0;
+
+/* Retorna { saldoAnt, dias } para um mês YYYY-MM */
+function _dadosFluxoMes(mes) {
+  let saldoAnt = _SALDO_INI;
+  for (let i = 0; i < _FLUXO_DATES.length; i++) {
+    const d = _FLUXO_DATES[i];
+    if (d === 'Saldo ini.') continue;
+    if (d.slice(0, 7) < mes) saldoAnt = _FLUXO_PTS[i];
+    else break;
+  }
+  const dias = _FLUXO_DATES
+    .map((d, i) => ({ d, v: _FLUXO_PTS[i] }))
+    .filter(p => p.d !== 'Saldo ini.' && p.d.slice(0, 7) === mes);
+  return { saldoAnt, dias };
+}
+
+/* Sincroniza chart + nav + dropdown para um mês */
+function _sincronizarFluxo(mes) {
+  const idx = _MESES.indexOf(mes);
+  if (idx === -1) return;
+  _fluxoMesIdx = idx;
+
+  if (_chartFluxo) {
+    const { saldoAnt, dias } = _dadosFluxoMes(mes);
+    _chartFluxo.data.labels = ['Saldo ant.', ...dias.map(p => {
+      const parts = p.d.split('-'); return parts[2] + '/' + _MESES_ABREV[parseInt(parts[1])];
+    })];
+    _chartFluxo.data.datasets[0].data = [saldoAnt, ...dias.map(p => p.v)];
+    _chartFluxo._rawDates = ['', ...dias.map(p => p.d)];
+    _chartFluxo.update();
+  }
+
+  const mes2 = _MESES[idx];
+  const elLabel = document.getElementById('fluxo-mes-label');
+  if (elLabel) elLabel.textContent = _MESES_ABREV[parseInt(mes2.slice(5))] + '/' + mes2.slice(0, 4);
+  const prev = document.getElementById('fluxo-prev');
+  const next = document.getElementById('fluxo-next');
+  if (prev) prev.disabled = idx <= 0;
+  if (next) next.disabled = idx >= _MESES.length - 1;
+
+  const elDrop = document.getElementById('filtro-mes');
+  if (elDrop && elDrop.value !== mes) elDrop.value = mes;
+}
+
+function atualizarNavFluxo() {
+  if (_MESES.length) _sincronizarFluxo(_MESES[_fluxoMesIdx]);
+}
+
+function navFluxo(delta) {
+  if (!_MESES.length) return;
+  const novoIdx = Math.max(0, Math.min(_MESES.length - 1, _fluxoMesIdx + delta));
+  _sincronizarFluxo(_MESES[novoIdx]);
+  filtrarExtrato();
+}
+
+/* ── Auto-init ao carregar (tab controlado pelo servidor) ── */
+(function() {
+  if (document.querySelector('#tab-extrato.ativo')) {
+    iniciarGraficosExtrato();
+    /* Pré-selecionar o mês mais recente */
+    const rows = document.querySelectorAll('.ext-row[data-mes]');
+    if (rows.length) {
+      const meses = Array.from(rows).map(r => r.dataset.mes).filter(Boolean).sort();
+      const ultimo = meses[meses.length - 1];
+      const elMes = document.getElementById('filtro-mes');
+      if (elMes && ultimo) { elMes.value = ultimo; filtrarExtrato(); }
+    }
+  }
+})();
+
+/* ── Editar modal ── */
+function abrirEditModal()   { document.getElementById('edit-modal').style.display='flex'; document.body.style.overflow='hidden'; }
+function fecharEditModal()  { document.getElementById('edit-modal').style.display='none'; document.body.style.overflow=''; }
+
+/* ── Conciliar modal ── */
+function abrirConciliarModal(id, desc, valor, tipo) {
+  const form = document.getElementById('conciliar-form');
+  form.action = '{{ url_for("admin.extrato_conciliar", usina_id=usina.id, lancamento_id="__ID__") }}'.replace('__ID__', id);
+  document.getElementById('conciliar-info').innerHTML =
+    '<strong>' + (tipo === 'credito' ? 'Crédito' : 'Débito') + '</strong> · R$ ' + valor +
+    '<br><span style="color:#6B7280;">' + desc + '</span>';
+  document.getElementById('conciliar-modal').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function fecharConciliarModal() { document.getElementById('conciliar-modal').style.display='none'; document.body.style.overflow=''; }
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') {
+  fecharEditModal(); fecharConciliarModal();
+}});
+
+function fmtBrl(v) {
+  const s = Math.abs(v).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?=,))/g, '.');
+  return (v < 0 ? '- ' : '') + 'R$ ' + s;
+}
+
+/* ── Filtro extrato ── */
+function filtrarExtrato() {
+  const mes = document.getElementById('filtro-mes').value;
+  let totEnt = 0, totSai = 0, totConsEnt = 0, totConsSai = 0;
+
+  document.querySelectorAll('.ext-row-ent').forEach(r => {
+    const ok = !mes || r.dataset.mes === mes;
+    r.style.display = ok ? '' : 'none';
+    if (ok) totEnt += parseFloat(r.dataset.valor || 0);
+  });
+  document.querySelectorAll('.ext-row-sai').forEach(r => {
+    const ok = !mes || r.dataset.mes === mes;
+    r.style.display = ok ? '' : 'none';
+    if (ok) totSai += parseFloat(r.dataset.valor || 0);
+  });
+  document.querySelectorAll('.ext-row-cons').forEach(r => {
+    const ok = !mes || r.dataset.mes === mes;
+    r.style.display = ok ? '' : 'none';
+    if (ok && r.dataset.conciliado === 'true') {
+      const v = parseFloat(r.dataset.valor || 0);
+      if (r.dataset.tipo === 'credito') totConsEnt += v;
+      else totConsSai += v;
+    }
+  });
+
+  const elEnt   = document.getElementById('tot-entradas');
+  const elSai   = document.getElementById('tot-saidas');
+  const elSaldo = document.getElementById('extrato-saldo');
+  if (elEnt)   elEnt.textContent  = fmtBrl(totEnt);
+  if (elSai)   elSai.textContent  = fmtBrl(totSai);
+  if (elSaldo) {
+    const s = totConsEnt - totConsSai;
+    elSaldo.textContent = fmtBrl(s);
+    elSaldo.style.color = s >= 0 ? '#16A34A' : '#DC2626';
+  }
+
+  // Fluxo de caixa — resumo
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  // Sincroniza chart com o dropdown (se o usuário mudou o dropdown manualmente)
+  if (mes && _MESES.includes(mes) && _MESES[_fluxoMesIdx] !== mes) _sincronizarFluxo(mes);
+
+  // Saldo anterior: último ponto do fluxo antes deste mês (ou saldo_inicial se for o 1º)
+  const saldoAnt = mes ? _dadosFluxoMes(mes).saldoAnt : _SALDO_INI;
+  set('fluxo-saldo-ini', fmtBrl(saldoAnt));
+  set('fluxo-ent', fmtBrl(totEnt));
+  set('fluxo-sai', fmtBrl(totSai));
+  const res = totEnt - totSai;
+  const elRes = document.getElementById('fluxo-resultado');
+  if (elRes) {
+    elRes.textContent = fmtBrl(res);
+    elRes.style.color = res >= 0 ? '#16A34A' : '#DC2626';
+  }
+
+  // Pie chart: atualiza para o mês filtrado
+  atualizarPie(mes);
+}
+
+/* ── Gráficos do extrato (inicializa uma única vez ao revelar a tab) ── */
+function iniciarGraficosExtrato() {
+  if (_chartsIniciados) return;
+  _chartsIniciados = true;
+
+  /* Gráfico 1: Fluxo de caixa mensal (linha) com navegação */
+  (function() {
+    const ctx = document.getElementById('chart-fluxo');
+    if (!ctx || !_MESES.length) return;
+
+    _fluxoMesIdx = _MESES.length - 1; // inicia no mês mais recente
+    const mes0 = _MESES[_fluxoMesIdx];
+    const { saldoAnt: sa0, dias: d0 } = _dadosFluxoMes(mes0);
+    const labels   = ['Saldo ant.', ...d0.map(p => { const pt = p.d.split('-'); return pt[2] + '/' + _MESES_ABREV[parseInt(pt[1])]; })];
+    const data     = [sa0, ...d0.map(p => p.v)];
+    const rawDates = ['', ...d0.map(p => p.d)];
+
+    _chartFluxo = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          borderColor: '#1D9E75',
+          backgroundColor: 'rgba(29,158,117,0.07)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: '#1D9E75',
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => {
+                const rd = _chartFluxo._rawDates && _chartFluxo._rawDates[items[0].dataIndex];
+                return rd || 'Saldo anterior';
+              },
+              label: c => 'Saldo: ' + fmtBrl(c.parsed.y)
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 0 } },
+          y: { ticks: { callback: v => fmtBrl(v), font: { size: 10 } }, grid: { color: '#EEF0EF' } }
+        }
+      }
+    });
+    _chartFluxo._rawDates = rawDates;
+
+    atualizarNavFluxo();
+  })();
+
+  /* Gráfico 2: Evolução mensal (barras) */
+  (function() {
+    const ctx = document.getElementById('chart-mensal');
+    if (!ctx || !_MESES.length) return;
+    const labels = _MESES.map(m => _MESES_ABREV[parseInt(m.slice(5))] + '/' + m.slice(0,4));
+    const ent = {}, sai = {};
+    _MESES.forEach(m => { ent[m] = 0; sai[m] = 0; });
+    document.querySelectorAll('.ext-row-ent').forEach(r => { if (ent[r.dataset.mes] !== undefined) ent[r.dataset.mes] += parseFloat(r.dataset.valor || 0); });
+    document.querySelectorAll('.ext-row-sai').forEach(r => { if (sai[r.dataset.mes] !== undefined) sai[r.dataset.mes] += parseFloat(r.dataset.valor || 0); });
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Receitas',          data: _MESES.map(m => ent[m]), backgroundColor: '#16A34A' },
+          { label: 'Custos e Despesas', data: _MESES.map(m => sai[m]), backgroundColor: '#DC2626' },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+          tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmtBrl(c.parsed.y) } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { ticks: { callback: v => fmtBrl(v), font: { size: 10 } }, grid: { color: '#EEF0EF' } }
+        }
+      }
+    });
+  })();
+
+  /* Gráfico 3: donut inicial */
+  atualizarPie('');
+}
+
+/* ── Gráfico 3: Classificação por categoria (donut) ── */
+function atualizarPie(mes) {
+  const ctx = document.getElementById('chart-cat');
+  if (!ctx) return;
+  const cats = {}, catCores = {};
+  const CORES = ['#E8621A','#2563EB','#16A34A','#9333EA','#EAB308','#EC4899','#06B6D4','#F97316'];
+  // Soma entradas por categoria para o mês
+  document.querySelectorAll('.ext-row-ent, .ext-row-sai').forEach(r => {
+    if (mes && r.dataset.mes !== mes) return;
+    const desc = r.querySelector('.nb-item-cat')?.textContent?.trim() || '—';
+    cats[desc] = (cats[desc] || 0) + parseFloat(r.dataset.valor || 0);
+  });
+  const labels = Object.keys(cats);
+  const data   = labels.map(k => cats[k]);
+  const cores  = labels.map((_, i) => CORES[i % CORES.length]);
+  const mesStr = mes ? (_MESES_ABREV[parseInt(mes.slice(5))] + '/' + mes.slice(0,4)) : 'Total';
+  const el = document.getElementById('chart-cat-mes-label');
+  if (el) el.textContent = mesStr;
+  if (_chartCat) { _chartCat.destroy(); _chartCat = null; }
+  if (!labels.length) return;
+  _chartCat = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: cores, borderWidth: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: c => c.label + ': ' + fmtBrl(c.parsed) } }
+      }
+    }
+  });
+}
+
+/* ── Filtro DRE ── */
+function carregarDre(mes) {
+  window.location.href = window.location.pathname + '?kpi_mes=' + mes + '&tab=dre';
+}
+
+/* ── Exportar PDF (print) ── */
+function exportarDrePdf() {
+  const corpo = document.getElementById('dre-corpo').innerHTML;
+  const w = window.open('', '_blank');
+  w.document.write('<html><head><title>DRE</title><style>body{font-family:system-ui,sans-serif;padding:32px;max-width:700px;margin:auto;}' +
+    '.dre-section-header{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;border-bottom:2px solid #E5E7EB;padding:8px 0 4px;margin-top:16px;}' +
+    '.dre-row{display:flex;justify-content:space-between;padding:6px 8px;font-size:13px;}' +
+    '.dre-row.total{font-weight:700;border-top:1px solid #E5E7EB;background:#F7F8FA;}' +
+    '.dre-row.result{font-weight:800;font-size:15px;color:#E8510A;border:1px solid #E8510A;border-radius:4px;padding:8px;}' +
+    '.dre-val{font-weight:700;}' +
+    '</style></head><body>' + corpo + '</body></html>');
+  w.document.close();
+  setTimeout(() => { w.print(); }, 400);
+}
+</script>
+{% endblock %}

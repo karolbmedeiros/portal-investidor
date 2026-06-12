@@ -1,0 +1,126 @@
+{% extends "portal/layout.html" %}
+{% block title %}Extrato{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Extrato</div>
+  <div class="page-subtitle">Todas as movimentações da sua conta</div>
+</div>
+<div class="page-content">
+
+  <form method="GET" class="filtros mb-24">
+    <div class="filtros-grid">
+      <div>
+        <label>Usina</label>
+        <select name="empresa_id">
+          <option value="">Todas</option>
+          {% for inv_emp in empresas %}
+          <option value="{{ inv_emp.empresa_id }}"
+            {{ 'selected' if filtros.empresa_id == inv_emp.empresa_id }}>
+            {{ inv_emp.empresas.nome if inv_emp.empresas else inv_emp.empresa_id }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Tipo</label>
+        <select name="tipo">
+          <option value="">Todos</option>
+          <option value="receita"   {{ 'selected' if filtros.tipo == 'receita' }}>Receita</option>
+          <option value="custo"     {{ 'selected' if filtros.tipo == 'custo' }}>Custo</option>
+          <option value="resultado" {{ 'selected' if filtros.tipo == 'resultado' }}>Resultado</option>
+        </select>
+      </div>
+      <div>
+        <label>De</label>
+        <input type="date" name="data_inicio" value="{{ filtros.data_inicio or '' }}" />
+      </div>
+      <div>
+        <label>Até</label>
+        <input type="date" name="data_fim" value="{{ filtros.data_fim or '' }}" />
+      </div>
+      <div>
+        <label>Busca</label>
+        <input type="text" name="busca" value="{{ filtros.busca or '' }}" placeholder="Descrição..." />
+      </div>
+    </div>
+    <div class="flex gap-8 mt-8">
+      <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+      <a href="{{ url_for('portal.extrato') }}" class="btn btn-ghost btn-sm">Limpar</a>
+    </div>
+  </form>
+
+  {% if transacoes %}
+  <div class="tabela-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Usina</th>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th style="text-align:right;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transacoes %}
+        <tr class="tx-row">
+          <td class="text-muted mono text-sm">{{ tx.data[:10] if tx.data else '—' }}</td>
+          <td class="text-muted">{{ tx.empresas.nome if tx.empresas else '—' }}</td>
+          <td>
+            {% if tx.tipo == 'receita' %}
+            <span class="badge badge-verde">Receita</span>
+            {% elif tx.tipo == 'custo' %}
+            <span class="badge badge-vermelho">Custo</span>
+            {% else %}
+            <span class="badge badge-azul">Resultado</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text);">{{ tx.descricao }}</td>
+          <td style="text-align:right;"
+              class="{{ 'pos' if (tx.valor or 0) >= 0 else 'neg' }}">
+            {{ '+' if (tx.valor or 0) >= 0 else '' }}R$ {{ "%.2f"|format((tx.valor or 0)|abs)|replace('.', ',') }}
+          </td>
+        </tr>
+        <tr class="tx-detalhe">
+          <td colspan="5">
+            <div class="tx-detalhe-grid">
+              <div>
+                <div class="tx-detail-label">Categoria</div>
+                {{ tx.categorias.nome if tx.categorias else '—' }}
+              </div>
+              <div>
+                <div class="tx-detail-label">Tipo de categoria</div>
+                {{ tx.categorias.tipo if tx.categorias else '—' }}
+              </div>
+              <div>
+                <div class="tx-detail-label">Data completa</div>
+                {{ tx.data if tx.data else '—' }}
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagina > 1 or transacoes|length == 50 %}
+  <div class="flex gap-8 mt-16">
+    {% if pagina > 1 %}
+    <a href="?pagina={{ pagina - 1 }}&{{ request.query_string.decode().replace('pagina=' ~ pagina, '') }}"
+       class="btn btn-ghost btn-sm">← Anterior</a>
+    {% endif %}
+    {% if transacoes|length == 50 %}
+    <a href="?pagina={{ pagina + 1 }}&{{ request.query_string.decode().replace('pagina=' ~ pagina, '') }}"
+       class="btn btn-ghost btn-sm">Próxima →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="vazio">Nenhuma movimentação encontrada com os filtros selecionados.</div>
+  {% endif %}
+
+</div>
+{% endblock %}

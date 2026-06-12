@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ativar conta — Gestora</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #F7F8FA; --card: #FFFFFF; --border: #E5E7EB;
+      --text: #1A1A2E; --muted: #6B7280;
+      --accent: #E8621A; --green: #16A34A; --red: #DC2626;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .wrap { width: 100%; max-width: 380px; }
+    .logo { text-align: center; margin-bottom: 28px; }
+    .logo-nome { font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -.5px; }
+    .logo-nome span { color: var(--accent); }
+    .logo-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 28px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07), 0 4px 24px rgba(0,0,0,.04);
+    }
+    .card-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+    .card-sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
+    .form-group { margin-bottom: 14px; }
+    label {
+      display: block; font-size: 11px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px;
+    }
+    input {
+      width: 100%; padding: 10px 12px;
+      background: #F9FAFB; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      font-size: 14px; outline: none; font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px rgba(232,98,26,.08); }
+    .btn {
+      width: 100%; padding: 11px; background: var(--accent); color: #fff;
+      border: none; border-radius: 6px; font-size: 14px; font-weight: 700;
+      cursor: pointer; margin-top: 6px; font-family: inherit; transition: background .15s;
+    }
+    .btn:hover { background: #D4541A; }
+    .sucesso {
+      background: rgba(22,163,74,.07); border: 1px solid rgba(22,163,74,.2);
+      color: #166534; padding: 20px; border-radius: 6px;
+      text-align: center; font-size: 14px; font-weight: 500; line-height: 1.6;
+    }
+    .sucesso a { color: var(--accent); font-weight: 700; display: inline-block; margin-top: 12px; }
+    .erro {
+      background: rgba(220,38,38,.07); border: 1px solid rgba(220,38,38,.2);
+      color: #991B1B; padding: 10px 14px; border-radius: 6px;
+      font-size: 13px; margin-bottom: 16px; font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-nome">Gestora<span>.</span></div>
+    <div class="logo-sub">Portal de Investidores</div>
+  </div>
+  <div class="card">
+    {% if sucesso %}
+      <div class="card-title">Conta ativada! 🎉</div>
+      <div class="sucesso" style="margin-top:16px;">
+        Sua senha foi definida com sucesso.<br>Você já pode acessar o portal.
+        <a href="{{ url_for('auth.login_page') }}">Entrar no portal →</a>
+      </div>
+    {% else %}
+      <div class="card-title">Definir senha</div>
+      <div class="card-sub">Escolha uma senha segura para acessar o portal.</div>
+      {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+      <form method="POST">
+        <input type="hidden" name="token" value="{{ token }}" />
+        <div class="form-group">
+          <label for="senha">Nova senha</label>
+          <input type="password" id="senha" name="senha" required minlength="8"
+                 placeholder="Mínimo 8 caracteres" autofocus />
+        </div>
+        <div class="form-group">
+          <label for="confirmacao">Confirmar senha</label>
+          <input type="password" id="confirmacao" name="confirmacao" required minlength="8" />
+        </div>
+        <button type="submit" class="btn">Ativar conta</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

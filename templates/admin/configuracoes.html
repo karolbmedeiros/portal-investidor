@@ -1,0 +1,464 @@
+{% extends "admin/layout.html" %}
+{% block title %}Configurações{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Configurações</div>
+  <div class="page-subtitle">Gerenciamento do portal</div>
+</div>
+
+<div class="page-content">
+<div class="cfg-layout">
+
+  {# ── Menu lateral ── #}
+  <nav class="cfg-nav">
+    <button class="cfg-nav-item ativo" data-tab="usuarios" onclick="cfgTab('usuarios',this)">
+      <span class="cfg-nav-icon">👥</span> Usuários
+    </button>
+    <button class="cfg-nav-item" data-tab="novo_usuario" onclick="cfgTab('novo_usuario',this)">
+      <span class="cfg-nav-icon">＋</span> Novo usuário
+    </button>
+    <button class="cfg-nav-item" data-tab="naturezas" onclick="cfgTab('naturezas',this)">
+      <span class="cfg-nav-icon">🏷</span> Naturezas
+    </button>
+  </nav>
+
+  {# ── Conteúdo ── #}
+  <div class="cfg-body">
+
+    {# ══ Usuários ══ #}
+    <div id="cfg-usuarios" class="cfg-tab ativo">
+      <div class="cfg-section-title">Usuários com acesso</div>
+
+      {% if investidores %}
+      {% for inv in investidores %}
+      <div class="inv-card mb-12">
+        <div class="inv-row">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:14px;">{{ inv.nome }}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+              {{ inv.username or inv.email.replace('@portal.local','') if inv.email else '—' }}
+            </div>
+            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+              {% if inv.usina_ids %}
+                {% for uid in inv.usina_ids %}
+                  {% set _u = usinas | selectattr('id', 'equalto', uid) | first | default(None) %}
+                  {% set _c = empresas_veiculos | selectattr('slug', 'equalto', uid) | first | default(None) %}
+                  {% if _u %}
+                  <span class="badge badge-muted" style="font-size:10px;">
+                    <span style="color:var(--accent);margin-right:3px;">⚡</span>{{ _u.nome }}
+                  </span>
+                  {% elif _c %}
+                  <span class="badge badge-muted" style="font-size:10px;">
+                    <span style="color:#2563EB;margin-right:3px;">🚗</span>{{ _c.nome }}
+                  </span>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+              <span style="font-size:11px;color:var(--muted);font-style:italic;">Sem investimentos atribuídos</span>
+              {% endif %}
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;flex-shrink:0;">
+            <button type="button" onclick="toggleAcesso('{{ inv.id }}')"
+                    class="btn btn-secondary btn-sm">Editar acesso</button>
+            <form method="POST"
+                  action="{{ url_for('admin.redefinir_senha', investidor_id=inv.id) }}"
+                  style="display:flex;gap:4px;align-items:center;">
+              <input type="password" name="nova_senha" placeholder="Nova senha"
+                     minlength="6"
+                     style="padding:5px 8px;font-size:12px;border:1px solid #E5E7EB;
+                            border-radius:6px;width:110px;" />
+              <button type="submit" class="btn btn-secondary btn-sm">Redefinir</button>
+            </form>
+            <form method="POST"
+                  action="{{ url_for('admin.excluir_usuario', investidor_id=inv.id) }}"
+                  onsubmit="return confirm('Excluir o usuário {{ inv.nome }}? Esta ação não pode ser desfeita.');">
+              <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="acesso-{{ inv.id }}" class="acesso-panel">
+          <form method="POST" action="{{ url_for('admin.atualizar_acesso', investidor_id=inv.id) }}">
+            <div class="acesso-cols">
+              <div>
+                <div class="acesso-label">Investimentos com acesso</div>
+                {% if usinas or empresas_veiculos %}
+                <div class="checkboxes-grid" style="max-height:200px;">
+                  {% if usinas %}
+                  <div class="inv-grupo-label">⚡ Usinas</div>
+                  {% for usina in usinas %}
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="usina_ids" value="{{ usina.id }}"
+                      {{ 'checked' if usina.id in (inv.usina_ids or []) }} />
+                    <span>{{ usina.nome }}</span>
+                  </label>
+                  {% endfor %}
+                  {% endif %}
+                  {% if empresas_veiculos %}
+                  <div class="inv-grupo-label" style="margin-top:6px;">🚗 Carros</div>
+                  {% for emp in empresas_veiculos %}
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="usina_ids" value="{{ emp.slug }}"
+                      {{ 'checked' if emp.slug in (inv.usina_ids or []) }} />
+                    <span>{{ emp.nome }}</span>
+                  </label>
+                  {% endfor %}
+                  {% endif %}
+                </div>
+                {% else %}
+                <div style="font-size:12px;color:var(--muted);">Nenhum investimento cadastrado.</div>
+                {% endif %}
+              </div>
+              <div>
+                <div class="acesso-label">Seções visíveis</div>
+                <div class="perms-grid">
+                  {% set cur_perms = inv.permissions or [] %}
+                  {% set all_checked = 'all' in cur_perms %}
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="socios"
+                      {{ 'checked' if all_checked or 'socios' in cur_perms }} />
+                    <span>Sócios</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="clientes"
+                      {{ 'checked' if all_checked or 'clientes' in cur_perms }} />
+                    <span>Clientes</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="fluxo_de_caixa"
+                      {{ 'checked' if all_checked or 'fluxo_de_caixa' in cur_perms or 'extrato_bancario' in cur_perms }} />
+                    <span>Fluxo de Caixa</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="dre"
+                      {{ 'checked' if all_checked or 'dre' in cur_perms }} />
+                    <span>DRE</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;">
+              <button type="submit" class="btn btn-primary btn-sm">Salvar acesso</button>
+              <button type="button" onclick="toggleAcesso('{{ inv.id }}')"
+                      class="btn btn-ghost btn-sm">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="vazio">Nenhum usuário cadastrado.</div>
+      {% endif %}
+    </div>
+
+    {# ══ Novo Usuário ══ #}
+    <div id="cfg-novo_usuario" class="cfg-tab" style="display:none;">
+      <div class="cfg-section-title">Criar novo usuário investidor</div>
+      <div style="max-width:560px;">
+        <form method="POST" action="{{ url_for('admin.novo_usuario') }}" style="margin-top:4px;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nome completo *</label>
+              <input type="text" name="nome" placeholder="João da Silva" required />
+            </div>
+            <div class="form-group">
+              <label>Usuário * <span style="font-weight:400;color:var(--muted);">(sem @)</span></label>
+              <input type="text" name="username" placeholder="joaosilva" required
+                     pattern="[a-zA-Z0-9._-]+" title="Apenas letras, números, ponto, hífen ou _" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Senha inicial *</label>
+            <input type="password" name="senha" minlength="8" required />
+          </div>
+
+          {% if usinas or empresas_veiculos %}
+          <div class="form-group">
+            <label>Investimentos com acesso <span style="font-weight:400;color:var(--muted);">(visualização)</span></label>
+            <div class="checkboxes-grid">
+              {% if usinas %}
+              <div class="inv-grupo-label">⚡ Usinas</div>
+              {% for usina in usinas %}
+              <label class="checkbox-item">
+                <input type="checkbox" name="usina_ids" value="{{ usina.id }}" />
+                <span>{{ usina.nome }}</span>
+              </label>
+              {% endfor %}
+              {% endif %}
+              {% if empresas_veiculos %}
+              <div class="inv-grupo-label" style="margin-top:6px;">🚗 Carros</div>
+              {% for emp in empresas_veiculos %}
+              <label class="checkbox-item">
+                <input type="checkbox" name="usina_ids" value="{{ emp.slug }}" />
+                <span>{{ emp.nome }}</span>
+              </label>
+              {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="form-group">
+            <label>Seções visíveis</label>
+            <div class="perms-grid">
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="socios" checked />
+                <span>Sócios</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="clientes" checked />
+                <span>Clientes</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="fluxo_de_caixa" />
+                <span>Fluxo de Caixa</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="dre" />
+                <span>DRE</span>
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">Criar usuário</button>
+        </form>
+      </div>
+    </div>
+
+    {# ══ Naturezas ══ #}
+    <div id="cfg-naturezas" class="cfg-tab" style="display:none;">
+      <div class="cfg-section-title">Naturezas financeiras</div>
+      <p style="font-size:12px;color:var(--muted);margin:4px 0 20px;">
+        Código <strong>01</strong> = Entrada (receita) · Código <strong>02</strong> = Saída (despesa)
+      </p>
+
+      <div class="tabela-wrap" style="margin-bottom:24px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;">
+          <thead>
+            <tr>
+              <th class="nat-th">Cód.</th>
+              <th class="nat-th">Nome</th>
+              <th class="nat-th">Tipo</th>
+              <th class="nat-th"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cat in categorias %}
+            {% set cod = '01' if cat.tipo == 'receita' else '02' %}
+            {% set em_uso = cat.id in cats_em_uso %}
+            <tr style="border-bottom:1px solid #F3F4F6;">
+              <td class="nat-td">
+                <span class="cod-badge {{ 'cod-01' if cod == '01' else 'cod-02' }}">{{ cod }}</span>
+              </td>
+              <td class="nat-td" style="font-weight:500;color:#111827;">{{ cat.nome }}</td>
+              <td class="nat-td" style="color:#6B7280;">{{ 'Entrada' if cat.tipo == 'receita' else 'Saída' }}</td>
+              <td class="nat-td" style="text-align:right;">
+                <form method="POST"
+                      action="{{ url_for('admin.natureza_excluir', cat_id=cat.id) }}"
+                      onsubmit="return confirmarExclusaoNatureza(this, '{{ cat.nome }}', {{ 'true' if em_uso else 'false' }});">
+                  <button type="submit" class="btn btn-danger btn-sm"
+                          style="font-size:11px;padding:3px 10px;">Excluir</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cfg-section-title" style="margin-bottom:12px;">Adicionar natureza</div>
+      <form method="POST" action="{{ url_for('admin.natureza_nova') }}"
+            style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;max-width:560px;">
+        <div class="form-group" style="margin:0;flex:1;min-width:200px;">
+          <label>Nome</label>
+          <input type="text" name="nome" placeholder="Ex: Distribuição de Lucros" required />
+        </div>
+        <div class="form-group" style="margin:0;min-width:160px;">
+          <label>Tipo</label>
+          <select name="tipo" style="height:38px;width:100%;border:1px solid #E5E7EB;border-radius:6px;padding:0 10px;font-size:13px;">
+            <option value="receita">01 — Entrada</option>
+            <option value="despesa">02 — Saída</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="height:38px;white-space:nowrap;">+ Adicionar</button>
+      </form>
+    </div>
+
+  </div>{# /cfg-body #}
+</div>{# /cfg-layout #}
+</div>{# /page-content #}
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* Layout */
+.cfg-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.cfg-nav {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 8px;
+  position: sticky;
+  top: 80px;
+}
+.cfg-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s, color .12s;
+  width: 100%;
+}
+.cfg-nav-item:hover { background: #F3F4F6; }
+.cfg-nav-item.ativo { background: #FFF3E8; color: #E8621A; font-weight: 700; }
+.cfg-nav-icon { font-size: 15px; }
+.cfg-body { flex: 1; min-width: 0; }
+.cfg-tab { }
+.cfg-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+/* Naturezas table */
+.nat-th {
+  text-align: left;
+  padding: 9px 14px;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+  font-size: 11px;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-weight: 600;
+}
+.nat-td { padding: 10px 14px; vertical-align: middle; }
+.cod-badge {
+  font-size: 11px; font-weight: 700;
+  padding: 2px 9px; border-radius: 10px;
+}
+.cod-01 { background: #ECFDF5; color: #059669; }
+.cod-02 { background: #FEF2F2; color: #DC2626; }
+
+/* Shared */
+.checkboxes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  background: #FAFAFA;
+}
+.perms-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #FAFAFA;
+}
+.perms-grid .checkbox-item { min-width: 130px; }
+.checkbox-item {
+  display: flex; align-items: center; gap: 7px; font-size: 13px;
+  cursor: pointer; padding: 4px 6px; border-radius: 4px;
+  transition: background .1s;
+}
+.checkbox-item:hover { background: #F0F1F5; }
+.checkbox-item input[type="checkbox"] { accent-color: var(--accent); }
+
+.inv-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.inv-row {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 16px 20px;
+}
+.acesso-panel {
+  display: none;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: #F9FAFB;
+}
+.acesso-panel.aberto { display: block; }
+.acesso-cols {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+@media(max-width: 720px) { .acesso-cols { grid-template-columns: 1fr; } }
+.acesso-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); margin-bottom: 4px;
+}
+.mb-12 { margin-bottom: 12px; }
+.inv-grupo-label {
+  grid-column: 1 / -1;
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted);
+  padding: 2px 0 4px;
+}
+@media(max-width: 680px) {
+  .cfg-layout { flex-direction: column; }
+  .cfg-nav { width: 100%; flex-direction: row; flex-wrap: wrap; position: static; }
+}
+</style>
+
+<script>
+function cfgTab(id, btn) {
+  document.querySelectorAll('.cfg-tab').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.cfg-nav-item').forEach(b => b.classList.remove('ativo'));
+  document.getElementById('cfg-' + id).style.display = '';
+  btn.classList.add('ativo');
+  history.replaceState(null, '', '#' + id);
+}
+
+function toggleAcesso(id) {
+  const el = document.getElementById('acesso-' + id);
+  el.classList.toggle('aberto');
+}
+
+function confirmarExclusaoNatureza(form, nome, emUso) {
+  if (emUso) {
+    alert('A natureza "' + nome + '" está vinculada a lançamentos existentes e não pode ser excluída.');
+    return false;
+  }
+  return confirm('Excluir a natureza "' + nome + '"?');
+}
+
+// Restaurar aba pelo hash
+(function() {
+  const h = window.location.hash.replace('#', '');
+  const btn = document.querySelector('.cfg-nav-item[data-tab="' + h + '"]');
+  if (btn) cfgTab(h, btn);
+})();
+</script>
+{% endblock %}

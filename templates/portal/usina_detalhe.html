@@ -1,0 +1,303 @@
+{% extends "portal/layout.html" %}
+{% block title %}{{ usina.nome if usina else 'Usina' }}{% endblock %}
+
+{% block content %}
+{# ── Cabeçalho ── #}
+<div class="page-header" style="padding-bottom:0;">
+  <div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">
+      <a href="{{ url_for('portal.home') }}" style="color:var(--muted);">← Minhas Usinas</a>
+    </div>
+    <div class="page-title">{{ usina.nome if usina else '—' }}</div>
+    <div class="page-subtitle" style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+      {% if usina.modalidade_gd %}
+      <span class="badge badge-laranja">{{ usina.modalidade_gd }}</span>
+      {% endif %}
+      <span class="badge {{ 'badge-verde' if usina.status == 'Ativa' else 'badge-muted' }}">
+        {{ usina.status or 'N/D' }}
+      </span>
+      {% if minha_participacao %}
+      <span style="color:var(--accent);font-weight:700;">
+        Sua cota: {{ (minha_participacao.percentual * 100)|round(1) }}%
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% set perms = usuario.permissions %}
+  {% set all_perms = 'all' in perms %}
+  {% set vtabs = [] %}
+  {% if all_perms or 'visao_geral'      in perms %}{% set _ = vtabs.append('visao-geral') %}{% endif %}
+  {% if all_perms or 'socios'           in perms %}{% set _ = vtabs.append('socios') %}{% endif %}
+  {% if all_perms or 'extrato_bancario' in perms %}{% set _ = vtabs.append('extrato') %}{% endif %}
+  {% if all_perms or 'dre'              in perms %}{% set _ = vtabs.append('dre') %}{% endif %}
+  {% set tab_labels = {'visao-geral': 'Visão Geral', 'socios': 'Sócios', 'extrato': 'Extrato Bancário', 'dre': 'DRE'} %}
+
+  <div class="detalhe-tabs" style="margin-top:20px;">
+    {% for tab in vtabs %}
+    <button class="dtab {{ 'ativo' if loop.first }}" onclick="showTab('{{ tab }}', this)">
+      {{ tab_labels[tab] }}
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="page-content">
+
+  {# ═══════════════════════════════════════════════════════ VISÃO GERAL ═══ #}
+  <div id="tab-visao-geral" class="dtab-content {{ 'ativo' if vtabs and vtabs[0] == 'visao-geral' }}">
+    <div class="detail-grid">
+      <div class="card mb-0">
+        <div class="card-label">Dados da usina</div>
+        <div class="detail-fields">
+          <div class="df-row"><span class="df-label">CNPJ</span><span class="df-val">{{ usina.cnpj or '—' }}</span></div>
+          <div class="df-row"><span class="df-label">Modalidade</span><span class="df-val">{{ usina.modalidade_gd or '—' }}</span></div>
+          <div class="df-row"><span class="df-label">Status</span><span class="df-val">{{ usina.status or '—' }}</span></div>
+          <div class="df-row"><span class="df-label">Início Op.</span><span class="df-val">{{ usina.data_inicio_operacao or '—' }}</span></div>
+        </div>
+      </div>
+
+      <div class="card mb-0">
+        <div class="card-label">Geração</div>
+        <div class="detail-fields">
+          <div class="df-row"><span class="df-label">Potência</span><span class="df-val">{{ usina.potencia_instalada_kwp or '—' }} kWp</span></div>
+          <div class="df-row"><span class="df-label">Média Mensal</span><span class="df-val">{{ usina.geracao_media_mensal_kwh or '—' }} kWh</span></div>
+        </div>
+      </div>
+
+      {% if minha_participacao %}
+      <div class="card mb-0">
+        <div class="card-label">Minha participação</div>
+        <div class="detail-fields">
+          <div class="df-row"><span class="df-label">Cota</span>
+            <span class="df-val" style="font-size:22px;font-weight:800;color:var(--accent);">
+              {{ (minha_participacao.percentual * 100)|round(1) }}%
+            </span>
+          </div>
+          {% if minha_participacao.valor_investido_total %}
+          <div class="df-row"><span class="df-label">Investido</span>
+            <span class="df-val">R$ {{ "%.2f"|format(minha_participacao.valor_investido_total) }}</span>
+          </div>
+          {% endif %}
+          {% if minha_participacao.data_entrada %}
+          <div class="df-row"><span class="df-label">Entrada</span>
+            <span class="df-val">{{ minha_participacao.data_entrada }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if leituras %}
+    <div class="card mt-24 mb-0">
+      <div class="card-label">Geração mensal (kWh compensado)</div>
+      <div style="height:200px;margin-top:12px;">
+        <canvas id="chartGeracao"></canvas>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if pnl %}
+    <div class="card mt-24 mb-0">
+      <div class="card-label">P&L mensal da usina</div>
+      <div style="height:200px;margin-top:12px;">
+        <canvas id="chartPnl"></canvas>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════════════════════════════ DISTRIBUIÇÕES ═══ #}
+  <div id="tab-distribuicoes" class="dtab-content {{ 'ativo' if vtabs and vtabs[0] == 'distribuicoes' }}">
+    {% if distribuicoes %}
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mês ref.</th>
+            <th>Valor</th>
+            <th>Data pagamento</th>
+            <th>Observação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in distribuicoes %}
+          <tr>
+            <td style="font-weight:600;">{{ d.ref_mes_ano[:7] if d.ref_mes_ano else '—' }}</td>
+            <td style="font-weight:700;color:var(--green);">R$ {{ "%.2f"|format(d.valor or 0) }}</td>
+            <td class="text-muted">{{ d.data_pagamento or '—' }}</td>
+            <td class="text-muted text-sm">{{ d.observacoes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vazio">Nenhuma distribuição registrada para esta usina.</div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════════════════════════════ DOCUMENTOS ═══ #}
+  <div id="tab-documentos" class="dtab-content {{ 'ativo' if vtabs and vtabs[0] == 'documentos' }}">
+    {% if documentos %}
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Categoria</th>
+            <th>Data</th>
+            <th>Download</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documentos %}
+          {% if doc.visivel_a_todos %}
+          <tr>
+            <td style="font-weight:600;">{{ doc.nome }}</td>
+            <td><span class="badge badge-muted">{{ doc.categoria or '—' }}</span></td>
+            <td class="text-muted text-sm">{{ doc.created_at[:10] if doc.created_at else '—' }}</td>
+            <td>
+              <a href="{{ doc.file_url }}" target="_blank" class="btn btn-ghost btn-sm">↓ Download</a>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vazio">Nenhum documento disponível.</div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════════════════════════════ LEITURAS ═══ #}
+  <div id="tab-leituras" class="dtab-content {{ 'ativo' if vtabs and vtabs[0] == 'leituras' }}">
+    {% if leituras %}
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mês ref.</th>
+            <th>kWh Compensado</th>
+            <th>Fatura Cosern</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in leituras %}
+          <tr>
+            <td style="font-weight:600;">{{ l.ref_mes_ano[:7] if l.ref_mes_ano else '—' }}</td>
+            <td>{{ "{:,.0f}".format(l.kwh_compensado or 0).replace(",", ".") }} kWh</td>
+            <td>
+              {% if l.valor_fatura_cosern_real %}
+              R$ {{ "%.2f"|format(l.valor_fatura_cosern_real) }}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <span class="badge {{ 'badge-verde' if l.status_pagamento_cosern == 'Pago' else 'badge-muted' }}">
+                {{ l.status_pagamento_cosern or '—' }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vazio">Nenhuma leitura mensal registrada.</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.detalhe-tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); }
+.dtab {
+  padding:9px 16px; font-size:13px; font-weight:600;
+  background:none; border:none; border-bottom:2px solid transparent;
+  color:var(--muted); cursor:pointer; margin-bottom:-1px;
+  transition:color .15s, border-color .15s;
+}
+.dtab.ativo, .dtab:hover { color:var(--accent); }
+.dtab.ativo { border-bottom-color:var(--accent); }
+.dtab-content { display:none; padding-top:24px; }
+.dtab-content.ativo { display:block; }
+.detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+@media(max-width:900px){ .detail-grid { grid-template-columns:1fr 1fr; } }
+@media(max-width:600px){ .detail-grid { grid-template-columns:1fr; } }
+.detail-fields { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.df-row { display:flex; gap:10px; font-size:13px; align-items:baseline; }
+.df-label { color:var(--muted); font-size:11px; font-weight:600; min-width:90px; flex-shrink:0; text-transform:uppercase; letter-spacing:.04em; }
+.df-val { color:var(--text); font-weight:500; }
+.mt-24 { margin-top:24px; }
+</style>
+
+<script>
+function showTab(tabId, btn) {
+  document.querySelectorAll('.dtab-content').forEach(t => t.classList.remove('ativo'));
+  document.querySelectorAll('.dtab').forEach(b => b.classList.remove('ativo'));
+  document.getElementById('tab-' + tabId).classList.add('ativo');
+  btn.classList.add('ativo');
+}
+
+{% if leituras %}
+const leiturasDados = {{ leituras | tojson }};
+const leituraMeses = leiturasDados.map(l => l.ref_mes_ano ? l.ref_mes_ano.slice(0,7) : '').reverse();
+const leituraKwh   = leiturasDados.map(l => l.kwh_compensado || 0).reverse();
+new Chart(document.getElementById('chartGeracao'), {
+  type: 'line',
+  data: {
+    labels: leituraMeses,
+    datasets: [{
+      label: 'kWh Compensado',
+      data: leituraKwh,
+      borderColor: '#E8621A',
+      backgroundColor: 'rgba(232,98,26,.08)',
+      fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#E5E7EB' }, ticks: { color: '#9CA3AF', font: { size: 11 } } },
+      y: { grid: { color: '#E5E7EB' }, ticks: { color: '#9CA3AF', font: { size: 11 } }, beginAtZero: true }
+    }
+  }
+});
+{% endif %}
+
+{% if pnl %}
+const pnlDados = {{ pnl | tojson }};
+const pnlMeses     = pnlDados.map(r => r.ref_mes_ano ? r.ref_mes_ano.slice(0,7) : '').reverse();
+const pnlReceita   = pnlDados.map(r => r.receita_bruta || 0).reverse();
+const pnlDespesa   = pnlDados.map(r => r.total_despesas || 0).reverse();
+const pnlResultado = pnlDados.map(r => r.resultado_liquido || 0).reverse();
+new Chart(document.getElementById('chartPnl'), {
+  type: 'bar',
+  data: {
+    labels: pnlMeses,
+    datasets: [
+      { label: 'Receita', data: pnlReceita, backgroundColor: '#16A34A', borderRadius: 4 },
+      { label: 'Despesas', data: pnlDespesa, backgroundColor: '#EF4444', borderRadius: 4 },
+      { label: 'Resultado', data: pnlResultado, type: 'line',
+        borderColor: '#E8621A', backgroundColor: 'transparent',
+        tension: 0.3, pointRadius: 0, borderWidth: 2 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { size: 11 }, usePointStyle: true } } },
+    scales: {
+      x: { grid: { color: '#E5E7EB' }, ticks: { color: '#9CA3AF', font: { size: 11 } } },
+      y: { grid: { color: '#E5E7EB' }, ticks: { color: '#9CA3AF', font: { size: 11 } }, beginAtZero: true }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

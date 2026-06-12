@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Gestora{% endblock %} — by Ativuz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  {% block head %}{% endblock %}
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #FFFFFF;
+      --bg2:     #F4F6F5;
+      --bg3:     #EEF0EF;
+      --border:  rgba(23,33,28,0.12);
+      --text:    #1A2420;
+      --muted:   #8A938E;
+      --accent:  #1D9E75;
+      --accent2: #15805F;
+      --green:   #1D9E75;
+      --red:     #D94040;
+      --radius:  12px;
+      --shadow:  0 1px 3px rgba(0,0,0,.05);
+      --sidebar: 236px;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: "Geist", system-ui, -apple-system, sans-serif;
+      font-size: 14px; background: var(--bg2); color: var(--text);
+      line-height: 1.55; -webkit-font-smoothing: antialiased;
+      font-feature-settings: "tnum" 1;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    svg { flex: none; }
+
+    /* ── Layout: sidebar + main ── */
+    .admin-shell { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar); flex: none;
+      position: sticky; top: 0; height: 100vh;
+      background: var(--bg); border-right: 0.5px solid rgba(23,33,28,0.10);
+      display: flex; flex-direction: column;
+      padding: 22px 14px; overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 4px 10px 20px;
+    }
+    .sidebar-logo-text {
+      font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: var(--text);
+    }
+    .sidebar-logo-dot { color: var(--accent); }
+    .sidebar-logo-sub {
+      font-family: "Geist Mono", monospace; font-size: 9px; font-weight: 400;
+      letter-spacing: 0.24em; color: var(--muted); text-transform: uppercase; margin-top: 3px;
+    }
+    .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-nav a {
+      display: flex; align-items: center; gap: 11px;
+      padding: 9px 11px; border-radius: 10px;
+      font-size: 13.5px; font-weight: 400; color: #5C655F;
+      text-decoration: none; transition: background .12s, color .12s;
+    }
+    .sidebar-nav a:hover { background: var(--bg2); color: var(--text); }
+    .sidebar-nav a.ativo { background: #EAF6F1; color: var(--accent2); font-weight: 500; }
+    .sidebar-nav a svg { color: currentColor; }
+    .sidebar-sub { padding-left: 20px !important; font-size: 13px !important; }
+    .sidebar-usina-sep {
+      padding: 14px 10px 4px; display: flex; align-items: center; gap: 8px;
+    }
+    .sidebar-usina-sep-line {
+      width: 12px; height: 1px; flex: none; background: rgba(23,33,28,.15);
+    }
+    .sidebar-usina-sep-nome {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      flex: 1; min-width: 0;
+    }
+    .sidebar-footer {
+      margin-top: auto; padding-top: 16px;
+      border-top: 0.5px solid rgba(23,33,28,0.10);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sidebar-avatar {
+      width: 36px; height: 36px; flex: none; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 500;
+    }
+    .sidebar-user-nome { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { font-size: 11px; color: var(--muted); }
+
+    /* ── Main ── */
+    .admin-main {
+      flex: 1; min-width: 0;
+      padding: 28px 36px 56px;
+      max-width: 1080px;
+    }
+
+    /* ── Flash ── */
+    .flashes { margin-bottom: 16px; }
+    .alert {
+      padding: 11px 16px; border-radius: var(--radius);
+      font-size: 13px; margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: space-between; font-weight: 500;
+    }
+    .alert-sucesso { background: rgba(29,158,117,.07); border: 0.5px solid rgba(29,158,117,.2); color: var(--accent2); }
+    .alert-erro    { background: rgba(217,64,64,.07);  border: 0.5px solid rgba(217,64,64,.2);  color: #991B1B; }
+    .alert-info    { background: rgba(29,158,117,.07); border: 0.5px solid rgba(29,158,117,.2); color: var(--accent2); }
+    .alert-close { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; color: inherit; opacity: .45; padding: 0 0 0 12px; }
+    .alert-close:hover { opacity: 1; }
+
+    /* ── Page header ── */
+    .page-header  { padding-bottom: 0; margin-bottom: 0; }
+    .page-header-row { display: flex; align-items: flex-start; justify-content: space-between; padding: 0 0 24px; }
+    .page-title   { font-size: 22px; font-weight: 500; color: var(--text); letter-spacing: -0.02em; }
+    .page-subtitle{ color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .page-content { padding: 20px 0 0; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+    /* ── Cards ── */
+    .card { background: var(--bg); border: 0.5px solid rgba(23,33,28,0.12); border-radius: 15px; padding: 20px; box-shadow: var(--shadow); }
+    .card-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 10px; }
+    .card-valor { font-size: 26px; font-weight: 500; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; }
+    .card-valor.verde    { color: var(--green); }
+    .card-valor.vermelho { color: var(--red); }
+    .card-sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+    /* ── Tabela ── */
+    .tabela-wrap { overflow: hidden; background: var(--bg); border: 0.5px solid rgba(23,33,28,0.12); border-radius: 15px; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--bg2); border-bottom: 0.5px solid rgba(23,33,28,0.10); white-space: nowrap; }
+    tbody tr { border-bottom: 0.5px solid rgba(23,33,28,0.07); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg2); }
+    tbody td { padding: 11px 16px; vertical-align: middle; font-size: 13px; }
+
+    /* ── Botões ── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; font-family: inherit; transition: background .15s, opacity .15s; text-decoration: none; white-space: nowrap; }
+    .btn-primary   { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent2); color: #fff; }
+    .btn-secondary { background: var(--bg2); color: var(--text); border: 0.5px solid rgba(23,33,28,0.14); }
+    .btn-secondary:hover { background: var(--bg3); }
+    .btn-ghost  { background: transparent; color: var(--muted); border: 0.5px solid rgba(23,33,28,0.14); }
+    .btn-ghost:hover { color: var(--text); background: var(--bg2); }
+    .btn-danger { background: rgba(217,64,64,.07); color: var(--red); border: 0.5px solid rgba(217,64,64,.2); }
+    .btn-danger:hover { background: rgba(217,64,64,.13); }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+
+    /* ── Badges ── */
+    .badge { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 500; }
+    .badge-verde    { background: #EAF6F1; color: #15805F; }
+    .badge-vermelho { background: rgba(217,64,64,.1); color: #991B1B; }
+    .badge-azul     { background: rgba(59,130,246,.1); color: #1D4ED8; }
+    .badge-laranja  { background: rgba(232,98,26,.1); color: #9A3412; }
+    .badge-muted    { background: var(--bg2); color: var(--muted); border: 0.5px solid rgba(23,33,28,0.12); }
+
+    /* ── Formulários ── */
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+    input[type=text], input[type=email], input[type=password],
+    input[type=date], input[type=number], input[type=file],
+    select, textarea {
+      width: 100%; padding: 9px 12px; background: var(--bg);
+      border: 0.5px solid rgba(23,33,28,0.18); border-radius: 8px;
+      color: var(--text); font-size: 13.5px; outline: none; font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(29,158,117,.10); }
+    input[readonly] { background: var(--bg2); color: var(--muted); cursor: not-allowed; }
+    textarea { resize: vertical; min-height: 80px; }
+    select { cursor: pointer; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; }
+    .checkbox-row input[type=checkbox] { width: auto; cursor: pointer; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .input-sm { padding: 5px 10px; font-size: 13px; border: 0.5px solid rgba(23,33,28,0.18); border-radius: 8px; background: #fff; }
+
+    /* ── Positivo / Negativo ── */
+    .pos { color: var(--green); font-weight: 500; }
+    .neg { color: var(--red);   font-weight: 500; }
+
+    /* ── Extrato tx ── */
+    .tx-row { cursor: pointer; user-select: none; }
+    .tx-detalhe { display: none; }
+    .tx-detalhe td { padding: 10px 16px 14px 32px !important; font-size: 12px; color: var(--muted); background: var(--bg2) !important; }
+    .tx-detalhe-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+    .tx-detail-label { font-weight: 500; color: var(--text); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+
+    /* ── Filtros ── */
+    .filtros { background: var(--bg); border: 0.5px solid rgba(23,33,28,0.12); border-radius: 15px; padding: 16px 20px; margin-bottom: 20px; }
+    .filtros-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .filtros label { font-size: 11px; }
+
+    /* ── Modal ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal-box { background: var(--bg); border-radius: 16px; width: 100%; max-width: 720px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 16px; border-bottom: 0.5px solid rgba(23,33,28,0.10); }
+    .modal-close { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--muted); padding: 4px; }
+    .modal-body  { padding: 20px 24px; overflow-y: auto; flex: 1; }
+    .modal-footer{ display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 0.5px solid rgba(23,33,28,0.10); }
+
+    /* ── Empresa cards ── */
+    .empresa-cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+    .empresa-card { background: var(--bg); border: 0.5px solid rgba(23,33,28,0.12); border-radius: 15px; padding: 20px; text-decoration: none; color: var(--text); display: block; box-shadow: var(--shadow); transition: border-color .15s, box-shadow .15s; }
+    .empresa-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,.08); color: var(--text); }
+    .empresa-card .nome { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+    .empresa-card .tipo { font-size: 11px; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: .04em; }
+    .empresa-card .valores { display: flex; gap: 20px; }
+    .empresa-card .v-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 3px; font-weight: 500; }
+    .empresa-card .v-valor { font-size: 17px; font-weight: 500; }
+    .empresa-card .atalhos { display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 0.5px solid rgba(23,33,28,0.10); }
+    .empresa-card .atalho { font-size: 11px; font-weight: 500; color: var(--muted); border: 0.5px solid rgba(23,33,28,0.14); padding: 4px 11px; border-radius: 6px; transition: color .12s, border-color .12s; }
+    .empresa-card .atalho:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── Utilidades ── */
+    .flex         { display: flex; }
+    .gap-8        { gap: 8px; }
+    .gap-12       { gap: 12px; }
+    .mt-4  { margin-top: 4px; }
+    .mt-8  { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+    .mb-8  { margin-bottom: 8px; }
+    .mb-16 { margin-bottom: 16px; }
+    .mb-24 { margin-bottom: 24px; }
+    .mb-0  { margin-bottom: 0; }
+    .text-muted { color: var(--muted); }
+    .text-sm    { font-size: 12px; }
+    .mono { font-family: "Geist Mono", ui-monospace, monospace; }
+    .vazio { padding: 52px 24px; text-align: center; color: var(--muted); font-size: 14px; }
+    .divider { border: none; border-top: 0.5px solid rgba(23,33,28,0.10); margin: 24px 0; }
+    .detail-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+    @media(max-width:900px){ .detail-grid { grid-template-columns: 1fr 1fr; } }
+    @media(max-width:600px){ .detail-grid { grid-template-columns: 1fr; } }
+    .detail-fields { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .df-row { display: flex; gap: 10px; font-size: 13px; align-items: baseline; }
+    .df-label { color: var(--muted); font-size: 11px; font-weight: 500; min-width: 100px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .04em; }
+    .df-val   { color: var(--text); font-weight: 400; }
+    .socios-barra { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--bg3); gap: 2px; }
+    .code-block { background: var(--bg2); border: 0.5px solid rgba(23,33,28,0.12); border-radius: 8px; padding: 14px 16px; font-family: "Geist Mono", monospace; font-size: 12px; line-height: 1.7; overflow-x: auto; }
+
+    @media(max-width:900px){
+      .sidebar { display: none; }
+      .admin-main { padding: 20px 16px 40px; }
+    }
+  </style>
+</head>
+<body>
+<div class="admin-shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-text">Gestora<span class="sidebar-logo-dot">.</span></div>
+      <div class="sidebar-logo-sub">by Ativuz</div>
+    </div>
+
+    {# ── Resolve usina em contexto: detalhe > dashboard filtrado > sessão ── #}
+    {% set _uc = namespace(id=none, nome=none) %}
+    {% if usina is defined and usina %}
+      {% set _uc.id   = usina.id %}
+      {% set _uc.nome = usina.nome %}
+    {% elif ativo_selecionado is defined and ativo_selecionado and ativo_selecionado.tipo == 'usina' %}
+      {% set _uc.id   = ativo_selecionado.id %}
+      {% set _uc.nome = ativo_selecionado.nome %}
+    {% elif session.get('ativo_tipo') == 'usina' and session.get('ativo_id') %}
+      {% set _uc.id   = session.get('ativo_id') %}
+      {% set _uc.nome = session.get('ativo_nome', session.get('ativo_id')) %}
+    {% endif %}
+    {% set _tab = request.args.get('tab', 'socios') %}
+
+    <nav class="sidebar-nav">
+      {# Gera URLs do nav principal preservando o investimento selecionado #}
+      {% if _uc.id %}
+        {% set _url_dash  = url_for('admin.dashboard', ativo_id=_uc.id, ativo_tipo='usina') %}
+        {% set _url_carros = url_for('admin.dashboard', ativo_id=_uc.id, ativo_tipo='usina') + '#veiculos' %}
+        {% set _url_usinas = url_for('admin.dashboard', ativo_id=_uc.id, ativo_tipo='usina') + '#usinas' %}
+        {% set _url_fluxo  = url_for('admin.fluxo_de_caixa') %}
+        {% set _url_config = url_for('admin.configuracoes') %}
+      {% else %}
+        {% set _url_dash   = url_for('admin.dashboard') %}
+        {% set _url_carros = url_for('admin.dashboard') + '#veiculos' %}
+        {% set _url_usinas = url_for('admin.dashboard') + '#usinas' %}
+        {% set _url_fluxo  = url_for('admin.fluxo_de_caixa') %}
+        {% set _url_config = url_for('admin.configuracoes') %}
+      {% endif %}
+
+      <a href="{{ _url_dash }}"
+         class="{{ 'ativo' if request.endpoint in ('admin.dashboard',) }}">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v8h-6z"></path><path d="M4 16h6v4h-6z"></path><path d="M14 12h6v8h-6z"></path><path d="M14 4h6v4h-6z"></path></svg>
+        Dashboard
+      </a>
+      <a href="{{ _url_carros }}"
+         class="{{ 'ativo' if request.endpoint in ('admin.empresa_veiculo_detalhe',) }}">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"></path></svg>
+        Portfólio de carros
+      </a>
+      <a href="{{ _url_usinas }}"
+         class="{{ 'ativo' if request.endpoint in ('admin.usina_detalhe', 'admin.usina_editar') and not _uc.id }}">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"></path><path d="M3 17h18"></path><path d="M4.5 12h15"></path><path d="M12 7v10"></path></svg>
+        Portfólio de usinas
+      </a>
+      <a href="{{ _url_fluxo }}"
+         class="{{ 'ativo' if request.endpoint in ('admin.fluxo_de_caixa','admin.fluxo_importar') }}">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l0 18"></path><path d="M3 18l4 -4l4 4l4 -4l4 4"></path><path d="M3 12l4 -4l4 4l4 -4l4 4"></path></svg>
+        Fluxo de Caixa
+      </a>
+      <a href="#"
+         class="">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3v4a1 1 0 0 0 1 1h4"></path><path d="M18 17h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h4l5 5v7a2 2 0 0 1 -2 2z"></path><path d="M16 17v2a2 2 0 0 1 -2 2h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h2"></path></svg>
+        Documentos
+      </a>
+      <a href="{{ _url_config }}"
+         class="{{ 'ativo' if 'configuracoes' in request.endpoint or 'usuario' in request.endpoint or 'redefinir' in request.endpoint or 'excluir_usuario' in request.endpoint }}">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path></svg>
+        Configurações
+      </a>
+
+      {% if _uc.id %}
+      {# ── Sub-nav da usina selecionada ── #}
+      <div class="sidebar-usina-sep">
+        <div class="sidebar-usina-sep-line"></div>
+        <span class="sidebar-usina-sep-nome" title="{{ _uc.nome }}">{{ _uc.nome }}</span>
+      </div>
+      <a href="{{ url_for('admin.usina_detalhe', usina_id=_uc.id, tab='socios') }}"
+         class="sidebar-sub {{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and _tab == 'socios' }}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"></path></svg>
+        Sócios
+      </a>
+      <a href="{{ url_for('admin.usina_detalhe', usina_id=_uc.id, tab='clientes') }}"
+         class="sidebar-sub {{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and _tab == 'clientes' }}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"></path><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"></path></svg>
+        Clientes
+      </a>
+      <a href="{{ url_for('admin.usina_detalhe', usina_id=_uc.id, tab='extrato') }}"
+         class="sidebar-sub {{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and _tab == 'extrato' }}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l0 18"></path><path d="M3 18l4 -4l4 4l4 -4l4 4"></path><path d="M3 12l4 -4l4 4l4 -4l4 4"></path></svg>
+        Fluxo de Caixa
+      </a>
+      <a href="{{ url_for('admin.usina_detalhe', usina_id=_uc.id, tab='dre') }}"
+         class="sidebar-sub {{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and _tab == 'dre' }}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"></path><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>
+        DRE
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-footer">
+      {% if usuario %}
+      {% set _iniciais = '' %}
+      {% set _partes = (usuario.nome or '').strip().split() %}
+      {% if _partes|length >= 2 %}{% set _iniciais = (_partes[0][0] + _partes[-1][0])|upper %}
+      {% elif _partes|length == 1 %}{% set _iniciais = _partes[0][:2]|upper %}
+      {% else %}{% set _iniciais = 'AD' %}{% endif %}
+      <div class="sidebar-avatar">{{ _iniciais }}</div>
+      <div style="min-width:0;">
+        <div class="sidebar-user-nome">{{ usuario.nome or usuario.email }}</div>
+        <div class="sidebar-user-role">Admin · Gestora</div>
+      </div>
+      {% endif %}
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="admin-main">
+
+    {% if em_preview %}
+    <div style="background:#FFFBEB; border:0.5px solid #FDE68A; border-radius:10px; padding:9px 16px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; font-size:13px; color:#92400E;">
+      <span>Visualizando portal como investidor</span>
+      <a href="{{ url_for('admin.sair_preview') }}" style="color:var(--accent); font-weight:500; border:0.5px solid rgba(29,158,117,.3); padding:3px 10px; border-radius:6px;">Sair do preview</a>
+    </div>
+    {% endif %}
+
+    {% with msgs = get_flashed_messages(with_categories=True) %}
+    {% if msgs %}
+    <div class="flashes">
+      {% for cat, msg in msgs %}
+      <div class="alert alert-{{ 'sucesso' if cat == 'sucesso' else 'erro' if cat == 'erro' else 'info' }}">
+        <span>{{ msg }}</span>
+        <button class="alert-close" type="button" onclick="this.parentElement.remove()">×</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+
+<script>
+document.addEventListener("click", function(e) {
+  var row = e.target.closest(".tx-row");
+  if (!row) return;
+  var next = row.nextElementSibling;
+  if (next && next.classList.contains("tx-detalhe")) {
+    next.style.display = next.style.display === "table-row" ? "none" : "table-row";
+  }
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

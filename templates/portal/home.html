@@ -1,0 +1,151 @@
+{% extends "portal/layout.html" %}
+{% block title %}Minhas Usinas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Minhas Usinas</div>
+  <div class="page-subtitle">
+    {{ usinas|length }} usina{{ 's' if usinas|length != 1 }} na sua carteira
+  </div>
+</div>
+
+<div class="page-content">
+  {% if usinas %}
+  <div class="usinas-grid">
+    {% for usina in usinas %}
+    {% set cota_pct = (cotas.get(usina.id, 0) * 100)|round(1) %}
+    <a href="{{ url_for('portal.usina_detalhe', usina_id=usina.id) }}" class="usina-card">
+
+      <div class="uc-header">
+        <div class="uc-nome" title="{{ usina.nome }}">{{ usina.nome }}</div>
+        <div class="uc-badges">
+          {% if usina.modalidade_gd %}
+          <span class="uc-badge uc-badge-gd">{{ usina.modalidade_gd }}</span>
+          {% endif %}
+          <span class="uc-badge {{ 'uc-badge-ativa' if usina.status == 'Ativa' else 'uc-badge-inativa' }}">
+            {{ usina.status or 'N/D' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="uc-info">
+        <div class="uc-info-row">
+          <span class="uc-info-label">CNPJ</span>
+          <span class="uc-info-val">{{ usina.cnpj or '—' }}</span>
+        </div>
+        {% if usina.banco %}
+        <div class="uc-info-row">
+          <span class="uc-info-label">Banco</span>
+          <span class="uc-info-val">{{ usina.banco }}
+            {% if usina.agencia %} · Ag. {{ usina.agencia }}{% endif %}
+          </span>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="uc-stats">
+        <div class="uc-stat">
+          <div class="uc-stat-val">
+            {% if usina.geracao_media_mensal_kwh %}
+              {{ "{:,.0f}".format(usina.geracao_media_mensal_kwh).replace(",", ".") }}<small>kWh</small>
+            {% else %}—{% endif %}
+          </div>
+          <div class="uc-stat-label">Geração Média</div>
+        </div>
+        <div class="uc-stat">
+          <div class="uc-stat-val">
+            {% if usina.potencia_instalada_kwp %}
+              {{ "{:,.0f}".format(usina.potencia_instalada_kwp).replace(",", ".") }}<small>kWp</small>
+            {% else %}—{% endif %}
+          </div>
+          <div class="uc-stat-label">Potência</div>
+        </div>
+        {% if usina.id in cotas %}
+        <div class="uc-stat">
+          <div class="uc-stat-val" style="color:var(--accent);">
+            {{ cota_pct }}<small>%</small>
+          </div>
+          <div class="uc-stat-label">Sua Cota</div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if usina.id in cotas and cota_pct > 0 %}
+      <div class="uc-cota-bar">
+        <div class="uc-cota-fill" style="width:{{ [cota_pct, 100]|min|round(1) }}%;"></div>
+      </div>
+      {% endif %}
+
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="vazio">
+    <div style="font-size:36px;margin-bottom:12px;opacity:.3;">☀️</div>
+    Você ainda não possui acesso a nenhuma usina.<br>
+    Entre em contato com a gestora.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.usinas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+@media (max-width: 1100px) { .usinas-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 680px)  { .usinas-grid { grid-template-columns: 1fr; } }
+
+.usina-card {
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid #E5E7EB;
+  border-radius: 12px; padding: 20px; gap: 16px;
+  text-decoration: none; color: inherit;
+  transition: box-shadow .15s, border-color .15s, transform .12s;
+}
+.usina-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,.1);
+  border-color: #E8621A;
+  transform: translateY(-2px);
+}
+.uc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.uc-nome {
+  font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3;
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical; flex: 1;
+}
+.uc-badges { display: flex; gap: 4px; flex-shrink: 0; }
+.uc-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .4px;
+  padding: 2px 7px; border-radius: 20px; text-transform: uppercase;
+}
+.uc-badge-gd     { background: #FFF3E8; color: #E8621A; }
+.uc-badge-ativa  { background: #ECFDF5; color: #059669; }
+.uc-badge-inativa{ background: #FEF2F2; color: #DC2626; }
+.uc-info { display: flex; flex-direction: column; gap: 5px; }
+.uc-info-row { display: flex; gap: 8px; font-size: 12px; align-items: baseline; }
+.uc-info-label {
+  color: #9CA3AF; font-weight: 600; text-transform: uppercase;
+  font-size: 10px; letter-spacing: .4px; min-width: 36px; flex-shrink: 0;
+}
+.uc-info-val { color: #374151; font-weight: 500; }
+.uc-stats {
+  display: flex; background: #F7F8FA; border-radius: 8px; overflow: hidden;
+}
+.uc-stat {
+  flex: 1; padding: 10px 12px; text-align: center; border-right: 1px solid #E5E7EB;
+}
+.uc-stat:last-child { border-right: none; }
+.uc-stat-val { font-size: 16px; font-weight: 700; color: #111827; line-height: 1; }
+.uc-stat-val small { font-size: 10px; font-weight: 500; color: #6B7280; margin-left: 1px; }
+.uc-stat-label {
+  font-size: 10px; color: #9CA3AF; margin-top: 4px;
+  text-transform: uppercase; letter-spacing: .4px; font-weight: 600;
+}
+.uc-cota-bar { height: 6px; background: #E5E7EB; border-radius: 3px; overflow: hidden; }
+.uc-cota-fill { height: 100%; background: #E8621A; border-radius: 3px; }
+</style>
+{% endblock %}

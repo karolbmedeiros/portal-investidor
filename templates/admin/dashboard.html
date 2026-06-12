@@ -1,0 +1,508 @@
+{% extends "admin/layout.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+{# ── compute totals ── #}
+{% set ns = namespace(veiculos=0, kwp=0.0) %}
+{% for emp in empresas_veiculos %}
+  {% set ns.veiculos = ns.veiculos + emp.veiculos|length %}
+{% endfor %}
+{% for u in usinas %}
+  {% if u.potencia_instalada_kwp %}
+    {% set ns.kwp = ns.kwp + u.potencia_instalada_kwp %}
+  {% endif %}
+{% endfor %}
+{% set first_name = (usuario.nome or '').split()[0] if usuario else 'Admin' %}
+{% set filtrado = ativo_selecionado is not none %}
+
+<!-- ── Header ── -->
+<header class="db-header">
+  <div>
+    <h1 class="db-greeting">Olá, {{ first_name }}</h1>
+    <p class="db-date" id="db-date-txt">—</p>
+  </div>
+  <div class="db-header-right">
+
+    {# ── Seletor de investimento ── #}
+    <div class="db-selector-wrap" id="seletor-wrap">
+      <button class="db-selector-btn {{ 'db-selector-ativo' if filtrado }}"
+              id="seletor-btn"
+              onclick="toggleSeletor(event)"
+              type="button">
+        {% if filtrado %}
+          <span class="db-selector-tipo-dot db-selector-tipo-dot--{{ ativo_selecionado.tipo }}"></span>
+          <span class="db-selector-label">{{ ativo_selecionado.nome }}</span>
+          <span class="db-selector-badge">{{ 'Usina' if ativo_selecionado.tipo == 'usina' else 'Carro' }}</span>
+        {% else %}
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
+          <span class="db-selector-label">Todos os investimentos</span>
+        {% endif %}
+        <svg class="db-selector-caret" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"></path></svg>
+      </button>
+
+      <div class="db-selector-dropdown" id="seletor-dropdown">
+        {# Opção: todos #}
+        <a href="{{ url_for('admin.dashboard') }}"
+           class="db-sel-item {{ 'db-sel-item--ativo' if not filtrado }}">
+          <span class="db-sel-item-nome">Todos os investimentos</span>
+          {% if not filtrado %}<span class="db-sel-check">✓</span>{% endif %}
+        </a>
+
+        {% set _usinas_sel = ativos | selectattr('tipo','equalto','usina') | list %}
+        {% set _carros_sel = ativos | selectattr('tipo','equalto','carro') | list %}
+
+        {% if _usinas_sel %}
+        <div class="db-sel-group">Usinas</div>
+        {% for a in _usinas_sel %}
+        <a href="{{ url_for('admin.dashboard', ativo_id=a.id, ativo_tipo='usina') }}"
+           class="db-sel-item {{ 'db-sel-item--ativo' if filtrado and ativo_id == a.id }}">
+          <span class="db-sel-dot db-sel-dot--usina"></span>
+          <span class="db-sel-item-nome">{{ a.nome }}</span>
+          {% if filtrado and ativo_id == a.id %}<span class="db-sel-check">✓</span>{% endif %}
+        </a>
+        {% endfor %}
+        {% endif %}
+
+        {% if _carros_sel %}
+        <div class="db-sel-group">Carros</div>
+        {% for a in _carros_sel %}
+        <a href="{{ url_for('admin.dashboard', ativo_id=a.id, ativo_tipo='carro') }}"
+           class="db-sel-item {{ 'db-sel-item--ativo' if filtrado and ativo_id == a.id }}">
+          <span class="db-sel-dot db-sel-dot--carro"></span>
+          <span class="db-sel-item-nome">{{ a.nome }}</span>
+          {% if filtrado and ativo_id == a.id %}<span class="db-sel-check">✓</span>{% endif %}
+        </a>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <button class="db-bell" title="Notificações">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path><path d="M9 17v1a3 3 0 0 0 6 0v-1"></path></svg>
+    </button>
+
+    <div class="db-badge-ativa">
+      <span class="db-dot"></span>
+      <span>Conta ativa</span>
+    </div>
+  </div>
+</header>
+
+{# Banner de filtro ativo #}
+{% if filtrado %}
+<div class="db-filtro-banner">
+  <span>
+    Exibindo dados de
+    <strong>{{ ativo_selecionado.nome }}</strong>
+    <span class="badge {{ 'badge-verde' if ativo_selecionado.tipo == 'usina' else 'badge-azul' }}" style="font-size:10px;margin-left:4px;">
+      {{ 'Usina' if ativo_selecionado.tipo == 'usina' else 'Carro' }}
+    </span>
+  </span>
+  <a href="{{ url_for('admin.dashboard') }}" class="db-filtro-limpar">
+    Limpar filtro
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg>
+  </a>
+</div>
+{% endif %}
+
+<!-- ── Métricas 2×2 + chart ── -->
+<section class="db-top">
+
+  <div class="db-metrics">
+
+    <div class="db-metric-card">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Ativos em carros</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"></path></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        <span class="db-mc-value">{{ ns.veiculos }}</span>
+        <span class="db-mc-unit">veículo{{ 's' if ns.veiculos != 1 }}</span>
+      </div>
+      <div class="db-mc-sub">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M9 12l2 2l4 -4"></path></svg>
+        {% if empresas_veiculos %}{{ empresas_veiculos|length }} empresa{{ 's' if empresas_veiculos|length != 1 }}{% else %}—{% endif %}
+      </div>
+    </div>
+
+    <div class="db-metric-card">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Ativos em usinas</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"></path><path d="M3 17h18"></path><path d="M4.5 12h15"></path><path d="M12 7v10"></path></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        <span class="db-mc-value">{{ usinas|length }}</span>
+        <span class="db-mc-unit">usina{{ 's' if usinas|length != 1 }}</span>
+      </div>
+      <div class="db-mc-sub">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"></path></svg>
+        {% if ns.kwp > 0 %}{{ "{:,.0f}".format(ns.kwp).replace(",",".") }} kWp{% else %}—{% endif %}
+      </div>
+    </div>
+
+    <div class="db-metric-card">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Total investido</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"></path><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4"></path></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        {% if total_investido %}
+          <span class="db-mc-value db-mc-value--lg">{{ total_investido|brl }}</span>
+        {% else %}
+          <span class="db-mc-value db-mc-value--lg text-muted">—</span>
+        {% endif %}
+      </div>
+      <div class="db-mc-sub {% if not total_investido %}text-muted{% endif %}">
+        {% if total_investido %}
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M9 12l2 2l4 -4"></path></svg>
+        Capital aportado
+        {% else %}
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#9BA39E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"></path><path d="M12 7v5l3 2"></path></svg>
+        Selecione um ativo
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="db-metric-card">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Rendimento acumulado</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"></path><path d="M14 7l7 0l0 7"></path></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        <span class="db-mc-value db-mc-value--lg">—</span>
+      </div>
+      <div class="db-mc-sub text-muted">A configurar</div>
+    </div>
+
+  </div>
+
+  <!-- Chart -->
+  <div class="db-chart-card">
+    <div class="db-chart-header">
+      <div>
+        <div class="db-chart-title">
+          {% if filtrado %}{{ ativo_selecionado.nome }}{% else %}Evolução do portfólio{% endif %}
+        </div>
+        <div class="db-chart-sub">Últimos 6 meses</div>
+      </div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
+      <svg id="db-sparkline" viewBox="0 0 360 150" style="width:100%; height:auto; display:block; overflow:visible;">
+        <line x1="0" y1="40"  x2="360" y2="40"  stroke="#EEF1EF" stroke-width="1"></line>
+        <line x1="0" y1="82"  x2="360" y2="82"  stroke="#EEF1EF" stroke-width="1"></line>
+        <line x1="0" y1="124" x2="360" y2="124" stroke="#EEF1EF" stroke-width="1"></line>
+        <path d="M0 149 L0 130 L72 110 L144 90 L216 68 L288 45 L360 22 L360 149 Z"
+              fill="#1D9E75" fill-opacity="0.07"></path>
+        <path d="M0 130 L72 110 L144 90 L216 68 L288 45 L360 22"
+              fill="none" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
+      </svg>
+      <div class="db-spark-labels">
+        <span>jan</span><span>fev</span><span>mar</span><span>abr</span><span>mai</span><span>jun</span>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ── Carros + Usinas ── -->
+<section class="db-lists">
+
+  <!-- Carros -->
+  <div class="card">
+    <div class="db-list-header">
+      <div class="db-list-title">
+        Carros
+        <span class="db-list-count">{{ ns.veiculos }} veículo{{ 's' if ns.veiculos != 1 }}</span>
+      </div>
+    </div>
+    {% if empresas_veiculos %}
+      {% for emp in empresas_veiculos %}
+        {% for v in emp.veiculos[:6] %}
+        <a href="{{ url_for('admin.empresa_veiculo_detalhe', slug=emp.slug) }}" class="db-list-row">
+          <span class="db-list-icon db-list-icon--car">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"></path></svg>
+          </span>
+          <div class="db-list-info">
+            <div class="db-list-nome">{{ v.modelo or emp.nome }}</div>
+            <div class="db-list-sub mono">{{ v.placa or '—' }}</div>
+          </div>
+          <span class="badge badge-verde">Ativo</span>
+          <div class="db-list-val text-muted">—</div>
+        </a>
+        {% endfor %}
+        {% if emp.receita_semanal %}
+        <div class="db-list-row" style="cursor:default; pointer-events:none;">
+          <span class="db-list-icon" style="background:transparent;"></span>
+          <div class="db-list-info">
+            <div class="db-list-sub">Receita semanal · {{ emp.nome.split()[0] }}</div>
+          </div>
+          <div class="db-list-val" style="color:var(--green);">
+            R$ {{ "{:,.2f}".format(emp.receita_semanal).replace(",","X").replace(".",",").replace("X",".") }}
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+    <div class="vazio">{% if filtrado %}Nenhum veículo neste ativo.{% else %}Nenhum veículo cadastrado.{% endif %}</div>
+    {% endif %}
+  </div>
+
+  <!-- Usinas -->
+  <div class="card">
+    <div class="db-list-header">
+      <div class="db-list-title">
+        Usinas
+        <span class="db-list-count">{{ usinas|length }} ativa{{ 's' if usinas|length != 1 }}</span>
+      </div>
+    </div>
+    {% if usinas %}
+      {% for usina in usinas %}
+      <div class="db-list-row" style="cursor:default;">
+        <span class="db-list-icon db-list-icon--solar">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"></path><path d="M3 17h18"></path><path d="M4.5 12h15"></path><path d="M12 7v10"></path></svg>
+        </span>
+        <div class="db-list-info">
+          <div class="db-list-nome">{{ usina.nome }}</div>
+          <div class="db-list-sub">
+            {% if usina.potencia_instalada_kwp %}{{ "{:,.0f}".format(usina.potencia_instalada_kwp).replace(",",".") }} kWp{% endif %}
+            {% if usina.modalidade_gd %} · {{ usina.modalidade_gd }}{% endif %}
+          </div>
+        </div>
+        <span class="badge {{ 'badge-verde' if usina.status == 'Ativa' else 'badge-muted' }}">
+          {{ usina.status or 'N/D' }}
+        </span>
+        <div class="db-list-val">
+          {% if usina.geracao_media_mensal_kwh %}
+          <div>{{ "{:,.0f}".format(usina.geracao_media_mensal_kwh).replace(",",".") }} kWh</div>
+          <div class="db-list-val-sub">média/mês</div>
+          {% else %}
+          <div class="text-muted">—</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="vazio">{% if filtrado %}Nenhuma usina neste ativo.{% else %}Nenhuma usina cadastrada.{% endif %}</div>
+    {% endif %}
+  </div>
+
+</section>
+
+<!-- ── Próximos eventos ── -->
+<section class="card mt-16">
+  <div class="db-list-header" style="margin-bottom:8px;">
+    <div class="db-list-title">Próximos eventos</div>
+    <span class="text-muted text-sm" id="db-events-mes">—</span>
+  </div>
+  <div class="vazio text-sm" style="padding:24px 0;">Nenhum evento cadastrado para este período.</div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* ── Dashboard header ── */
+.db-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:16px; }
+.db-greeting { font-size:22px; font-weight:500; letter-spacing:-0.02em; color:var(--text); margin:0; }
+.db-date     { font-size:13px; color:var(--muted); margin:4px 0 0; }
+.db-header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.db-bell {
+  width:40px; height:40px; flex:none; border:0.5px solid rgba(23,33,28,0.14);
+  background:var(--bg); border-radius:11px; color:#5C655F;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:border-color .15s, color .15s;
+}
+.db-bell:hover { border-color:var(--accent); color:var(--accent); }
+.db-badge-ativa {
+  display:flex; align-items:center; gap:7px;
+  padding:9px 14px; border-radius:11px; background:#EAF6F1;
+  font-size:12.5px; font-weight:500; color:#15805F;
+}
+.db-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); }
+
+/* ── Seletor de investimento ── */
+.db-selector-wrap { position:relative; }
+.db-selector-btn {
+  display:flex; align-items:center; gap:7px;
+  padding:9px 13px; border-radius:11px;
+  border:0.5px solid rgba(23,33,28,0.14);
+  background:var(--bg); color:#5C655F;
+  font-size:13px; font-weight:400; font-family:inherit;
+  cursor:pointer; transition:border-color .15s, color .15s, background .15s;
+  max-width:240px; white-space:nowrap; overflow:hidden;
+}
+.db-selector-btn:hover { border-color:rgba(23,33,28,0.28); color:var(--text); }
+.db-selector-btn.db-selector-ativo {
+  border-color:var(--accent); background:#EAF6F1; color:var(--accent2);
+  font-weight:500;
+}
+.db-selector-label { flex:1; overflow:hidden; text-overflow:ellipsis; min-width:0; text-align:left; }
+.db-selector-badge {
+  flex:none; font-size:10px; font-weight:500;
+  padding:2px 7px; border-radius:99px;
+  background:rgba(29,158,117,.15); color:var(--accent2);
+}
+.db-selector-caret { flex:none; transition:transform .15s; }
+.db-selector-wrap.aberto .db-selector-caret { transform:rotate(180deg); }
+.db-selector-tipo-dot {
+  width:7px; height:7px; flex:none; border-radius:50%;
+}
+.db-selector-tipo-dot--usina { background:var(--accent); }
+.db-selector-tipo-dot--carro { background:#2563EB; }
+
+.db-selector-dropdown {
+  display:none; position:absolute; top:calc(100% + 6px); right:0;
+  width:260px; background:var(--bg);
+  border:0.5px solid rgba(23,33,28,0.14); border-radius:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+  z-index:200; overflow:hidden;
+  padding:6px 0;
+}
+.db-selector-wrap.aberto .db-selector-dropdown { display:block; }
+
+.db-sel-group {
+  padding:8px 14px 4px;
+  font-size:10px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--muted);
+}
+.db-sel-item {
+  display:flex; align-items:center; gap:9px;
+  padding:9px 14px; font-size:13px; color:var(--text);
+  text-decoration:none; transition:background .1s;
+  cursor:pointer;
+}
+.db-sel-item:hover { background:var(--bg2); }
+.db-sel-item--ativo { background:#EAF6F1; color:var(--accent2); font-weight:500; }
+.db-sel-item-nome { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.db-sel-dot {
+  width:8px; height:8px; flex:none; border-radius:50%;
+}
+.db-sel-dot--usina { background:var(--accent); }
+.db-sel-dot--carro { background:#2563EB; }
+.db-sel-check { flex:none; font-size:12px; color:var(--accent); }
+
+/* ── Banner filtro ativo ── */
+.db-filtro-banner {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 16px; border-radius:11px; margin-bottom:16px;
+  background:#EAF6F1; border:0.5px solid rgba(29,158,117,.2);
+  font-size:13px; color:var(--text);
+}
+.db-filtro-limpar {
+  display:flex; align-items:center; gap:4px;
+  font-size:12px; font-weight:500; color:var(--accent2);
+  text-decoration:none; flex-shrink:0;
+}
+.db-filtro-limpar:hover { opacity:.7; }
+
+/* ── Top section ── */
+.db-top {
+  display:grid; grid-template-columns:1.3fr 1fr; gap:16px;
+  align-items:stretch; margin-bottom:16px;
+}
+@media(max-width:960px){ .db-top { grid-template-columns:1fr; } }
+
+/* ── 2×2 metric grid ── */
+.db-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.db-metric-card {
+  background:var(--bg); border:0.5px solid rgba(23,33,28,0.12);
+  border-radius:15px; padding:18px 19px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.db-mc-top { display:flex; align-items:center; justify-content:space-between; }
+.db-mc-label { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
+.db-mc-icon {
+  width:34px; height:34px; border-radius:10px; flex:none;
+  background:#EAF6F1; color:var(--accent);
+  display:flex; align-items:center; justify-content:center;
+}
+.db-mc-value-row { display:flex; align-items:baseline; gap:6px; }
+.db-mc-value { font-size:31px; font-weight:500; letter-spacing:-0.02em; color:var(--text); line-height:1; }
+.db-mc-value--lg { font-size:26px; }
+.db-mc-unit { font-size:13px; color:var(--muted); }
+.db-mc-sub { font-size:12px; color:#5C655F; display:flex; align-items:center; gap:5px; }
+
+/* ── Chart card ── */
+.db-chart-card {
+  background:var(--bg); border:0.5px solid rgba(23,33,28,0.12);
+  border-radius:15px; padding:20px 22px 16px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.db-chart-header { display:flex; align-items:flex-start; justify-content:space-between; }
+.db-chart-title { font-size:14.5px; font-weight:500; color:var(--text); }
+.db-chart-sub   { font-size:12px; color:var(--muted); margin-top:2px; }
+.db-spark-labels {
+  display:flex; justify-content:space-between;
+  margin-top:8px; font-size:11px; color:var(--muted);
+}
+
+/* ── Lists row ── */
+.db-lists {
+  display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;
+}
+@media(max-width:860px){ .db-lists { grid-template-columns:1fr; } }
+
+.db-list-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:4px;
+}
+.db-list-title {
+  font-size:15px; font-weight:500; color:var(--text);
+  display:flex; align-items:center; gap:9px;
+}
+.db-list-count {
+  font-size:11px; font-weight:500; color:var(--muted);
+  background:var(--bg2); padding:3px 8px; border-radius:20px;
+}
+.db-list-row {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 0; border-bottom:0.5px solid rgba(23,33,28,0.07);
+  text-decoration:none; color:var(--text); transition:background .1s;
+  cursor:pointer; border-radius:4px; margin:0 -4px; padding-left:4px; padding-right:4px;
+}
+.db-list-row:last-child { border-bottom:none; }
+.db-list-row:hover { background:var(--bg2); }
+.db-list-icon {
+  width:38px; height:38px; flex:none; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+}
+.db-list-icon--car   { background:var(--bg2); color:#5C655F; }
+.db-list-icon--solar { background:#EAF6F1; color:var(--accent); }
+.db-list-info { flex:1; min-width:0; }
+.db-list-nome { font-size:13.5px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.db-list-sub  { font-size:11.5px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.db-list-val  { flex:none; text-align:right; font-size:13.5px; font-weight:500; }
+.db-list-val-sub { font-size:10.5px; color:var(--muted); margin-top:2px; }
+</style>
+
+<script>
+(function () {
+  var dias = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  var mesesCurtos = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var d = new Date();
+  document.getElementById('db-date-txt').textContent =
+    dias[d.getDay()] + ' · ' + d.getDate() + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear();
+  var evMes = document.getElementById('db-events-mes');
+  if (evMes) evMes.textContent = mesesCurtos[d.getMonth()] + ' ' + d.getFullYear();
+})();
+
+function toggleSeletor(e) {
+  e.stopPropagation();
+  var wrap = document.getElementById('seletor-wrap');
+  wrap.classList.toggle('aberto');
+}
+document.addEventListener('click', function (e) {
+  var wrap = document.getElementById('seletor-wrap');
+  if (wrap && !wrap.contains(e.target)) wrap.classList.remove('aberto');
+});
+</script>
+{% endblock %}

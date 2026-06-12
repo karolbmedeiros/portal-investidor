@@ -1,0 +1,70 @@
+{% extends "admin/layout.html" %}
+{% block title %}Investidores{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="flex-between">
+    <div>
+      <div class="page-title">Investidores</div>
+      <div class="page-subtitle">
+        {{ investidores|length }} cadastrado{{ 's' if investidores|length != 1 }}
+      </div>
+    </div>
+    <a href="{{ url_for('admin.investidor_novo') }}" class="btn btn-primary">+ Novo investidor</a>
+  </div>
+</div>
+<div class="page-content">
+
+  {% if investidores %}
+  <div class="tabela-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>CPF</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in investidores %}
+        <tr>
+          <td style="font-weight:600;">{{ inv.nome }}</td>
+          <td class="text-muted mono text-sm">{{ inv.email }}</td>
+          <td class="text-muted mono text-sm">{{ inv.cpf }}</td>
+          <td>
+            {% if inv.ativo %}
+            <span class="badge badge-verde">Ativo</span>
+            {% else %}
+            <span class="badge badge-muted">Inativo</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="flex gap-8">
+              <a href="{{ url_for('admin.preview_portal', investidor_id=inv.id) }}"
+                 class="btn btn-ghost btn-sm">Ver portal</a>
+              <a href="{{ url_for('admin.investidor_editar', investidor_id=inv.id) }}"
+                 class="btn btn-secondary btn-sm">Editar</a>
+              <form method="POST"
+                    action="{{ url_for('admin.reenviar_convite', investidor_id=inv.id) }}"
+                    style="display:inline;">
+                <button type="submit" class="btn btn-ghost btn-sm">Reenviar convite</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="vazio">
+    Nenhum investidor cadastrado ainda.<br>
+    <a href="{{ url_for('admin.investidor_novo') }}" class="btn btn-primary"
+       style="margin-top:16px;display:inline-flex;">+ Criar primeiro investidor</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

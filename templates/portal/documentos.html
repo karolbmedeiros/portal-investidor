@@ -1,0 +1,76 @@
+{% extends "portal/layout.html" %}
+{% block title %}Documentos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Documentos</div>
+  <div class="page-subtitle">Contratos, relatórios e arquivos das suas usinas</div>
+</div>
+<div class="page-content">
+
+  <form method="GET" class="filtros mb-24" style="max-width:360px;">
+    <div class="form-group" style="margin:0;">
+      <label>Selecione a usina</label>
+      <select name="usina_id" onchange="this.form.submit()">
+        <option value="">Selecione uma usina</option>
+        {% for p in participacoes %}
+        {% if p.usinas %}
+        <option value="{{ p.usina_id }}"
+          {{ 'selected' if p.usina_id == usina_id_selecionada }}>
+          {{ p.usinas.nome }}
+        </option>
+        {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  {% if usina_id_selecionada %}
+    {% if documentos %}
+      {% set nomes_cat = {'contratos': 'Contratos', 'relatorios': 'Relatórios',
+                          'comprovantes': 'Comprovantes', 'notas_fiscais': 'Notas Fiscais',
+                          'outros': 'Outros'} %}
+      {% for cat in ['contratos', 'relatorios', 'comprovantes', 'notas_fiscais', 'outros'] %}
+        {% set docs_cat = documentos | selectattr('categoria', 'equalto', cat) | list %}
+        {% if docs_cat %}
+        <div class="mb-24">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;
+                      letter-spacing:.07em;color:var(--muted);
+                      margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+            {{ nomes_cat.get(cat, cat) }}
+          </div>
+          {% for doc in docs_cat %}
+          {% if doc.visivel_a_todos %}
+          <div style="display:flex;align-items:center;justify-content:space-between;
+                      padding:12px 16px;background:var(--bg);border:1px solid var(--border);
+                      border-radius:6px;margin-bottom:6px;gap:12px;">
+            <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
+              <span style="font-size:20px;flex-shrink:0;">📄</span>
+              <div style="min-width:0;">
+                <div style="font-size:13px;font-weight:600;white-space:nowrap;
+                            overflow:hidden;text-overflow:ellipsis;">{{ doc.nome }}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:1px;">
+                  {{ doc.created_at[:10] if doc.created_at else '—' }}
+                </div>
+              </div>
+            </div>
+            <a href="{{ doc.file_url }}" target="_blank"
+               class="btn btn-secondary btn-sm" style="flex-shrink:0;">↓ Download</a>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+    <div class="vazio">Nenhum documento disponível para esta usina.</div>
+    {% endif %}
+  {% else %}
+  <div class="vazio">
+    <div style="font-size:36px;margin-bottom:12px;opacity:.3;">📂</div>
+    Selecione uma usina para ver os documentos.
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

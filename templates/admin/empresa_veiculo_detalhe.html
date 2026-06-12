@@ -1,0 +1,267 @@
+{% extends "admin/layout.html" %}
+{% block title %}{{ empresa.nome }}{% endblock %}
+
+{% block content %}
+
+{# ── Cabeçalho ── #}
+<div class="page-header">
+  <div class="flex-between">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← Investimentos</a>
+      <div>
+        <div class="page-title">{{ empresa.nome }}</div>
+        <div class="page-subtitle">
+          {{ empresa.veiculos|length }} veículo{{ 's' if empresa.veiculos|length != 1 }}
+          · 100% Ativuz
+          {% if empresa.cnpj %} · CNPJ {{ empresa.cnpj }}{% endif %}
+        </div>
+      </div>
+    </div>
+    <span class="uc-badge uc-badge-ativa" style="font-size:12px;padding:4px 12px;">Ativo</span>
+  </div>
+</div>
+
+{# ── Tabs ── #}
+<div class="page-content">
+  <div class="tab-bar">
+    <button class="tab-btn ativo" data-tab="visao_geral">Visão Geral</button>
+    <button class="tab-btn" data-tab="clientes">Clientes</button>
+  </div>
+
+  {# ══ Visão Geral ══ #}
+  <div id="tab-visao_geral" class="tab-content">
+    {% set total_veiculos = empresa.veiculos|length %}
+    {% set receita_semana = empresa.receita_semanal %}
+
+    {# Compute totals from historico #}
+    {% set ns = namespace(total_recebido=0, total_semanas=0, semanas_pagas=0, ultima_semana='') %}
+    {% for placa, recs in historico.items() %}
+      {% for r in recs %}
+        {% set ns.total_semanas = ns.total_semanas + 1 %}
+        {% if r.recebido %}
+          {% set ns.semanas_pagas = ns.semanas_pagas + 1 %}
+          {% set ns.total_recebido = ns.total_recebido + (r.taxa_valor or 0) %}
+        {% endif %}
+        {% if r.data_semana > ns.ultima_semana %}
+          {% set ns.ultima_semana = r.data_semana %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Veículos</div>
+        <div class="kpi-val">{{ total_veiculos }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Receita Semana Atual</div>
+        <div class="kpi-val">
+          {% if receita_semana %}
+            R$ {{ "{:,.2f}".format(receita_semana).replace(",", "X").replace(".", ",").replace("X", ".") }}
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Taxa por Veículo</div>
+        <div class="kpi-val">
+          {% if historico %}
+            {% set primeira_placa = historico.keys()|list|first %}
+            {% set taxa = historico[primeira_placa][0].taxa_valor if historico[primeira_placa] else 0 %}
+            R$ {{ "{:,.2f}".format(taxa).replace(",", "X").replace(".", ",").replace("X", ".") }}
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Recebido</div>
+        <div class="kpi-val">
+          R$ {{ "{:,.2f}".format(ns.total_recebido).replace(",", "X").replace(".", ",").replace("X", ".") }}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Taxa de Recebimento</div>
+        <div class="kpi-val">
+          {% if ns.total_semanas > 0 %}
+            {{ ((ns.semanas_pagas / ns.total_semanas) * 100)|round(1) }}<small>%</small>
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Última Semana</div>
+        <div class="kpi-val" style="font-size:16px;">
+          {{ ns.ultima_semana[:7].replace('-', '/') if ns.ultima_semana else '—' }}
+        </div>
+      </div>
+      {% if empresa.cnpj %}
+      <div class="kpi-card">
+        <div class="kpi-label">CNPJ</div>
+        <div class="kpi-val" style="font-size:15px;letter-spacing:.5px;">{{ empresa.cnpj }}</div>
+      </div>
+      {% endif %}
+      {% if empresa.pix %}
+      <div class="kpi-card" style="grid-column: span 2;">
+        <div class="kpi-label">Chave PIX</div>
+        <div class="kpi-val" style="font-size:13px;font-weight:600;word-break:break-all;color:#374151;">{{ empresa.pix }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ══ Clientes (Veículos) ══ #}
+  <div id="tab-clientes" class="tab-content" style="display:none;">
+    {% if empresa.veiculos %}
+
+    {# Collect all unique weeks sorted #}
+    {% set semanas_ns = namespace(lista=[]) %}
+    {% for placa, recs in historico.items() %}
+      {% for r in recs %}
+        {% if r.data_semana not in semanas_ns.lista %}
+          {% set semanas_ns.lista = semanas_ns.lista + [r.data_semana] %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    {% set semanas = semanas_ns.lista|sort %}
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Placa</th>
+            <th>Modelo</th>
+            <th>Taxa/Sem.</th>
+            {% for sem in semanas %}
+            <th style="text-align:center;white-space:nowrap;">{{ sem[5:] }}</th>
+            {% endfor %}
+            <th style="text-align:center;">Recebido</th>
+            <th style="text-align:center;">Pendente</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in empresa.veiculos %}
+          {% set recs = historico.get(v.placa, []) %}
+          {% set recs_by_sem = {} %}
+          {% for r in recs %}{% set _ = recs_by_sem.update({r.data_semana: r}) %}{% endfor %}
+          {% set ns2 = namespace(pagas=0, pend=0) %}
+          {% for r in recs %}
+            {% if r.recebido %}{% set ns2.pagas = ns2.pagas + 1 %}
+            {% else %}{% set ns2.pend = ns2.pend + 1 %}{% endif %}
+          {% endfor %}
+          <tr>
+            <td><strong>{{ v.placa }}</strong></td>
+            <td>{{ v.modelo }}</td>
+            <td>
+              {% if recs %}
+                R$ {{ "{:,.0f}".format(recs[0].taxa_valor).replace(",", ".") }}
+              {% else %}—{% endif %}
+            </td>
+            {% for sem in semanas %}
+            <td style="text-align:center;">
+              {% set rec = recs_by_sem.get(sem) %}
+              {% if rec %}
+                {% if rec.recebido %}
+                  <span class="status-dot status-pago" title="Pago em {{ sem }}">✓</span>
+                {% else %}
+                  <span class="status-dot status-pend" title="Pendente {{ sem }}">!</span>
+                {% endif %}
+              {% else %}
+                <span style="color:#D1D5DB;">—</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+            <td style="text-align:center;color:#059669;font-weight:700;">{{ ns2.pagas }}</td>
+            <td style="text-align:center;color:#DC2626;font-weight:700;">{{ ns2.pend }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vazio">Nenhum veículo encontrado.</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.btn-back {
+  font-size: 13px; color: #6B7280; text-decoration: none; font-weight: 500;
+  padding: 6px 12px; border: 1px solid #E5E7EB; border-radius: 8px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.btn-back:hover { background: #F3F4F6; color: #111827; }
+.uc-badge { font-size: 10px; font-weight: 700; letter-spacing: .4px;
+  padding: 2px 7px; border-radius: 20px; text-transform: uppercase; }
+.uc-badge-ativa { background: #ECFDF5; color: #059669; }
+
+.tab-bar {
+  display: flex; gap: 4px; border-bottom: 2px solid #E5E7EB;
+  margin-bottom: 24px;
+}
+.tab-btn {
+  background: none; border: none; padding: 10px 18px; font-size: 14px;
+  font-weight: 500; color: #6B7280; cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; transition: color .15s, border-color .15s;
+}
+.tab-btn:hover { color: #111827; }
+.tab-btn.ativo { color: #E8621A; border-bottom-color: #E8621A; font-weight: 700; }
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+.kpi-card {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 12px;
+  padding: 20px; display: flex; flex-direction: column; gap: 6px;
+}
+.kpi-label { font-size: 11px; font-weight: 600; color: #9CA3AF;
+  text-transform: uppercase; letter-spacing: .5px; }
+.kpi-val { font-size: 22px; font-weight: 800; color: #111827; line-height: 1; }
+.kpi-val small { font-size: 13px; font-weight: 500; color: #6B7280; margin-left: 2px; }
+
+.table-wrap { overflow-x: auto; }
+.data-table {
+  width: 100%; border-collapse: collapse; font-size: 13px; background: #fff;
+  border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden;
+}
+.data-table th {
+  background: #F9FAFB; font-weight: 600; color: #6B7280; padding: 10px 14px;
+  text-align: left; border-bottom: 1px solid #E5E7EB; font-size: 11px;
+  text-transform: uppercase; letter-spacing: .4px; white-space: nowrap;
+}
+.data-table td {
+  padding: 12px 14px; border-bottom: 1px solid #F3F4F6; color: #374151;
+  vertical-align: middle;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: #FAFAFA; }
+
+.status-dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 700;
+}
+.status-pago { background: #ECFDF5; color: #059669; }
+.status-pend { background: #FEF2F2; color: #DC2626; }
+</style>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+    btn.classList.add('ativo');
+    document.getElementById('tab-' + btn.dataset.tab).style.display = '';
+  });
+});
+
+const hash = location.hash.replace('#', '');
+if (['visao_geral','clientes'].includes(hash)) {
+  document.querySelector('[data-tab="' + hash + '"]').click();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "admin/layout.html" %}
+{% block title %}Documentos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Documentos</div>
+  <div class="page-subtitle">Gerencie arquivos por usina</div>
+</div>
+<div class="page-content">
+
+  <form method="GET" class="filtros mb-24" style="max-width:380px;">
+    <div class="form-group" style="margin:0;">
+      <label>Selecione a usina</label>
+      <select name="empresa_id" onchange="this.form.submit()">
+        <option value="">Selecione uma usina...</option>
+        {% for emp in empresas %}
+        <option value="{{ emp.id }}" {{ 'selected' if emp.id == empresa_id_selecionada }}>
+          {{ emp.nome }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  {% if empresa_id_selecionada %}
+  <div class="card mb-24" style="max-width:680px;">
+    <div class="card-label">Enviar novo documento</div>
+    <form method="POST" action="{{ url_for('admin.documento_upload') }}"
+          enctype="multipart/form-data" style="margin-top:16px;">
+      <input type="hidden" name="empresa_id" value="{{ empresa_id_selecionada }}" />
+      <div class="form-row">
+        <div class="form-group">
+          <label>Categoria</label>
+          <select name="categoria">
+            <option value="contratos">Contratos</option>
+            <option value="relatorios">Relatórios</option>
+            <option value="notas_fiscais">Notas fiscais</option>
+            <option value="apolices">Apólices de seguro</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Visibilidade</label>
+          <select name="visibilidade">
+            <option value="todos">Todos os investidores</option>
+            <option value="especifico">Investidor específico</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Arquivo</label>
+        <input type="file" name="arquivo" required />
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Enviar arquivo</button>
+    </form>
+  </div>
+
+  {% if documentos %}
+  <div class="tabela-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Categoria</th>
+          <th>Visibilidade</th>
+          <th>Data</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in documentos %}
+        <tr>
+          <td>
+            <a href="{{ doc.url }}" target="_blank" style="font-weight:600;">{{ doc.nome }}</a>
+          </td>
+          <td><span class="badge badge-muted">{{ doc.categoria }}</span></td>
+          <td class="text-muted">
+            {{ 'Todos' if doc.visibilidade == 'todos' else 'Específico' }}
+          </td>
+          <td class="text-muted text-sm">{{ doc.created_at[:10] if doc.created_at else '—' }}</td>
+          <td>
+            <form method="POST"
+                  action="{{ url_for('admin.documento_excluir', doc_id=doc.id) }}"
+                  onsubmit="return confirm('Excluir este documento?');">
+              <input type="hidden" name="empresa_id" value="{{ empresa_id_selecionada }}" />
+              <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="vazio">Nenhum documento enviado para esta usina.</div>
+  {% endif %}
+
+  {% else %}
+  <div class="vazio">
+    <div style="font-size:36px;margin-bottom:12px;opacity:.3;">📂</div>
+    Selecione uma usina para gerenciar os documentos.
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

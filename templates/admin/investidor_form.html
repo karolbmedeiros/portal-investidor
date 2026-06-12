@@ -1,0 +1,95 @@
+{% extends "admin/layout.html" %}
+{% block title %}{{ 'Editar' if investidor else 'Novo' }} Investidor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">{{ 'Editar investidor' if investidor else 'Novo investidor' }}</div>
+  <div class="page-subtitle">
+    {% if investidor %}Atualize os dados e usinas vinculadas.
+    {% else %}O investidor receberá um e-mail para ativar a conta e definir a senha.{% endif %}
+  </div>
+</div>
+<div class="page-content">
+
+  {% if erro %}
+  <div class="alert alert-erro" style="max-width:560px;">{{ erro }}</div>
+  {% endif %}
+
+  <form method="POST" style="max-width:560px;">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="nome">Nome completo *</label>
+        <input type="text" id="nome" name="nome"
+               value="{{ investidor.nome if investidor else '' }}" required />
+      </div>
+      <div class="form-group">
+        <label for="cpf">CPF *</label>
+        <input type="text" id="cpf" name="cpf"
+               value="{{ investidor.cpf if investidor else '' }}"
+               placeholder="000.000.000-00" required />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="email">E-mail *</label>
+      <input type="email" id="email" name="email"
+             value="{{ investidor.email if investidor else '' }}"
+             {{ 'readonly' if investidor else '' }} required />
+      {% if investidor %}
+      <div class="text-muted text-sm mt-4">O e-mail não pode ser alterado após o cadastro.</div>
+      {% endif %}
+    </div>
+
+    {% if investidor %}
+    <div class="form-group">
+      <div class="checkbox-row">
+        <input type="checkbox" id="ativo" name="ativo"
+               {{ 'checked' if investidor.ativo }} />
+        <label for="ativo" style="margin:0;text-transform:none;font-size:13px;font-weight:500;">
+          Conta ativa
+        </label>
+      </div>
+    </div>
+    {% endif %}
+
+    <hr class="divider" />
+
+    <div class="form-group">
+      <label>Usinas vinculadas</label>
+      {% if empresas %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:6px;">
+        {% for emp in empresas %}
+        <label style="display:flex;align-items:center;gap:9px;padding:9px 12px;
+                      border:1px solid var(--border);border-radius:6px;cursor:pointer;
+                      text-transform:none;font-weight:500;font-size:13px;
+                      transition:border-color .15s,background .15s;"
+               id="lbl_{{ emp.id }}">
+          <input type="checkbox" id="emp_{{ emp.id }}" name="empresa_ids"
+                 value="{{ emp.id }}"
+                 {{ 'checked' if emp.id in (empresas_vinculadas or []) }}
+                 style="width:auto;cursor:pointer;" />
+          <span>
+            {{ emp.nome }}
+            <span class="text-muted text-sm">— {{ emp.tipo }}</span>
+          </span>
+        </label>
+        {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-muted text-sm" style="margin-top:6px;">
+          Nenhuma usina cadastrada ainda.
+          <a href="{{ url_for('admin.empresa_nova') }}">Criar usina →</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        {{ 'Salvar alterações' if investidor else 'Criar e enviar convite' }}
+      </button>
+      <a href="{{ url_for('admin.investidores') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

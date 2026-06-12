@@ -1,0 +1,419 @@
+{% extends "admin/layout.html" %}
+{% block title %}Fluxo de Caixa{% endblock %}
+
+{% block content %}
+{% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+
+{# ── Pré-computa meses presentes nos lançamentos atuais ── #}
+{% set _meses_ns = namespace(lista=[]) %}
+{% for l in lancamentos %}
+  {% if l.data_transacao and l.data_transacao[:7] not in _meses_ns.lista %}
+    {% set _meses_ns.lista = _meses_ns.lista + [l.data_transacao[:7]] %}
+  {% endif %}
+{% endfor %}
+{% set _meses_vis = _meses_ns.lista | sort %}
+
+{# ── Totais por mês (operacionais) ── #}
+{% set _mdata = namespace(ent={}, sai={}) %}
+{% for l in lancamentos if not l._transferencia and not l._neutro %}
+  {% set _m = l.data_transacao[:7] if l.data_transacao else '' %}
+  {% if l.tipo=='credito' %}
+    {% set _mdata.ent = dict(_mdata.ent, **{_m: (_mdata.ent.get(_m) or 0) + (l.valor|abs)}) %}
+  {% else %}
+    {% set _mdata.sai = dict(_mdata.sai, **{_m: (_mdata.sai.get(_m) or 0) + (l.valor|abs)}) %}
+  {% endif %}
+{% endfor %}
+
+{# ── Header ── #}
+<div class="page-header-row flex-between" style="margin-bottom:20px;">
+  <div>
+    <div class="page-title">Fluxo de Caixa</div>
+    <div class="page-subtitle">
+      {% if conta_atual %}
+        {{ conta_atual.titular_nome or conta_atual.apelido }} · {{ conta_atual.banco }}
+        ag {{ conta_atual.agencia }} cc {{ conta_atual.numero_conta }}
+      {% endif %}
+    </div>
+  </div>
+  <div class="flex gap-8">
+    {# Importar OFX #}
+    <button class="btn btn-secondary" onclick="document.getElementById('modal-import').style.display='flex'">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path><path d="M7 11l5 5l5 -5"></path><path d="M12 4l0 12"></path></svg>
+      Importar OFX
+    </button>
+  </div>
+</div>
+
+{# ── Filtros ── #}
+<form method="get" id="form-filtros" class="filtros" style="margin-bottom:20px;">
+  <input type="hidden" name="conta_id" value="{{ conta_id or '' }}">
+  <div class="filtros-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));align-items:end;">
+
+    <div>
+      <label>Conta</label>
+      <select name="conta_id" class="input-sm" style="width:100%;" onchange="this.form.submit()">
+        {% for c in contas %}
+        <option value="{{ c.id }}" {{ 'selected' if c.id == conta_id }}>
+          {{ c.titular_nome or c.apelido }} — {{ c.numero_conta }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>Mês</label>
+      <select name="mes" class="input-sm" style="width:100%;">
+        <option value="">Todos</option>
+        {% for m in meses %}
+        <option value="{{ m }}" {{ 'selected' if filtros.mes == m }}>
+          {{ _ma[m[5:7]|int] }}/{{ m[:4] }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>Tipo</label>
+      <select name="tipo" class="input-sm" style="width:100%;">
+        <option value="">Todos</option>
+        <option value="credito" {{ 'selected' if filtros.tipo == 'credito' }}>Entradas</option>
+        <option value="debito"  {{ 'selected' if filtros.tipo == 'debito'  }}>Saídas</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Categoria</label>
+      <select name="categoria_id" class="input-sm" style="width:100%;">
+        <option value="">Todas</option>
+        {% for cat in categorias %}
+        <option value="{{ cat.id }}" {{ 'selected' if filtros.categoria_id == cat.id }}>
+          {{ cat.nome }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if centros %}
+    <div>
+      <label>Centro de Custo</label>
+      <select name="centro_custo_id" class="input-sm" style="width:100%;">
+        <option value="">Todos</option>
+        {% for cc in centros %}
+        <option value="{{ cc.id }}" {{ 'selected' if filtros.centro_custo_id == cc.id }}>
+          {{ cc.nome }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <div>
+      <label>Status</label>
+      <select name="status" class="input-sm" style="width:100%;">
+        <option value="">Todos</option>
+        <option value="conciliado" {{ 'selected' if filtros.status == 'conciliado' }}>Conciliado</option>
+        <option value="pendente"   {{ 'selected' if filtros.status == 'pendente'   }}>Pendente</option>
+      </select>
+    </div>
+
+    <div style="display:flex;gap:6px;align-items:flex-end;">
+      <button type="submit" class="btn btn-primary" style="flex:1;">Filtrar</button>
+      <a href="{{ url_for('admin.fluxo_de_caixa', conta_id=conta_id) }}" class="btn btn-ghost">✕</a>
+    </div>
+
+  </div>
+</form>
+
+{# ── KPI cards ── #}
+<div class="fluxo-kpis">
+
+  <div class="card fluxo-kpi">
+    <div class="card-label">Saldo atual</div>
+    <div class="card-valor {{ 'verde' if saldo_atual >= 0 else 'vermelho' }}">{{ saldo_atual|brl }}</div>
+    <div class="card-sub">Saldo inicial: {{ saldo_ini|brl }}</div>
+  </div>
+
+  <div class="card fluxo-kpi">
+    <div class="card-label">Entradas</div>
+    <div class="card-valor verde">{{ kpis.entradas|brl }}</div>
+    <div class="card-sub">no período</div>
+  </div>
+
+  <div class="card fluxo-kpi">
+    <div class="card-label">Saídas</div>
+    <div class="card-valor vermelho">{{ kpis.saidas|brl }}</div>
+    <div class="card-sub">no período</div>
+  </div>
+
+  <div class="card fluxo-kpi">
+    <div class="card-label">Resultado</div>
+    <div class="card-valor {{ 'verde' if kpis.resultado >= 0 else 'vermelho' }}">
+      {{ kpis.resultado|brl }}
+    </div>
+    <div class="card-sub">{{ kpis.pendentes }} pendente{{ 's' if kpis.pendentes != 1 }} · {{ kpis.pct_conc }}% conc.</div>
+  </div>
+
+</div>
+
+{# ── Última importação ── #}
+{% if ult_imp %}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:12px;color:var(--muted);">
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M12 7v5l3 2"></path></svg>
+  Última importação: {{ ult_imp.created_at[:10] }} · {{ ult_imp.total_importados }} lançamentos
+  ({{ ult_imp.periodo_inicio }} a {{ ult_imp.periodo_fim }})
+</div>
+{% endif %}
+
+{# ── Painéis Entradas + Saídas ── #}
+{% if lancamentos %}
+
+{% set _ent_ns = namespace(tot=0) %}
+{% set _sai_ns = namespace(tot=0) %}
+{% for l in lancamentos if not l._transferencia and not l._neutro %}
+  {% if l.tipo=='credito' %}{% set _ent_ns.tot = _ent_ns.tot + (l.valor|abs) %}{% endif %}
+  {% if l.tipo=='debito'  %}{% set _sai_ns.tot = _sai_ns.tot + (l.valor|abs) %}{% endif %}
+{% endfor %}
+
+<div id="lancamentos" class="nb-lancamentos" style="margin-bottom:24px;">
+
+  {# ↑ Entradas #}
+  <div class="card nb-panel">
+    <div class="nb-panel-header nb-ent-header">
+      <span class="nb-panel-arrow">↑</span>
+      <span class="nb-panel-title">Entradas</span>
+      <span class="nb-panel-total nb-positivo">{{ _ent_ns.tot|brl }}</span>
+    </div>
+    <div class="nb-panel-body">
+      {% set _ents = lancamentos | selectattr('tipo','equalto','credito') | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
+      {% if _ents %}
+        {% for l in _ents %}
+        {% set cat = l.categorias_financeiras %}
+        <div class="nb-item ext-row ext-row-ent"
+             data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
+             data-conciliado="{{ 'true' if l.conciliado else 'false' }}">
+          <div class="nb-item-data {{ '' if l.conciliado else 'nb-pendente-data' }}">
+            {{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] if l.data_transacao else '—' }}
+          </div>
+          <div class="nb-item-centro">
+            <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+            <div class="nb-item-cat">{{ cat.nome if cat else '—' }}</div>
+          </div>
+          <div class="nb-item-dir">
+            <div class="nb-item-val nb-positivo">{{ (l.valor or 0)|abs|brl }}</div>
+            {% if l.conciliado %}
+            <span class="badge badge-verde" style="font-size:10px;">✓</span>
+            {% else %}
+            <span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="nb-vazio">Nenhuma entrada no período.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ↓ Saídas #}
+  <div class="card nb-panel">
+    <div class="nb-panel-header nb-sai-header">
+      <span class="nb-panel-arrow">↓</span>
+      <span class="nb-panel-title">Saídas</span>
+      <span class="nb-panel-total nb-negativo">{{ _sai_ns.tot|brl }}</span>
+    </div>
+    <div class="nb-panel-body">
+      {% set _sais = lancamentos | selectattr('tipo','equalto','debito') | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
+      {% if _sais %}
+        {% for l in _sais %}
+        {% set cat = l.categorias_financeiras %}
+        <div class="nb-item ext-row ext-row-sai"
+             data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
+             data-conciliado="{{ 'true' if l.conciliado else 'false' }}">
+          <div class="nb-item-data {{ '' if l.conciliado else 'nb-pendente-data' }}">
+            {{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] if l.data_transacao else '—' }}
+          </div>
+          <div class="nb-item-centro">
+            <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+            <div class="nb-item-cat">{{ cat.nome if cat else '—' }}</div>
+          </div>
+          <div class="nb-item-dir">
+            <div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div>
+            {% if l.conciliado %}
+            <span class="badge badge-verde" style="font-size:10px;">✓</span>
+            {% else %}
+            <span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="nb-vazio">Nenhuma saída no período.</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>{# /nb-lancamentos #}
+
+{# ── Extrato Consolidado ── #}
+<details class="nb-consolidado">
+  <summary class="nb-consolidado-summary">
+    <span>Extrato Consolidado</span>
+    <span style="font-size:11px;font-weight:400;color:var(--muted);">inclui transferências e fundos</span>
+    <span class="{{ 'pos' if (_ent_ns.tot - _sai_ns.tot) >= 0 else 'neg' }}" style="margin-left:auto;font-weight:700;font-size:14px;">
+      {{ (_ent_ns.tot - _sai_ns.tot)|brl }}
+    </span>
+  </summary>
+  <div class="tabela-wrap" style="margin-top:12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Descrição</th>
+          <th>Categoria</th>
+          <th>Valor</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in lancamentos %}
+        {% set especial = l._transferencia or l._neutro %}
+        {% set cat = l.categorias_financeiras %}
+        <tr style="{% if especial %}color:#9CA3AF;{% elif not l.conciliado %}background:#FEFCE8;{% endif %}">
+          <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
+          <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              title="{{ l.descricao or l.descricao_original }}">
+            {% if especial %}<span class="badge badge-muted" style="font-size:10px;">{{ 'Transf.' if l._transferencia else 'Fundo' }}</span> {% endif %}
+            {{ l.descricao or l.descricao_original or '—' }}
+          </td>
+          <td style="font-size:12px;color:var(--muted);">
+            {{ cat.nome if cat else ('Transferência' if l._transferencia else ('Fundo' if l._neutro else '—')) }}
+          </td>
+          <td style="font-weight:600;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else 'var(--red)' }};">
+            {{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}
+          </td>
+          <td>
+            {% if especial %}
+              <span class="badge badge-muted" style="font-size:10px;">Auto</span>
+            {% elif l.conciliado %}
+              <span class="badge badge-verde" style="font-size:10px;">Conciliado</span>
+            {% else %}
+              <span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+
+{% else %}
+<div class="vazio">Nenhum lançamento encontrado para os filtros selecionados.</div>
+{% endif %}
+
+{# ── Modal Importar OFX ── #}
+<div id="modal-import" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:460px;">
+    <div class="modal-header">
+      <div style="font-size:15px;font-weight:500;">Importar Extrato</div>
+      <button class="modal-close" onclick="document.getElementById('modal-import').style.display='none'">✕</button>
+    </div>
+    <form method="post" action="{{ url_for('admin.fluxo_importar') }}" enctype="multipart/form-data">
+      <div class="modal-body">
+        <input type="hidden" name="conta_id" value="{{ conta_id }}">
+        <div class="form-group">
+          <label>Conta</label>
+          <select name="conta_id" style="width:100%;">
+            {% for c in contas %}
+            <option value="{{ c.id }}" {{ 'selected' if c.id == conta_id }}>
+              {{ c.titular_nome or c.apelido }} — {{ c.numero_conta }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group mb-0">
+          <label>Arquivo (.ofx ou .xlsx)</label>
+          <input type="file" name="arquivo" accept=".ofx,.xlsx" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('modal-import').style.display='none'">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Importar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* ── KPI cards ── */
+.fluxo-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+@media(max-width:860px){ .fluxo-kpis { grid-template-columns: 1fr 1fr; } }
+
+/* ── Painéis ── */
+.nb-lancamentos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media(max-width:800px){ .nb-lancamentos { grid-template-columns: 1fr; } }
+
+.nb-panel { padding: 0 !important; overflow: hidden; }
+.nb-panel-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+}
+.nb-ent-header { background: #EAF6F1; border-bottom: 0.5px solid rgba(29,158,117,.18); }
+.nb-sai-header { background: rgba(217,64,64,.06); border-bottom: 0.5px solid rgba(217,64,64,.18); }
+.nb-panel-arrow { font-size: 16px; font-weight: 700; }
+.nb-panel-title { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+.nb-panel-total { font-size: 15px; font-weight: 600; }
+.nb-panel-body  { padding: 0; max-height: 440px; overflow-y: auto; }
+
+.nb-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; border-bottom: 0.5px solid rgba(23,33,28,0.07);
+}
+.nb-item:last-child { border-bottom: none; }
+.nb-item-data {
+  font-size: 11px; color: var(--muted); white-space: nowrap;
+  min-width: 36px; margin-top: 2px;
+}
+.nb-pendente-data { color: #92400E; }
+.nb-item-centro { flex: 1; min-width: 0; }
+.nb-item-desc { font-size: 13px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb-item-cat  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nb-item-dir  { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.nb-item-val  { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.nb-positivo  { color: var(--green); }
+.nb-negativo  { color: var(--red); }
+.nb-vazio     { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* ── Extrato consolidado ── */
+.nb-consolidado { margin-top: 8px; }
+.nb-consolidado-summary {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; cursor: pointer; user-select: none;
+  background: var(--bg); border: 0.5px solid rgba(23,33,28,0.12);
+  border-radius: 15px; font-size: 13px; font-weight: 500; color: var(--text);
+  list-style: none;
+}
+.nb-consolidado[open] .nb-consolidado-summary { border-radius: 15px 15px 0 0; }
+.nb-consolidado .tabela-wrap { border-radius: 0 0 15px 15px; border-top: none; }
+</style>
+
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('modal-import').style.display = 'none';
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "admin/layout.html" %}
+{% block title %}Lançamentos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Importar lançamentos</div>
+  <div class="page-subtitle">Upload de CSV com transações financeiras</div>
+</div>
+<div class="page-content">
+
+  <div class="card mb-24" style="max-width:580px;">
+    <div class="card-label">Formato esperado do CSV</div>
+    <div class="code-block mt-8">data,tipo,categoria_id,descricao,valor
+2024-01-15,receita,uuid-da-categoria,Energia gerada semana 1,3200.00
+2024-01-15,custo,uuid-da-categoria,Manutenção preventiva,-450.00</div>
+    <div class="text-muted text-sm mt-8">
+      Colunas obrigatórias: <strong>data, tipo, descricao, valor</strong>.
+      Tipos válidos: <strong>receita</strong>, <strong>custo</strong>, <strong>resultado</strong>.
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" style="max-width:500px;">
+    <div class="form-group">
+      <label for="investidor_id">Investidor *</label>
+      <select id="investidor_id" name="investidor_id" required>
+        <option value="">Selecione um investidor...</option>
+        {% for inv in investidores %}
+        <option value="{{ inv.id }}">{{ inv.nome }} — {{ inv.email }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="empresa_id">Usina *</label>
+      <select id="empresa_id" name="empresa_id" required>
+        <option value="">Selecione uma usina...</option>
+        {% for emp in empresas %}
+        <option value="{{ emp.id }}">{{ emp.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="arquivo">Arquivo CSV *</label>
+      <input type="file" id="arquivo" name="arquivo" accept=".csv" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Importar CSV</button>
+  </form>
+
+  {% if resultado %}
+  <hr class="divider" />
+  <div class="alert {{ 'alert-sucesso' if not resultado.erros else 'alert-info' }}"
+       style="max-width:500px;cursor:default;">
+    <span>
+      ✓ {{ resultado.inseridos }} registro{{ 's' if resultado.inseridos != 1 }} importado{{ 's' if resultado.inseridos != 1 }}.
+      {% if resultado.erros %} — {{ resultado.erros|length }} com erro.{% endif %}
+    </span>
+  </div>
+  {% if resultado.erros %}
+  <div class="tabela-wrap mt-16" style="max-width:500px;">
+    <table>
+      <thead><tr><th>Erros de importação</th></tr></thead>
+      <tbody>
+        {% for e in resultado.erros %}
+        <tr><td style="color:var(--red);">{{ e }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% endif %}
+
+</div>
+{% endblock %}

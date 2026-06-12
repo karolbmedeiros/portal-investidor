@@ -1,0 +1,69 @@
+{% set mes_ref = kpi_mes %}
+
+{# Agrupar lançamentos conciliados do mês por categoria #}
+{% set receitas  = {} %}
+{% set despesas  = {} %}
+
+{% for l in lancamentos if l.conciliado and l.data_transacao and l.data_transacao[:7] == mes_ref %}
+  {% set cat = l.categorias_financeiras %}
+  {% set cat_nome = cat.nome if cat else 'Sem categoria' %}
+  {% set cat_tipo = cat.tipo if cat else l.tipo %}
+  {% if cat_tipo == 'receita' or l.tipo == 'credito' %}
+    {% if cat_nome in receitas %}
+      {% set _ = receitas.update({cat_nome: receitas[cat_nome] + (l.valor or 0)}) %}
+    {% else %}
+      {% set _ = receitas.update({cat_nome: (l.valor or 0)}) %}
+    {% endif %}
+  {% else %}
+    {% if cat_nome in despesas %}
+      {% set _ = despesas.update({cat_nome: despesas[cat_nome] + (l.valor or 0)}) %}
+    {% else %}
+      {% set _ = despesas.update({cat_nome: (l.valor or 0)}) %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% set receita_bruta = receitas.values() | sum %}
+{% set total_custos  = despesas.values() | sum %}
+{% set res_liquido   = receita_bruta - total_custos %}
+
+{# RECEITAS #}
+<div class="dre-section-header">(+) RECEITAS</div>
+{% if receitas %}
+  {% for nome, valor in receitas.items() %}
+  <div class="dre-row">
+    <span>{{ nome }}</span>
+    <span class="dre-val" style="color:var(--green);">R$ {{ "%.2f"|format(valor) }}</span>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="dre-row"><span style="color:var(--muted);font-style:italic;">Nenhuma receita conciliada no período</span><span>—</span></div>
+{% endif %}
+<div class="dre-row total">
+  <span>(=) RECEITA BRUTA</span>
+  <span class="dre-val">R$ {{ "%.2f"|format(receita_bruta) }}</span>
+</div>
+
+{# DESPESAS #}
+<div class="dre-section-header">(-) CUSTOS E DESPESAS</div>
+{% if despesas %}
+  {% for nome, valor in despesas.items() %}
+  <div class="dre-row">
+    <span>{{ nome }}</span>
+    <span class="dre-val" style="color:#EF4444;">R$ {{ "%.2f"|format(valor) }}</span>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="dre-row"><span style="color:var(--muted);font-style:italic;">Nenhuma despesa conciliada no período</span><span>—</span></div>
+{% endif %}
+<div class="dre-row total">
+  <span>(=) TOTAL DESPESAS</span>
+  <span class="dre-val {{ 'neg-val' if total_custos > 0 }}">R$ {{ "%.2f"|format(total_custos) }}</span>
+</div>
+
+<div class="dre-row result">
+  <span>(=) RESULTADO LÍQUIDO</span>
+  <span class="dre-val" style="color:{{ '#EF4444' if res_liquido < 0 else 'var(--accent)' }};">
+    R$ {{ "%.2f"|format(res_liquido) }}
+  </span>
+</div>

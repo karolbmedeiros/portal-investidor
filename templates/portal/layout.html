@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block header_nav %}
+<a href="{{ url_for('portal.home') }}"
+   class="{{ 'ativo' if request.endpoint in ('portal.home', 'portal.usina_detalhe') }}">
+  Minhas Usinas
+</a>
+<a href="{{ url_for('portal.documentos') }}"
+   class="{{ 'ativo' if request.endpoint == 'portal.documentos' }}">
+  Documentos
+</a>
+{% endblock %}
+
+{% block header_user %}
+<span class="header-user-nome">{{ usuario.nome if usuario else '' }}</span>
+<span class="header-user-sep">|</span>
+<a href="{{ url_for('auth.logout_page') }}">Sair</a>
+{% endblock %}
