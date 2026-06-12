@@ -110,6 +110,7 @@
 
   <div class="db-metrics">
 
+    {% if ativo_tipo != 'usina' %}
     <div class="db-metric-card">
       <div class="db-mc-top">
         <span class="db-mc-label">Ativos em carros</span>
@@ -126,7 +127,9 @@
         {% if empresas_veiculos %}{{ empresas_veiculos|length }} empresa{{ 's' if empresas_veiculos|length != 1 }}{% else %}—{% endif %}
       </div>
     </div>
+    {% endif %}
 
+    {% if ativo_tipo != 'carro' %}
     <div class="db-metric-card">
       <div class="db-mc-top">
         <span class="db-mc-label">Ativos em usinas</span>
@@ -143,6 +146,7 @@
         {% if ns.kwp > 0 %}{{ "{:,.0f}".format(ns.kwp).replace(",",".") }} kWp{% else %}—{% endif %}
       </div>
     </div>
+    {% endif %}
 
     <div class="db-metric-card">
       <div class="db-mc-top">
@@ -272,6 +276,7 @@
 <section class="db-lists">
 
   <!-- Carros -->
+  {% if ativo_tipo != 'usina' %}
   <div class="card">
     <div class="db-list-header">
       <div class="db-list-title">
@@ -310,8 +315,10 @@
     <div class="vazio">{% if filtrado %}Nenhum veículo neste ativo.{% else %}Nenhum veículo cadastrado.{% endif %}</div>
     {% endif %}
   </div>
+  {% endif %}
 
   <!-- Usinas -->
+  {% if ativo_tipo != 'carro' %}
   <div class="card">
     <div class="db-list-header">
       <div class="db-list-title">
@@ -349,6 +356,7 @@
     <div class="vazio">{% if filtrado %}Nenhuma usina neste ativo.{% else %}Nenhuma usina cadastrada.{% endif %}</div>
     {% endif %}
   </div>
+  {% endif %}
 
 </section>
 
