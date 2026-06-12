@@ -554,8 +554,16 @@ def empresa_veiculo_detalhe(slug):
 @admin_bp.route("/portfolio/usinas")
 @requer_admin
 def portfolio_usinas():
+    from flask import session as _sess
     from services.usina_service import listar_usinas
-    return render_template("admin/portfolio_usinas.html", usinas=listar_usinas())
+    todas = listar_usinas()
+    ativo_id   = _sess.get("ativo_id", "")
+    ativo_tipo = _sess.get("ativo_tipo", "")
+    if ativo_id and ativo_tipo == "usina":
+        usinas = [u for u in todas if u["id"] == ativo_id]
+    else:
+        usinas = todas
+    return render_template("admin/portfolio_usinas.html", usinas=usinas)
 
 
 @admin_bp.route("/portfolio/carros")
