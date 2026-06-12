@@ -177,9 +177,15 @@
         </span>
       </div>
       <div class="db-mc-value-row">
+        {% if rendimento_total is not none %}
+        <span class="db-mc-value db-mc-value--lg">{{ rendimento_total|brl }}</span>
+        {% else %}
         <span class="db-mc-value db-mc-value--lg">—</span>
+        {% endif %}
       </div>
-      <div class="db-mc-sub text-muted">A configurar</div>
+      <div class="db-mc-sub text-muted">
+        {% if rendimento_total is not none %}Últ. 6 meses · recebimentos{% else %}Selecione uma usina{% endif %}
+      </div>
     </div>
 
   </div>
@@ -195,18 +201,54 @@
       </div>
     </div>
     <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
-      <svg id="db-sparkline" viewBox="0 0 360 150" style="width:100%; height:auto; display:block; overflow:visible;">
-        <line x1="0" y1="40"  x2="360" y2="40"  stroke="#EEF1EF" stroke-width="1"></line>
-        <line x1="0" y1="82"  x2="360" y2="82"  stroke="#EEF1EF" stroke-width="1"></line>
-        <line x1="0" y1="124" x2="360" y2="124" stroke="#EEF1EF" stroke-width="1"></line>
-        <path d="M0 149 L0 130 L72 110 L144 90 L216 68 L288 45 L360 22 L360 149 Z"
-              fill="#1D9E75" fill-opacity="0.07"></path>
-        <path d="M0 130 L72 110 L144 90 L216 68 L288 45 L360 22"
-              fill="none" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
-      </svg>
-      <div class="db-spark-labels">
-        <span>jan</span><span>fev</span><span>mar</span><span>abr</span><span>mai</span><span>jun</span>
-      </div>
+      {% if rendimento_meses and rendimento_meses|length > 1 %}
+        {% set _vals = rendimento_meses|map(attribute='valor')|list %}
+        {% set _max  = _vals|max %}
+        {% set _min  = _vals|min %}
+        {% set _range = (_max - _min) if _max != _min else 1 %}
+        {% set _n    = _vals|length %}
+        {% set _W = 360 %}
+        {% set _H = 130 %}
+        {% set _pad = 10 %}
+        {# Calcula pontos SVG #}
+        {% set _pts = namespace(line='', area='M') %}
+        {% for v in _vals %}
+          {% set _x = (_pad + ((_W - 2*_pad) / (_n - 1)) * loop.index0)|round(1) %}
+          {% set _y = (_pad + (_H - 2*_pad) * (1 - (v - _min) / _range))|round(1) %}
+          {% if loop.first %}
+            {% set _pts.line = _pts.line + 'M' + _x|string + ' ' + _y|string %}
+            {% set _pts.area = 'M' + _x|string + ' 149 L' + _x|string + ' ' + _y|string %}
+          {% else %}
+            {% set _pts.line = _pts.line + ' L' + _x|string + ' ' + _y|string %}
+            {% set _pts.area = _pts.area + ' L' + _x|string + ' ' + _y|string %}
+          {% endif %}
+        {% endfor %}
+        {% set _last_x = (_pad + ((_W - 2*_pad) / (_n - 1)) * (_n - 1))|round(1) %}
+        {% set _pts_area_close = _pts.area + ' L' + _last_x|string + ' 149 Z' %}
+        <svg viewBox="0 0 360 150" style="width:100%; height:auto; display:block; overflow:visible;">
+          <line x1="0" y1="40"  x2="360" y2="40"  stroke="#EEF1EF" stroke-width="1"/>
+          <line x1="0" y1="82"  x2="360" y2="82"  stroke="#EEF1EF" stroke-width="1"/>
+          <line x1="0" y1="124" x2="360" y2="124" stroke="#EEF1EF" stroke-width="1"/>
+          <path d="{{ _pts_area_close }}" fill="#1D9E75" fill-opacity="0.07"/>
+          <path d="{{ _pts.line }}" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+        <div class="db-spark-labels">
+          {% for m in rendimento_meses %}<span>{{ m.mes }}</span>{% endfor %}
+        </div>
+      {% else %}
+        <svg viewBox="0 0 360 150" style="width:100%; height:auto; display:block; overflow:visible;">
+          <line x1="0" y1="40"  x2="360" y2="40"  stroke="#EEF1EF" stroke-width="1"/>
+          <line x1="0" y1="82"  x2="360" y2="82"  stroke="#EEF1EF" stroke-width="1"/>
+          <line x1="0" y1="124" x2="360" y2="124" stroke="#EEF1EF" stroke-width="1"/>
+          <path d="M0 149 L0 130 L72 110 L144 90 L216 68 L288 45 L360 22 L360 149 Z"
+                fill="#1D9E75" fill-opacity="0.07"/>
+          <path d="M0 130 L72 110 L144 90 L216 68 L288 45 L360 22"
+                fill="none" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+        <div class="db-spark-labels">
+          <span>jan</span><span>fev</span><span>mar</span><span>abr</span><span>mai</span><span>jun</span>
+        </div>
+      {% endif %}
     </div>
   </div>
 
