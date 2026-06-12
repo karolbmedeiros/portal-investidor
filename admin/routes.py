@@ -65,6 +65,35 @@ def dashboard():
         if _soma > 0:
             total_investido = _soma
 
+    # Contas a receber pendentes para "Próximos eventos"
+    from services.supabase_client import get_service_client
+    try:
+        _sb   = get_service_client()
+        _q    = _sb.from_("v_faturas_completas") \
+                   .select("id,numero_fatura,ref_mes_ano,data_vencimento,status,"
+                           "valor_final_cobrado,valor_total_cobrado,valor_liquido,"
+                           "codigo_uc,uc_apelido,usina_razao_social") \
+                   .in_("status", ["Pendente", "Emitida", "Enviada", "Atrasada"]) \
+                   .order("data_vencimento", desc=False)
+        if ativo_id and ativo_tipo == "usina":
+            _usina_obj = next((u for u in all_usinas if u["id"] == ativo_id), None)
+            if _usina_obj:
+                _q = _q.eq("usina_id", ativo_id)
+        from datetime import date
+        _hoje = date.today()
+        _raw  = _q.execute().data or []
+        faturas_pendentes = []
+        for _f in _raw:
+            try:
+                _y, _m, _d = str(_f["data_vencimento"])[:10].split("-")
+                _dias = (date(int(_y), int(_m), int(_d)) - _hoje).days
+            except Exception:
+                _dias = 0
+            _f["dias_vencimento"] = _dias
+            faturas_pendentes.append(_f)
+    except Exception:
+        faturas_pendentes = []
+
     return render_template(
         "admin/dashboard.html",
         usinas=usinas,
@@ -74,6 +103,7 @@ def dashboard():
         ativo_tipo=ativo_tipo,
         ativo_selecionado=ativo_selecionado,
         total_investido=total_investido,
+        faturas_pendentes=faturas_pendentes,
     )
 
 

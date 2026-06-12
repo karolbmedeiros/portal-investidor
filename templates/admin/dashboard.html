@@ -296,13 +296,72 @@
 
 </section>
 
-<!-- ── Próximos eventos ── -->
+<!-- ── Contas a Receber Pendentes ── -->
 <section class="card mt-16">
-  <div class="db-list-header" style="margin-bottom:8px;">
-    <div class="db-list-title">Próximos eventos</div>
-    <span class="text-muted text-sm" id="db-events-mes">—</span>
+  <div class="db-list-header" style="margin-bottom:16px;">
+    <div>
+      <div class="db-list-title">Contas a Receber</div>
+      <div class="text-muted text-sm">Faturas pendentes · em aberto</div>
+    </div>
+    {% if faturas_pendentes %}
+    <span class="db-badge-ativa" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">
+      {{ faturas_pendentes|length }} fatura{{ 's' if faturas_pendentes|length != 1 }}
+    </span>
+    {% endif %}
   </div>
-  <div class="vazio text-sm" style="padding:24px 0;">Nenhum evento cadastrado para este período.</div>
+
+  {% if not faturas_pendentes %}
+  <div class="vazio text-sm" style="padding:24px 0;">Nenhuma fatura pendente.</div>
+  {% else %}
+  <div style="overflow-x:auto;">
+    <table class="db-fat-table">
+      <thead>
+        <tr>
+          <th>Nº Fatura</th>
+          <th>UC</th>
+          <th>Usina</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th style="text-align:right;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in faturas_pendentes %}
+        {% set dias = f.dias_vencimento %}
+        <tr>
+          <td class="text-mono text-sm">{{ f.numero_fatura or '—' }}</td>
+          <td>
+            <span class="text-sm">{{ f.uc_apelido or f.codigo_uc }}</span>
+          </td>
+          <td class="text-muted text-sm">{{ (f.usina_razao_social or '—')|truncate(28, True, '…') }}</td>
+          <td>
+            <span class="text-sm">{{ f.data_vencimento[:10]|fmtdata }}</span>
+            {% if dias < 0 %}
+            <span class="db-fat-tag db-fat-tag--vencida">{{ dias|abs }}d atraso</span>
+            {% elif dias == 0 %}
+            <span class="db-fat-tag db-fat-tag--hoje">hoje</span>
+            {% elif dias <= 7 %}
+            <span class="db-fat-tag db-fat-tag--urgente">{{ dias }}d</span>
+            {% endif %}
+          </td>
+          <td><span class="db-fat-status db-fat-status--{{ f.status|lower }}">{{ f.status }}</span></td>
+          <td style="text-align:right;" class="text-sm font-500">
+            {{ (f.valor_final_cobrado or f.valor_total_cobrado or f.valor_liquido)|brl }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right;font-size:12px;color:var(--muted);padding-top:10px;">Total em aberto</td>
+          <td style="text-align:right;font-weight:700;padding-top:10px;">
+            {{ faturas_pendentes|sum(attribute='valor_final_cobrado')|default(0)|brl }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% endif %}
 </section>
 
 {% endblock %}
@@ -481,6 +540,24 @@
 .db-list-sub  { font-size:11.5px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .db-list-val  { flex:none; text-align:right; font-size:13.5px; font-weight:500; }
 .db-list-val-sub { font-size:10.5px; color:var(--muted); margin-top:2px; }
+
+/* Tabela Contas a Receber */
+.db-fat-table { width:100%; border-collapse:collapse; font-size:13px; }
+.db-fat-table th { text-align:left; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:0 10px 10px 0; border-bottom:0.5px solid rgba(23,33,28,0.10); white-space:nowrap; }
+.db-fat-table td { padding:10px 10px 10px 0; border-bottom:0.5px solid rgba(23,33,28,0.06); vertical-align:middle; }
+.db-fat-table tbody tr:hover td { background:var(--bg2); }
+.db-fat-table tfoot td { border-top:0.5px solid rgba(23,33,28,0.10); border-bottom:none; }
+.db-fat-tag { display:inline-block; font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px; margin-left:6px; }
+.db-fat-tag--vencida { background:#FEE2E2; color:#991B1B; }
+.db-fat-tag--hoje    { background:#DBEAFE; color:#1E40AF; }
+.db-fat-tag--urgente { background:#FEF3C7; color:#92400E; }
+.db-fat-status { display:inline-block; font-size:11px; font-weight:500; padding:3px 8px; border-radius:20px; }
+.db-fat-status--pendente  { background:#FEF3C7; color:#92400E; }
+.db-fat-status--emitida   { background:#DBEAFE; color:#1E40AF; }
+.db-fat-status--enviada   { background:#EDE9FE; color:#5B21B6; }
+.db-fat-status--atrasada  { background:#FEE2E2; color:#991B1B; }
+.text-mono { font-family: ui-monospace, monospace; }
+.font-500 { font-weight:500; }
 </style>
 
 <script>

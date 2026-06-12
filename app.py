@@ -50,14 +50,34 @@ def create_app():
         except (TypeError, ValueError):
             return "R$ 0,00"
 
-    # ── Context processor: injeta usuário em todos os templates ───────────────
+    @app.template_filter("fmtdata")
+    def fmtdata_filter(value):
+        try:
+            from datetime import date
+            parts = str(value)[:10].split("-")
+            return f"{parts[2]}/{parts[1]}/{parts[0]}"
+        except Exception:
+            return str(value)
+
+    @app.template_filter("to_date")
+    def to_date_filter(value):
+        from datetime import date
+        try:
+            y, m, d = str(value)[:10].split("-")
+            return date(int(y), int(m), int(d))
+        except Exception:
+            return date.today()
+
+    # ── Context processor: injeta usuário e today em todos os templates ───────
     @app.context_processor
     def inject_usuario():
+        from datetime import date
         from services.auth_service import usuario_logado, preview_investidor_id, is_admin
         u = usuario_logado()
         return {
             "usuario": u,
             "em_preview": is_admin() and preview_investidor_id() is not None,
+            "today": date.today(),
         }
 
     return app
