@@ -91,6 +91,7 @@ def dashboard():
                                .eq("conta_bancaria_id", _conta_id) \
                                .eq("tipo", "credito") \
                                .gte("data_transacao", str(_inicio)) \
+                               .ilike("descricao", f"%{_razao[:12]}%") \
                                .is_("deleted_at", "null") \
                                .order("data_transacao", desc=False) \
                                .execute().data or []
