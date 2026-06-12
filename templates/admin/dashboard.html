@@ -225,13 +225,27 @@
         {% endfor %}
         {% set _last_x = (_pad + ((_W - 2*_pad) / (_n - 1)) * (_n - 1))|round(1) %}
         {% set _pts_area_close = _pts.area + ' L' + _last_x|string + ' 149 Z' %}
-        <svg viewBox="0 0 360 150" style="width:100%; height:auto; display:block; overflow:visible;">
-          <line x1="0" y1="40"  x2="360" y2="40"  stroke="#EEF1EF" stroke-width="1"/>
-          <line x1="0" y1="82"  x2="360" y2="82"  stroke="#EEF1EF" stroke-width="1"/>
-          <line x1="0" y1="124" x2="360" y2="124" stroke="#EEF1EF" stroke-width="1"/>
-          <path d="{{ _pts_area_close }}" fill="#1D9E75" fill-opacity="0.07"/>
-          <path d="{{ _pts.line }}" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-        </svg>
+        <div style="position:relative;">
+          <div id="db-spark-tip" style="display:none; position:absolute; background:#17211C; color:#fff; font-size:12px; font-weight:500; padding:6px 10px; border-radius:8px; pointer-events:none; white-space:nowrap; transform:translate(-50%,-100%); margin-top:-8px;"></div>
+          <svg id="db-sparkline" viewBox="0 0 360 150" style="width:100%; height:auto; display:block; overflow:visible;">
+            <line x1="0" y1="40"  x2="360" y2="40"  stroke="#EEF1EF" stroke-width="1"/>
+            <line x1="0" y1="82"  x2="360" y2="82"  stroke="#EEF1EF" stroke-width="1"/>
+            <line x1="0" y1="124" x2="360" y2="124" stroke="#EEF1EF" stroke-width="1"/>
+            <path d="{{ _pts_area_close }}" fill="#1D9E75" fill-opacity="0.07"/>
+            <path d="{{ _pts.line }}" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            {# Pontos interativos #}
+            {% set _pts2 = namespace() %}
+            {% for m in rendimento_meses %}
+              {% set _xi = (_pad + ((_W - 2*_pad) / (_n - 1)) * loop.index0)|round(1) %}
+              {% set _yi = (_pad + (_H - 2*_pad) * (1 - (m.valor - _min) / _range))|round(1) %}
+              <circle class="db-spark-pt"
+                      cx="{{ _xi }}" cy="{{ _yi }}" r="5"
+                      fill="#fff" stroke="#1D9E75" stroke-width="2"
+                      data-mes="{{ m.mes }}" data-val="{{ m.valor }}"
+                      style="cursor:crosshair;"/>
+            {% endfor %}
+          </svg>
+        </div>
         <div class="db-spark-labels">
           {% for m in rendimento_meses %}<span>{{ m.mes }}</span>{% endfor %}
         </div>
@@ -623,5 +637,33 @@ document.addEventListener('click', function (e) {
   var wrap = document.getElementById('seletor-wrap');
   if (wrap && !wrap.contains(e.target)) wrap.classList.remove('aberto');
 });
+
+// Tooltip do gráfico de rendimento
+(function () {
+  var tip = document.getElementById('db-spark-tip');
+  var svg = document.getElementById('db-sparkline');
+  if (!tip || !svg) return;
+  var pts = svg.querySelectorAll('.db-spark-pt');
+  function fmtBRL(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  pts.forEach(function (pt) {
+    pt.addEventListener('mouseenter', function () {
+      var svgRect = svg.getBoundingClientRect();
+      var ptRect  = pt.getBoundingClientRect();
+      var relLeft = ptRect.left - svgRect.left + ptRect.width / 2;
+      var relTop  = ptRect.top  - svgRect.top;
+      tip.textContent = pt.dataset.mes.charAt(0).toUpperCase() + pt.dataset.mes.slice(1) + ' · ' + fmtBRL(pt.dataset.val);
+      tip.style.left    = relLeft + 'px';
+      tip.style.top     = relTop  + 'px';
+      tip.style.display = 'block';
+      pt.setAttribute('r', '7');
+    });
+    pt.addEventListener('mouseleave', function () {
+      tip.style.display = 'none';
+      pt.setAttribute('r', '5');
+    });
+  });
+})();
 </script>
 {% endblock %}
