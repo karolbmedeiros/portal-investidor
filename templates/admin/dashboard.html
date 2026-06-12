@@ -129,7 +129,7 @@
     </div>
     {% endif %}
 
-    {% if ativo_tipo != 'carro' %}
+    {% if ativo_tipo != 'carro' and ativo_tipo != 'usina' %}
     <div class="db-metric-card">
       <div class="db-mc-top">
         <span class="db-mc-label">Ativos em usinas</span>
@@ -148,7 +148,7 @@
     </div>
     {% endif %}
 
-    <div class="db-metric-card">
+    <div class="db-metric-card {{ 'db-metric-card--span2' if ativo_tipo == 'usina' }}">
       <div class="db-mc-top">
         <span class="db-mc-label">Total investido</span>
         <span class="db-mc-icon">
@@ -172,6 +172,44 @@
         {% endif %}
       </div>
     </div>
+
+    {% if ativo_tipo == 'usina' %}
+    <div class="db-metric-card db-metric-card--usina-big">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Ativos em usinas</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"></path><path d="M3 17h18"></path><path d="M4.5 12h15"></path><path d="M12 7v10"></path></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        <span class="db-mc-value">{{ usinas|length }}</span>
+        <span class="db-mc-unit">usina{{ 's' if usinas|length != 1 }}</span>
+      </div>
+      <div class="db-mc-sub">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"></path></svg>
+        {% if ns.kwp > 0 %}{{ "{:,.0f}".format(ns.kwp).replace(",",".") }} kWp{% else %}—{% endif %}
+      </div>
+      {% if usinas %}
+      <div style="margin-top:16px; border-top:0.5px solid rgba(23,33,28,.07); padding-top:14px; display:flex; flex-direction:column; gap:10px;">
+        {% for u in usinas %}
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="width:32px; height:32px; flex:none; border-radius:8px; background:#EAF6F1; display:flex; align-items:center; justify-content:center;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
+          </span>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ u.nome }}</div>
+            <div style="font-size:11px; color:var(--muted);">
+              {% if u.potencia_instalada_kwp %}{{ "{:,.0f}".format(u.potencia_instalada_kwp).replace(",",".") }} kWp{% endif %}
+              {% if u.modalidade_gd %} · {{ u.modalidade_gd }}{% endif %}
+            </div>
+          </div>
+          <span class="badge {{ 'badge-verde' if u.status == 'Ativa' else 'badge-muted' }}">{{ u.status or 'N/D' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
 
     <div class="db-metric-card">
       <div class="db-mc-top">
@@ -448,6 +486,7 @@
 
 /* ── 2×2 metric grid ── */
 .db-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.db-metric-card--usina-big { grid-column: 2; grid-row: 1 / span 2; }
 .db-metric-card {
   background:var(--bg); border:0.5px solid rgba(23,33,28,0.12);
   border-radius:15px; padding:18px 19px;
