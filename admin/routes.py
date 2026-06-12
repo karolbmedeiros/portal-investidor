@@ -549,6 +549,23 @@ def empresa_veiculo_detalhe(slug):
     )
 
 
+# ── Portfólios ────────────────────────────────────────────────────────────────
+
+@admin_bp.route("/portfolio/usinas")
+@requer_admin
+def portfolio_usinas():
+    from services.usina_service import listar_usinas
+    return render_template("admin/portfolio_usinas.html", usinas=listar_usinas())
+
+
+@admin_bp.route("/portfolio/carros")
+@requer_admin
+def portfolio_carros():
+    from services.veiculos_service import listar_empresas_veiculos
+    return render_template("admin/portfolio_carros.html",
+                           empresas_veiculos=listar_empresas_veiculos())
+
+
 # ── Preview portal do investidor ──────────────────────────────────────────────
 
 @admin_bp.route("/investidores")

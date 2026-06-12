@@ -1,0 +1,49 @@
+{% extends "admin/layout.html" %}
+{% block title %}Portfólio de Carros{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom:24px;">
+  <h1 class="page-title">Portfólio de Carros</h1>
+</div>
+
+<div class="card">
+  <div class="db-list-header" style="margin-bottom:4px;">
+    <div class="db-list-title">
+      Carros
+      {% set total_veiculos = empresas_veiculos | sum(attribute='veiculos'|length) if empresas_veiculos else 0 %}
+      <span class="db-list-count">{{ total_veiculos }} veículo{{ 's' if total_veiculos != 1 }}</span>
+    </div>
+  </div>
+
+  {% if empresas_veiculos %}
+    {% for emp in empresas_veiculos %}
+      {% for v in emp.veiculos %}
+      <a href="{{ url_for('admin.empresa_veiculo_detalhe', slug=emp.slug) }}" class="db-list-row">
+        <span class="db-list-icon db-list-icon--car">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"></path></svg>
+        </span>
+        <div class="db-list-info">
+          <div class="db-list-nome">{{ v.modelo or emp.nome }}</div>
+          <div class="db-list-sub mono">{{ v.placa or '—' }}</div>
+        </div>
+        <span class="badge badge-verde">Ativo</span>
+        <div class="db-list-val text-muted">—</div>
+      </a>
+      {% endfor %}
+      {% if emp.receita_semanal %}
+      <div class="db-list-row" style="cursor:default; pointer-events:none;">
+        <span class="db-list-icon" style="background:transparent;"></span>
+        <div class="db-list-info">
+          <div class="db-list-sub">Receita semanal · {{ emp.nome.split()[0] }}</div>
+        </div>
+        <div class="db-list-val" style="color:var(--green);">
+          R$ {{ "{:,.2f}".format(emp.receita_semanal).replace(",","X").replace(".",",").replace("X",".") }}
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+  <div class="vazio">Nenhum veículo cadastrado.</div>
+  {% endif %}
+</div>
+{% endblock %}
