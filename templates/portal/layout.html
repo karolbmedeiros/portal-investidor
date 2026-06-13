@@ -26,7 +26,7 @@
 {% endif %}
 
 {# 3 — Extrato Bancário (se tem permissão + usina selecionada) #}
-{% if all_perms or 'extrato_bancario' in perms %}
+{% if all_perms or 'extrato_bancario' in perms or 'fluxo_de_caixa' in perms %}
 {% if _inv_usina %}
 <a href="{{ url_for('portal.usina_detalhe', usina_id=_inv_usina) }}"
    class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab','') == 'extrato' }}">

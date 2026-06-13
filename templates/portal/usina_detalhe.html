@@ -27,10 +27,10 @@
   {% set perms = usuario.permissions %}
   {% set all_perms = 'all' in perms %}
   {% set vtabs = [] %}
-  {% if all_perms or 'visao_geral'      in perms %}{% set _ = vtabs.append('visao-geral') %}{% endif %}
-  {% if all_perms or 'socios'           in perms %}{% set _ = vtabs.append('socios') %}{% endif %}
-  {% if all_perms or 'extrato_bancario' in perms %}{% set _ = vtabs.append('extrato') %}{% endif %}
-  {% if all_perms or 'dre'              in perms %}{% set _ = vtabs.append('dre') %}{% endif %}
+  {% if all_perms or 'visao_geral' in perms or not perms %}{% set _ = vtabs.append('visao-geral') %}{% endif %}
+  {% if all_perms or 'socios' in perms %}{% set _ = vtabs.append('socios') %}{% endif %}
+  {% if all_perms or 'extrato_bancario' in perms or 'fluxo_de_caixa' in perms %}{% set _ = vtabs.append('extrato') %}{% endif %}
+  {% if all_perms or 'dre' in perms %}{% set _ = vtabs.append('dre') %}{% endif %}
   {% set tab_labels = {'visao-geral': 'Visão Geral', 'socios': 'Sócios', 'extrato': 'Extrato Bancário', 'dre': 'DRE'} %}
 
   <div class="detalhe-tabs" style="margin-top:20px;">
