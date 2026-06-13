@@ -186,7 +186,7 @@
 
     {# ══ Novo Usuário ══ #}
     <div id="cfg-novo_usuario" class="cfg-tab" style="display:none;">
-      <div class="cfg-section-title">Criar novo usuário investidor</div>
+      <div class="cfg-section-title">Criar novo usuário</div>
       <div style="max-width:560px;">
         <form method="POST" action="{{ url_for('admin.novo_usuario') }}" style="margin-top:4px;">
           <div class="form-row">
@@ -195,9 +195,24 @@
               <input type="text" name="nome" placeholder="João da Silva" required />
             </div>
             <div class="form-group">
-              <label>Usuário * <span style="font-weight:400;color:var(--muted);">(sem @)</span></label>
+              <label>Usuário *</label>
               <input type="text" name="username" placeholder="joaosilva" required
                      pattern="[a-zA-Z0-9._-]+" title="Apenas letras, números, ponto, hífen ou _" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Tipo de acesso *</label>
+            <div style="display:flex; gap:12px; margin-top:4px;">
+              <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:13px; text-transform:none; letter-spacing:0; font-weight:400; color:var(--text);">
+                <input type="radio" name="tipo" value="investidor" checked
+                       onchange="document.getElementById('perms-section').style.display='block'" />
+                <span>@investidor <span style="color:var(--muted); font-size:11px;">— acesso limitado ao portal</span></span>
+              </label>
+              <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:13px; text-transform:none; letter-spacing:0; font-weight:400; color:var(--text);">
+                <input type="radio" name="tipo" value="admin"
+                       onchange="document.getElementById('perms-section').style.display='none'" />
+                <span>@admin <span style="color:var(--muted); font-size:11px;">— acesso total ao painel</span></span>
+              </label>
             </div>
           </div>
           <div class="form-group">
@@ -205,6 +220,7 @@
             <input type="password" name="senha" minlength="8" required />
           </div>
 
+          <div id="perms-section">
           {% if usinas or empresas_veiculos %}
           <div class="form-group">
             <label>Investimentos com acesso <span style="font-weight:400;color:var(--muted);">(visualização)</span></label>
@@ -277,6 +293,7 @@
               </label>
             </div>
           </div>
+          </div>{# /perms-section #}
 
           <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">Criar usuário</button>
         </form>

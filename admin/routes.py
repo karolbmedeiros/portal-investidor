@@ -342,19 +342,26 @@ def natureza_excluir(cat_id):
 @admin_bp.route("/configuracoes/novo-usuario", methods=["POST"])
 @requer_admin
 def novo_usuario():
-    username = request.form.get("username", "").strip()
-    senha = request.form.get("senha", "").strip()
-    nome = request.form.get("nome", "").strip()
-    usina_ids = request.form.getlist("usina_ids")
+    username    = request.form.get("username", "").strip()
+    senha       = request.form.get("senha", "").strip()
+    nome        = request.form.get("nome", "").strip()
+    tipo        = request.form.get("tipo", "investidor")  # "admin" ou "investidor"
+    usina_ids   = request.form.getlist("usina_ids")
     permissions = request.form.getlist("permissions")
-    if not permissions:
-        permissions = ["visao_geral", "socios"]
+
     if not all([username, senha, nome]):
         flash("Preencha todos os campos.", "erro")
         return redirect(url_for("admin.configuracoes"))
-    res = auth_service.criar_usuario_admin(username, senha, nome, usina_ids, permissions)
+
+    if tipo == "admin":
+        res = auth_service.criar_usuario_admin(username, senha, nome, [], [], tipo="admin")
+    else:
+        if not permissions:
+            permissions = ["visao_geral", "socios"]
+        res = auth_service.criar_usuario_admin(username, senha, nome, usina_ids, permissions, tipo="investidor")
+
     flash(
-        f"Usuário '{username}' criado." if res["ok"] else f"Erro: {res['erro']}",
+        f"Usuário '{username}@{tipo}' criado." if res["ok"] else f"Erro: {res['erro']}",
         "sucesso" if res["ok"] else "erro",
     )
     return redirect(url_for("admin.configuracoes"))

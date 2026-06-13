@@ -84,6 +84,10 @@ def refresh_session_permissions():
     uid = session.get("user_id")
     if not uid:
         return
+    # Admin sempre tem acesso total — não re-busca do banco
+    if session.get("role") == "admin":
+        session["permissions"] = ["all"]
+        return
     try:
         sb = get_service_client()
         user = sb.auth.admin.get_user_by_id(uid).user
@@ -130,26 +134,26 @@ def ativar_conta(token: str, nova_senha: str) -> dict:
 
 
 def criar_usuario_admin(username: str, senha: str, nome: str,
-                        usina_ids: list, permissions: list) -> dict:
+                        usina_ids: list, permissions: list,
+                        tipo: str = "investidor") -> dict:
     """
-    Cria investidor com username/senha.
-    usina_ids → IDs das usinas que o usuário pode VISUALIZAR (acesso, não cota).
-    permissions → seções visíveis: visao_geral, distribuicoes, investidores, documentos, leituras
+    Cria usuário com username/senha.
+    tipo="investidor" → email username@investidor, acesso limitado ao portal
+    tipo="admin"      → email username@admin, acesso total ao painel
     """
-    email_interno = f"{username}@investidor"
+    email_interno = f"{username}@{tipo}"
     try:
         sb = get_service_client()
+        meta = {"nome": nome, "username": username}
+        if tipo == "investidor":
+            meta["usina_ids"]   = usina_ids
+            meta["permissions"] = permissions
+
         res = sb.auth.admin.create_user({
             "email": email_interno,
             "password": senha,
             "email_confirm": True,
-            "user_metadata": {
-                "role": "investidor",
-                "nome": nome,
-                "username": username,
-                "usina_ids": usina_ids,
-                "permissions": permissions,
-            },
+            "user_metadata": meta,
         })
         return {"ok": True, "user_id": res.user.id}
     except Exception as e:
