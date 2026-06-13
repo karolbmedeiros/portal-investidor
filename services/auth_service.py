@@ -58,6 +58,22 @@ def is_admin() -> bool:
     return u is not None and u["role"] == "admin"
 
 
+def refresh_session_permissions():
+    """Re-fetches user metadata from Supabase and updates session permissions/usina_ids."""
+    uid = session.get("user_id")
+    if not uid:
+        return
+    try:
+        sb = get_service_client()
+        user = sb.auth.admin.get_user_by_id(uid).user
+        if user:
+            meta = user.user_metadata or {}
+            session["permissions"] = meta.get("permissions", [])
+            session["usina_ids"]   = meta.get("usina_ids", [])
+    except Exception:
+        pass
+
+
 def preview_investidor_id() -> object:
     """Admin pode visualizar o portal como um investidor específico."""
     return session.get("preview_investidor_id")

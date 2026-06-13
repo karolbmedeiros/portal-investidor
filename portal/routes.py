@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, abort, session as _sess
 from middleware.auth_guard import requer_login
-from services.auth_service import usuario_logado, is_admin, preview_investidor_id
+from services.auth_service import usuario_logado, is_admin, preview_investidor_id, refresh_session_permissions
 
 portal_bp = Blueprint("portal", __name__, url_prefix="/portal")
 
@@ -15,6 +15,7 @@ def home():
     from services.supabase_client import get_service_client
     from datetime import date
 
+    refresh_session_permissions()
     u = usuario_logado()
     usina_ids = u.get("usina_ids", [])
 
