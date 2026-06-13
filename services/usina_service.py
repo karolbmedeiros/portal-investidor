@@ -206,6 +206,70 @@ def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
     return [r for r in (res.data or []) if r.get("ref_mes_ano")]
 
 
+def retorno_mensal_investidor(usina_id: str, investidor_id: str = None) -> list:
+    sb = get_service_client()
+    q = (
+        sb.table("v_retorno_investidor_mensal")
+        .select("ref_mes_ano,resultado_usina,participacao_lucro,valor_distribuido,percentual,investidor")
+        .eq("usina_id", usina_id)
+        .order("ref_mes_ano")
+    )
+    if investidor_id:
+        q = q.eq("investidor_id", investidor_id)
+    return q.execute().data or []
+
+
+def leituras_detalhadas(usina_id: str) -> list:
+    sb = get_service_client()
+    contratos_res = (
+        sb.table("contratos")
+        .select("id,numero_contrato")
+        .eq("usina_id", usina_id)
+        .execute()
+    )
+    contrato_ids = [c["id"] for c in (contratos_res.data or [])]
+    if not contrato_ids:
+        return []
+    res = (
+        sb.table("leituras_mensais")
+        .select(
+            "ref_mes_ano,contrato_id,kwh_compensado,kwh_consumido,kwh_faturado_cosern,"
+            "saldo_creditos_kwh,tarifa_cheia,tarifa_compensacao_cheia,"
+            "valor_fatura_simulada,valor_fatura_cosern_real"
+        )
+        .in_("contrato_id", contrato_ids)
+        .order("ref_mes_ano")
+        .execute()
+    )
+    contratos_map = {c["id"]: c.get("numero_contrato", "") for c in (contratos_res.data or [])}
+    for l in (res.data or []):
+        l["numero_contrato"] = contratos_map.get(l["contrato_id"], "")
+    return res.data or []
+
+
+def saldo_creditos_da_usina(usina_id: str) -> list:
+    sb = get_service_client()
+    contratos_res = (
+        sb.table("contratos")
+        .select("id,numero_contrato")
+        .eq("usina_id", usina_id)
+        .execute()
+    )
+    contrato_ids = [c["id"] for c in (contratos_res.data or [])]
+    if not contrato_ids:
+        return []
+    res = (
+        sb.table("v_saldo_creditos")
+        .select("*")
+        .in_("contrato_id", contrato_ids)
+        .execute()
+    )
+    contratos_map = {c["id"]: c.get("numero_contrato", "") for c in (contratos_res.data or [])}
+    for s in (res.data or []):
+        s["numero_contrato"] = contratos_map.get(s["contrato_id"], "")
+    return res.data or []
+
+
 def documentos_da_usina(usina_id: str) -> list:
     sb = get_service_client()
     res = (

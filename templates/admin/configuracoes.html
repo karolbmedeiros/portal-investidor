@@ -141,6 +141,27 @@
                       {{ 'checked' if all_checked or 'dre' in cur_perms }} />
                     <span>DRE</span>
                   </label>
+                  <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 0 4px;">Dados Visuais</div>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="retorno_mensal"
+                      {{ 'checked' if all_checked or 'retorno_mensal' in cur_perms }} />
+                    <span>Retorno Mensal</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="energia"
+                      {{ 'checked' if all_checked or 'energia' in cur_perms }} />
+                    <span>Energia / Compensação</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="pnl"
+                      {{ 'checked' if all_checked or 'pnl' in cur_perms }} />
+                    <span>P&L da Usina</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="saldo_creditos"
+                      {{ 'checked' if all_checked or 'saldo_creditos' in cur_perms }} />
+                    <span>Saldo de Créditos kWh</span>
+                  </label>
                 </div>
               </div>
             </div>
@@ -227,6 +248,23 @@
               <label class="checkbox-item">
                 <input type="checkbox" name="permissions" value="dre" />
                 <span>DRE</span>
+              </label>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 0 4px;">Dados Visuais</div>
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="retorno_mensal" />
+                <span>Retorno Mensal</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="energia" />
+                <span>Energia / Compensação</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="pnl" />
+                <span>P&L da Usina</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="saldo_creditos" />
+                <span>Saldo de Créditos kWh</span>
               </label>
             </div>
           </div>

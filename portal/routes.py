@@ -142,15 +142,17 @@ def home():
 @portal_bp.route("/usina/<usina_id>")
 @requer_login
 def usina_detalhe(usina_id):
+    from datetime import date as _date
     from services.usina_service import (
         buscar_usina, usinas_do_investidor,
-        distribuicoes_da_usina, leituras_da_usina,
-        pnl_da_usina, documentos_da_usina, clientes_da_usina,
-        participacoes_da_usina, listar_lancamentos,
+        leituras_da_usina, pnl_da_usina,
+        listar_lancamentos, calcular_kpis,
+        clientes_da_usina, listar_contas_da_usina,
+        participacoes_da_usina,
+        retorno_mensal_investidor, leituras_detalhadas, saldo_creditos_da_usina,
     )
     u = usuario_logado()
     usina_ids = u.get("usina_ids", [])
-
     partic = usinas_do_investidor(u["id"])
 
     if usina_ids:
@@ -160,44 +162,104 @@ def usina_detalhe(usina_id):
         if usina_id not in [p["usina_id"] for p in partic]:
             abort(403)
 
-    minha_part = next((p for p in partic if p["usina_id"] == usina_id), None)
     usina = buscar_usina(usina_id)
+    if not usina:
+        abort(404)
 
-    # Mantém sessão sincronizada com a usina sendo visualizada
     _sess["inv_ativo_id"]   = usina_id
-    _sess["inv_ativo_nome"] = usina.get("nome", "") if usina else ""
+    _sess["inv_ativo_nome"] = usina.get("nome", "")
 
-    perms = u.get("permissions", [])
+    perms     = u.get("permissions", [])
     all_perms = "all" in perms
 
-    clientes = clientes_da_usina(usina_id) if (all_perms or "clientes" in perms) else []
+    valid_tabs = []
+    if all_perms or "socios" in perms:                                         valid_tabs.append("socios")
+    if all_perms or "clientes" in perms:                                       valid_tabs.append("clientes")
+    if all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms: valid_tabs.append("extrato")
+    if all_perms or "dre" in perms:                                            valid_tabs.append("dre")
+    if all_perms or "retorno_mensal" in perms:                                 valid_tabs.append("retorno_mensal")
+    if all_perms or "energia" in perms:                                        valid_tabs.append("energia")
+    if all_perms or "pnl" in perms:                                            valid_tabs.append("pnl")
+    if all_perms or "saldo_creditos" in perms:                                 valid_tabs.append("saldo_creditos")
 
-    socios_raw = participacoes_da_usina(usina_id) if (all_perms or "socios" in perms) else []
-    socios_usina = [
-        {
-            "nome": (p.get("investidores") or {}).get("nome") or (p.get("investidores") or {}).get("email") or "—",
-            "percentual": p.get("percentual") or 0,
-            "valor_investido_total": p.get("valor_investido_total"),
-            "data_entrada": p.get("data_entrada"),
-        }
-        for p in socios_raw
-    ]
+    tab = request.args.get("tab", "")
+    if tab not in valid_tabs:
+        tab = valid_tabs[0] if valid_tabs else "socios"
 
-    lancamentos = listar_lancamentos(usina_id) if (all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms) else []
-    pnl = pnl_da_usina(usina_id)
+    contas      = listar_contas_da_usina(usina_id)
+    conta_id    = request.args.get("conta_id") or (contas[0]["id"] if contas else None)
+    conta_atual = next((c for c in contas if c["id"] == conta_id), contas[0] if contas else None)
+    saldo_inicial = float(conta_atual["saldo_inicial"] or 0) if conta_atual else 0
+
+    tem_extrato = all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms
+    lancamentos = listar_lancamentos(usina_id, conta_id=conta_id) if tem_extrato else []
+
+    _lanc_op = sorted(
+        [l for l in lancamentos if l.get("data_transacao") and not l.get("_neutro")],
+        key=lambda l: (l["data_transacao"], 0 if l.get("tipo") == "credito" else 1)
+    )
+    _acc, _dia_acc = saldo_inicial, {}
+    for _l in _lanc_op:
+        _v = abs(_l.get("valor") or 0)
+        _acc += _v if _l.get("tipo") == "credito" else -_v
+        _dia_acc[_l["data_transacao"][:10]] = round(_acc, 2)
+
+    if _dia_acc:
+        chart_fluxo_dates = ["Saldo ini."] + list(_dia_acc.keys())
+        chart_fluxo_pts   = [round(saldo_inicial, 2)] + list(_dia_acc.values())
+    else:
+        chart_fluxo_dates, chart_fluxo_pts = [], []
+
+    chart_meses = sorted({
+        l["data_transacao"][:7] for l in lancamentos
+        if l.get("data_transacao") and not l.get("_neutro")
+    })
+    leituras = leituras_da_usina(usina_id)
+
+    if request.args.get("kpi_mes"):
+        kpi_mes = request.args.get("kpi_mes")
+    else:
+        datas = [l["data_transacao"][:7] for l in lancamentos if l.get("data_transacao")]
+        kpi_mes = max(datas) if datas else _date.today().strftime("%Y-%m")
+
+    pnl          = pnl_da_usina(usina_id)
+    clientes     = clientes_da_usina(usina_id) if (all_perms or "clientes" in perms) else []
+    participacoes = participacoes_da_usina(usina_id) if (all_perms or "socios" in perms) else []
+    num_ativos   = sum(1 for c in clientes if c.get("status") == "Ativo")
+
+    # Dados visuais
+    tem_retorno = all_perms or "retorno_mensal" in perms
+    tem_energia = all_perms or "energia" in perms
+    tem_pnl     = all_perms or "pnl" in perms
+    tem_saldo   = all_perms or "saldo_creditos" in perms
+
+    retorno_mensal  = retorno_mensal_investidor(usina_id) if tem_retorno else []
+    leituras_det    = leituras_detalhadas(usina_id) if tem_energia else []
+    saldo_creditos  = saldo_creditos_da_usina(usina_id) if tem_saldo else []
 
     return render_template(
         "portal/usina_detalhe.html",
         usina=usina,
-        minha_participacao=minha_part,
-        distribuicoes=distribuicoes_da_usina(usina_id),
-        leituras=leituras_da_usina(usina_id),
-        pnl=pnl,
-        documentos=documentos_da_usina(usina_id),
+        tab=tab,
+        valid_tabs=valid_tabs,
+        participacoes=participacoes,
         clientes=clientes,
-        socios_usina=socios_usina,
         lancamentos=lancamentos,
+        leituras=leituras,
+        pnl=pnl,
+        kpis=calcular_kpis(usina_id, kpi_mes, lancamentos, leituras, pnl, num_ativos),
+        kpi_mes=kpi_mes,
+        categorias=[],
+        contas=contas,
+        conta_id=conta_id,
+        saldo_inicial=saldo_inicial,
+        chart_meses=chart_meses,
+        chart_fluxo_dates=chart_fluxo_dates,
+        chart_fluxo_pts=chart_fluxo_pts,
         usuario=u,
+        retorno_mensal=retorno_mensal,
+        leituras_det=leituras_det,
+        saldo_creditos=saldo_creditos,
     )
 
 
