@@ -196,7 +196,34 @@ def leituras_da_usina(usina_id: str, limite: int = 12) -> list:
 def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
     sb = get_service_client()
 
-    # Despesas da view (custo_*, kwh_faturado, qtd_faturas)
+    # Mapeamento categoria_id → coluna custo_*
+    _CAT_COSERN    = {"0a71e18a-e7f5-4b88-a37a-1c4ff15d57e1", "9fdfa3c2-7987-42cd-bd83-298061319268"}
+    _CAT_ALUGUEL   = {"f3bea762-6139-4fba-9e4f-f997b85988d9"}
+    _CAT_CONTAB    = {"873088b5-85ad-4474-9223-9c41f982cff4"}
+    _CAT_IMPOSTOS  = {"303b2701-5f8a-4393-ac71-df35d536d946"}
+    _CAT_ADMIN     = {"b35c7cda-7285-40ea-8d3a-b54f5966497f"}
+    _CAT_EMPRST    = {"d64de0ff-9ae9-49b5-9709-9910dd3f02cc", "20681d4b-e184-4184-9569-fe2f41e61347",
+                      "24f512b4-b736-4139-975a-12ef9cb212d0", "622be2cb-22a2-4ce1-9034-5b9624ff15cc"}
+    _CAT_OUTROS    = {"9c5c82b4-a8be-4996-9a2d-30722a1479e0", "ef112b4c-a28f-4c5c-840b-c1e27cd1dfb4"}
+    # Excluídos de despesas: Repasse Investidor, Aporte, Recebimento de Fatura, Rendimento, Receita de Locação
+    _CAT_EXCLUIR   = {"269c12d6-bd47-4386-9ea8-8952c50591c6", "e6c37f6a-37af-4ead-b2c6-7fcc0f12a30e",
+                      "f2738e97-9f34-436a-b915-88a28c4cfb7d", "7914bbd1-383e-459e-918b-8563ee795c8a",
+                      "e879abc7-4d19-4709-9e77-ea2bb88ba742", "12440b52-0d3c-4c9c-943f-a2408c7ea0ae"}
+
+    def _custo_col(cat_id: Optional[str]) -> Optional[str]:
+        if not cat_id:
+            return None
+        if cat_id in _CAT_COSERN:   return "custo_cosern"
+        if cat_id in _CAT_ALUGUEL:  return "custo_aluguel"
+        if cat_id in _CAT_CONTAB:   return "custo_contabilidade"
+        if cat_id in _CAT_IMPOSTOS: return "custo_impostos"
+        if cat_id in _CAT_ADMIN:    return "custo_taxa_admin"
+        if cat_id in _CAT_EMPRST:   return "custo_emprestimo"
+        if cat_id in _CAT_OUTROS:   return "custo_outros"
+        if cat_id in _CAT_EXCLUIR:  return None
+        return "custo_outros"  # categorias desconhecidas vão para outros
+
+    # Despesas da view (meses fechados com kwh_faturado, qtd_faturas)
     view_rows = {
         str(r["ref_mes_ano"])[:7]: r
         for r in (sb.table("v_pnl_usina_mensal")
@@ -213,41 +240,68 @@ def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
                    .select("razao_social,nome_fantasia")
                    .eq("id", usina_id).execute().data or [{}])[0]
     razao = (usina_row.get("razao_social") or usina_row.get("nome_fantasia") or "")
-    razao_titular = razao[:8]   # para achar a conta bancária
-    razao_desc    = razao[:12]  # para filtrar créditos na descrição
+    razao_titular = razao[:8]
+    razao_desc    = razao[:12]
 
     contas = (sb.from_("contas_bancarias").select("id")
                 .ilike("titular_nome", f"%{razao_titular}%")
                 .execute().data or [])
 
     receita_por_mes: dict = {}
-    for conta in contas:
-        lancs = (sb.table("lancamentos_bancarios")
-                   .select("mes_competencia,data_transacao,valor")
-                   .eq("conta_bancaria_id", conta["id"])
-                   .eq("tipo", "credito")
-                   .ilike("descricao", f"%{razao_desc}%")
-                   .execute().data or [])
-        for l in lancs:
-            mes = (l.get("mes_competencia") or l.get("data_transacao") or "")[:7]
-            if mes:
-                receita_por_mes[mes] = receita_por_mes.get(mes, 0) + abs(l.get("valor") or 0)
+    # Despesas calculadas dos lançamentos (para meses fora da view)
+    desp_por_mes: dict = {}  # mes → {custo_*: valor}
 
-    # Monta resultado unificando os dois conjuntos de meses
+    for conta in contas:
+        all_lancs = (sb.table("lancamentos_bancarios")
+                       .select("mes_competencia,data_transacao,valor,tipo,descricao,categoria_id")
+                       .eq("conta_bancaria_id", conta["id"])
+                       .execute().data or [])
+        for l in all_lancs:
+            mes = (l.get("mes_competencia") or l.get("data_transacao") or "")[:7]
+            if not mes:
+                continue
+            if l.get("tipo") == "credito":
+                desc = (l.get("descricao") or "").upper()
+                if razao_desc.upper() in desc:
+                    receita_por_mes[mes] = receita_por_mes.get(mes, 0) + abs(l.get("valor") or 0)
+            elif l.get("tipo") == "debito":
+                col = _custo_col(l.get("categoria_id"))
+                if col:
+                    if mes not in desp_por_mes:
+                        desp_por_mes[mes] = {
+                            "custo_emprestimo": 0, "custo_aluguel": 0, "custo_contabilidade": 0,
+                            "custo_impostos": 0, "custo_cosern": 0, "custo_taxa_admin": 0,
+                            "custo_seguro": 0, "custo_outros": 0,
+                        }
+                    desp_por_mes[mes][col] = desp_por_mes[mes].get(col, 0) + abs(l.get("valor") or 0)
+
     todos_meses = sorted(set(list(view_rows.keys()) + list(receita_por_mes.keys())), reverse=True)[:limite]
     result = []
     for mes in todos_meses:
-        base = dict(view_rows.get(mes, {
-            "usina_id": usina_id, "usina": razao,
-            "ref_mes_ano": mes + "-01",
-            "total_despesas": 0, "kwh_faturado": 0, "qtd_faturas": 0,
-            "custo_emprestimo": 0, "custo_aluguel": 0, "custo_contabilidade": 0,
-            "custo_impostos": 0, "custo_cosern": 0, "custo_taxa_admin": 0,
-            "custo_seguro": 0, "custo_outros": 0,
-        }))
-        receita      = round(receita_por_mes.get(mes, 0), 2)
-        total_desp   = round(base.get("total_despesas") or 0, 2)
-        resultado    = round(receita - total_desp, 2)
+        if mes in view_rows:
+            base = dict(view_rows[mes])
+        else:
+            # Mês ainda não na view: calcula despesas dos lançamentos
+            custos = desp_por_mes.get(mes, {})
+            total_desp_lanc = round(sum(custos.values()), 2)
+            base = {
+                "usina_id": usina_id, "usina": razao,
+                "ref_mes_ano": mes + "-01",
+                "total_despesas": total_desp_lanc,
+                "kwh_faturado": 0, "qtd_faturas": 0,
+                "custo_emprestimo":    round(custos.get("custo_emprestimo", 0), 2),
+                "custo_aluguel":       round(custos.get("custo_aluguel", 0), 2),
+                "custo_contabilidade": round(custos.get("custo_contabilidade", 0), 2),
+                "custo_impostos":      round(custos.get("custo_impostos", 0), 2),
+                "custo_cosern":        round(custos.get("custo_cosern", 0), 2),
+                "custo_taxa_admin":    round(custos.get("custo_taxa_admin", 0), 2),
+                "custo_seguro":        0,
+                "custo_outros":        round(custos.get("custo_outros", 0), 2),
+            }
+
+        receita    = round(receita_por_mes.get(mes, 0), 2)
+        total_desp = round(base.get("total_despesas") or 0, 2)
+        resultado  = round(receita - total_desp, 2)
         base["receita_bruta"]     = receita
         base["resultado_liquido"] = resultado
         base["margem_liquida"]    = round(resultado / receita, 4) if receita else None
