@@ -278,23 +278,19 @@
         <span>Dashboard</span>
       </a>
 
-      {# 2 — Portfólio de usinas: oculto quando carro selecionado #}
-      {% if _ativo_tipo != 'carro' %}
+      {# 2 — Portfólio de usinas #}
       <a href="{{ url_for('admin.portfolio_usinas') }}"
          class="{{ 'ativo' if request.endpoint == 'admin.portfolio_usinas' }}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
         <span>Usinas</span>
       </a>
-      {% endif %}
 
-      {# 3 — Portfólio de carros: oculto quando usina selecionada #}
-      {% if _ativo_tipo != 'usina' %}
+      {# 3 — Portfólio de carros #}
       <a href="{{ url_for('admin.portfolio_carros') }}"
-         class="{{ 'ativo' if request.endpoint == 'admin.portfolio_carros' }}">
+         class="{{ 'ativo' if request.endpoint in ('admin.portfolio_carros', 'admin.empresa_veiculo_detalhe') }}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
         <span>Carros</span>
       </a>
-      {% endif %}
 
       {# 4 — Fluxo de Caixa #}
       {% if _ativo_tipo == 'usina' and _ativo_id %}

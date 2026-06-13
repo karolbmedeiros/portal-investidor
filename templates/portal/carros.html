@@ -1,0 +1,66 @@
+{% extends "portal/layout.html" %}
+{% block title %}Portfólio de Carros{% endblock %}
+
+{% block content %}
+{% set first_name = (usuario.nome or '').split()[0] if usuario else 'Investidor' %}
+
+<header class="db-header" style="margin-bottom:28px;">
+  <div>
+    <h1 class="db-greeting">Portfólio de Carros</h1>
+    <p class="db-date">Seus veículos em locação</p>
+  </div>
+</header>
+
+{% if not empresas_veiculos %}
+<div style="background:var(--card); border:0.5px solid var(--border); border-radius:var(--radius); padding:52px 24px; text-align:center; color:var(--muted);">
+  Nenhum veículo atribuído ao seu perfil ainda.
+</div>
+
+{% else %}
+{% for emp in empresas_veiculos %}
+<div style="background:var(--card); border:0.5px solid var(--border); border-radius:var(--radius); padding:20px 24px; margin-bottom:14px; box-shadow:var(--shadow);">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:36px; height:36px; background:rgba(37,99,235,.08); border-radius:10px; display:flex; align-items:center; justify-content:center; flex:none;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2563EB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+      </div>
+      <div>
+        <div style="font-size:15px; font-weight:600; color:var(--text);">{{ emp.nome }}</div>
+        {% if emp.cnpj %}<div style="font-size:11px; color:var(--muted); margin-top:2px;">{{ emp.cnpj }}</div>{% endif %}
+      </div>
+    </div>
+    {% if emp.receita_semanal %}
+    <div style="text-align:right;">
+      <div style="font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; margin-bottom:2px;">Receita semanal</div>
+      <div style="font-size:18px; font-weight:600; color:var(--green);">
+        R$ {{ "{:,.2f}".format(emp.receita_semanal).replace(",","X").replace(".",",").replace("X",".") }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if emp.veiculos %}
+  <div style="border-top:0.5px solid var(--border); padding-top:14px; margin-top:6px;">
+    <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:10px;">
+      {{ emp.veiculos|length }} veículo{{ 's' if emp.veiculos|length != 1 }}
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px;">
+      {% for v in emp.veiculos %}
+      <div style="background:var(--bg2,#F4F6F5); border:0.5px solid var(--border); border-radius:10px; padding:12px 14px;">
+        <div style="font-size:13px; font-weight:600; color:var(--text);">{{ v.modelo or '—' }}</div>
+        {% if v.placa %}
+        <div style="font-family:'Geist Mono',monospace; font-size:12px; color:var(--muted); margin-top:3px;">{{ v.placa }}</div>
+        {% endif %}
+        <span style="display:inline-block; margin-top:8px; font-size:10px; font-weight:600; background:#EAF6F1; color:#15805F; border-radius:99px; padding:2px 9px;">Ativo</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}

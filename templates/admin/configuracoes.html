@@ -122,6 +122,11 @@
                     <span>Visão Geral</span>
                   </label>
                   <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="carros"
+                      {{ 'checked' if all_checked or 'carros' in cur_perms }} />
+                    <span>🚗 Carros</span>
+                  </label>
+                  <label class="checkbox-item">
                     <input type="checkbox" name="permissions" value="socios"
                       {{ 'checked' if all_checked or 'socios' in cur_perms }} />
                     <span>Sócios</span>
@@ -232,6 +237,10 @@
               <label class="checkbox-item">
                 <input type="checkbox" name="permissions" value="visao_geral" checked />
                 <span>Visão Geral</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="carros" />
+                <span>🚗 Carros</span>
               </label>
               <label class="checkbox-item">
                 <input type="checkbox" name="permissions" value="socios" checked />

@@ -2,30 +2,51 @@ from flask import session
 from services.supabase_client import get_client, get_service_client
 
 
+def _role_do_email(email: str) -> str:
+    """Determina role pelo domínio: @admin → admin, qualquer outro → investidor."""
+    return "admin" if email.lower().endswith("@admin") else "investidor"
+
+
 def login(email: str, password: str) -> dict:
     """
     Autentica com Supabase Auth.
-    Aceita username simples (converte para username@portal.local) ou e-mail completo.
+    Aceita username simples ou e-mail completo com @admin / @investidor.
+    Se apenas username, tenta @admin primeiro, depois @investidor.
     """
     try:
         sb = get_client()
-        email_tentativa = email if "@" in email else f"{email}@portal.local"
-        res = sb.auth.sign_in_with_password({"email": email_tentativa, "password": password})
-        user = res.user
+
+        if "@" in email:
+            candidatos = [email]
+        else:
+            candidatos = [f"{email}@admin", f"{email}@investidor"]
+
+        user = None
+        email_usado = None
+        for tentativa in candidatos:
+            try:
+                res = sb.auth.sign_in_with_password({"email": tentativa, "password": password})
+                if res.user:
+                    user = res.user
+                    email_usado = tentativa
+                    break
+            except Exception:
+                continue
+
         if not user:
             return {"ok": False, "erro": "Usuário ou senha incorretos."}
 
-        role = user.user_metadata.get("role", "investidor")
-
+        role = _role_do_email(email_usado)
         meta = user.user_metadata or {}
+
         session.permanent = True
-        session["user_id"] = user.id
-        session["email"] = user.email
-        session["role"] = role
-        session["nome"] = meta.get("nome", email)
-        session["username"] = meta.get("username", email)
-        session["usina_ids"] = meta.get("usina_ids", [])
-        session["permissions"] = meta.get("permissions", ["all"])
+        session["user_id"]     = user.id
+        session["email"]       = email_usado
+        session["role"]        = role
+        session["nome"]        = meta.get("nome", email)
+        session["username"]    = meta.get("username", email)
+        session["usina_ids"]   = meta.get("usina_ids", [])
+        session["permissions"] = meta.get("permissions", ["all"] if role == "admin" else [])
 
         return {"ok": True, "role": role}
 
@@ -115,7 +136,7 @@ def criar_usuario_admin(username: str, senha: str, nome: str,
     usina_ids → IDs das usinas que o usuário pode VISUALIZAR (acesso, não cota).
     permissions → seções visíveis: visao_geral, distribuicoes, investidores, documentos, leituras
     """
-    email_interno = f"{username}@portal.local"
+    email_interno = f"{username}@investidor"
     try:
         sb = get_service_client()
         res = sb.auth.admin.create_user({
@@ -159,9 +180,9 @@ def listar_usuarios_com_acesso() -> list:
             meta = getattr(user, "user_metadata", None) or {}
             if not isinstance(meta, dict):
                 meta = {}
-            if meta.get("role") != "investidor":
-                continue
             email = getattr(user, "email", "")
+            if not email.endswith("@investidor"):
+                continue
             resultado.append({
                 "id": getattr(user, "id", None),
                 "email": email,

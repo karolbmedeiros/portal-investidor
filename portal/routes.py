@@ -294,6 +294,32 @@ def usina_detalhe(usina_id):
     )
 
 
+@portal_bp.route("/carros")
+@requer_login
+def carros():
+    from services.veiculos_service import listar_empresas_veiculos, recebimentos_da_empresa
+    u = usuario_logado()
+    perms     = u.get("permissions", [])
+    all_perms = "all" in perms
+
+    if not all_perms and "carros" not in perms:
+        abort(403)
+
+    usina_ids = u.get("usina_ids", [])
+    todas = listar_empresas_veiculos()
+    # Filtra só as empresas que o investidor tem acesso (pelo slug)
+    if usina_ids:
+        empresas = [e for e in todas if e.get("slug") in usina_ids]
+    else:
+        empresas = todas
+
+    return render_template(
+        "portal/carros.html",
+        empresas_veiculos=empresas,
+        usuario=u,
+    )
+
+
 @portal_bp.route("/documentos")
 @requer_login
 def documentos():
