@@ -219,39 +219,6 @@ def usina_detalhe(usina_id):
     categorias  = listar_categorias()
     num_ativos  = sum(1 for c in clientes if c.get("status") == "Ativo")
 
-    # Faturas desta usina para painel Recebimentos
-    try:
-        from services.supabase_client import get_service_client as _gsc
-        _hoje = date.today()
-        _raw_fat = (
-            _gsc().from_("v_faturas_completas")
-            .select("id,numero_fatura,ref_mes_ano,data_vencimento,status,"
-                    "valor_final_cobrado,codigo_uc,uc_apelido,usina_razao_social")
-            .eq("usina_id", usina_id)
-            .in_("status", ["Pendente", "Emitida", "Enviada", "Atrasada"])
-            .order("data_vencimento", desc=False)
-            .execute().data or []
-        )
-        faturas_usina = []
-        for _f in _raw_fat:
-            try:
-                _y, _m, _d = str(_f["data_vencimento"])[:10].split("-")
-                _f["dias_vencimento"] = (date(int(_y), int(_m), int(_d)) - _hoje).days
-            except Exception:
-                _f["dias_vencimento"] = 0
-            faturas_usina.append(_f)
-        fat_tot_emaberto = sum(
-            float(_f.get("valor_final_cobrado") or 0) for _f in faturas_usina
-        )
-        fat_tot_vencido = sum(
-            float(_f.get("valor_final_cobrado") or 0) for _f in faturas_usina
-            if _f.get("status") == "Atrasada" or _f.get("dias_vencimento", 1) <= 0
-        )
-    except Exception:
-        faturas_usina = []
-        fat_tot_emaberto = 0.0
-        fat_tot_vencido = 0.0
-
     return render_template(
         "admin/usina_detalhe.html",
         usina=usina,
@@ -270,9 +237,6 @@ def usina_detalhe(usina_id):
         chart_meses=chart_meses,
         chart_fluxo_dates=chart_fluxo_dates,
         chart_fluxo_pts=chart_fluxo_pts,
-        faturas_usina=faturas_usina,
-        fat_tot_emaberto=fat_tot_emaberto,
-        fat_tot_vencido=fat_tot_vencido,
     )
 
 
