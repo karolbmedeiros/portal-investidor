@@ -620,6 +620,10 @@ def listar_lancamentos(usina_id: str, conta_id: Optional[str] = None) -> list:
         for l in lancamentos:
             l["_transferencia"] = _eh_transferencia(l, nomes)
             l["_neutro"] = _eh_neutro(l)
+            # Lançamento com categoria de receita/despesa explícita nunca é transferência
+            cat = l.get("categorias_financeiras") or {}
+            if isinstance(cat, dict) and cat.get("tipo") in ("receita", "despesa"):
+                l["_transferencia"] = False
         return lancamentos
     except Exception:
         return []
