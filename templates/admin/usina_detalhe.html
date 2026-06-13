@@ -19,7 +19,6 @@
         <span style="color:var(--muted);">{{ usina.cnpj or '' }}</span>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="abrirEditModal()">Editar dados</button>
   </div>
 
 </div>
@@ -286,99 +285,108 @@
 {% if lancamentos %}
 
 {# ════════════════════════════════════════════════════════
-   SEÇÃO 2 — Entradas & Saídas
+   SEÇÃO 2 — Recebimentos & Pagamentos
    ════════════════════════════════════════════════════════ #}
-{% set _ent = namespace(tot=0) %}
-{% set _sai = namespace(tot=0) %}
+{% set _pag_ns = namespace(nao_conc=0, conc=0) %}
 {% for l in lancamentos %}
-  {% if not l._transferencia and not l._neutro %}
-    {% if l.tipo=='credito' %}{% set _ent.tot = _ent.tot + (l.valor|abs) %}{% endif %}
-    {% if l.tipo=='debito'  %}{% set _sai.tot = _sai.tot + (l.valor|abs) %}{% endif %}
+  {% if not l._transferencia and not l._neutro and l.tipo=='debito' %}
+    {% if l.conciliado %}{% set _pag_ns.conc = _pag_ns.conc + (l.valor|abs) %}
+    {% else %}{% set _pag_ns.nao_conc = _pag_ns.nao_conc + (l.valor|abs) %}{% endif %}
   {% endif %}
 {% endfor %}
+{% set _sais_list = lancamentos | selectattr('tipo','equalto','debito') | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
 
 <div class="nb-lancamentos">
 
-  {# ↑ Entradas #}
+  {# ↑ Recebimentos #}
   <div class="nb-card nb-panel">
     <div class="nb-panel-header nb-ent-header">
       <span class="nb-panel-arrow">↑</span>
-      <span class="nb-panel-title">Entradas</span>
-      <span class="nb-panel-total nb-positivo" id="tot-entradas">{{ _ent.tot|brl }}</span>
+      <span class="nb-panel-title">Recebimentos</span>
+    </div>
+    <div class="nb-tab-bar">
+      <button class="nb-tab-btn nb-tab-ativo" data-panel="rec" data-tab="proximas" onclick="nbTab(this,'rec','proximas')">
+        Próximos a receber
+      </button>
+      <button class="nb-tab-btn" data-panel="rec" data-tab="emaberto" onclick="nbTab(this,'rec','emaberto')">
+        Em aberto<br><span class="nb-tab-amt">{{ fat_tot_emaberto|brl }}</span>
+      </button>
+      <button class="nb-tab-btn" data-panel="rec" data-tab="vencido" onclick="nbTab(this,'rec','vencido')">
+        Vencido<br><span class="nb-tab-amt nb-negativo">{{ fat_tot_vencido|brl }}</span>
+      </button>
     </div>
     <div class="nb-panel-body">
-      {% set _ents = lancamentos | selectattr('tipo','equalto','credito') | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
-      {% if _ents %}
-      {% for l in _ents %}
-      {% set conciliado = l.conciliado %}
-      {% set cat = l.categorias_financeiras %}
-      <div class="nb-item ext-row ext-row-ent"
-           data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
-           data-valor="{{ l.valor|abs }}"
-           data-conciliado="{{ 'true' if conciliado else 'false' }}">
-        <div class="nb-item-data {{ '' if conciliado else 'nb-pendente-data' }}">
-          {{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] if l.data_transacao else '—' }}
-        </div>
-        <div class="nb-item-centro">
-          <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
-          <div class="nb-item-cat">{{ cat.nome if cat else '—' }}</div>
-        </div>
-        <div class="nb-item-dir">
-          <div class="nb-item-val nb-positivo">{{ (l.valor or 0)|abs|brl }}</div>
-          {% if not conciliado %}
-          <button class="btn btn-secondary btn-sm nb-btn-conciliar"
-                  onclick="abrirConciliarModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor or 0) }}','{{ l.tipo }}')">
-            Conciliar
+      {% if faturas_usina %}
+        {% for f in faturas_usina %}
+        {% set dias = f.dias_vencimento %}
+        {% if dias > 0 %}{% set _trec = 'proximas' %}
+        {% elif f.status == 'Atrasada' %}{% set _trec = 'vencido' %}
+        {% else %}{% set _trec = 'emaberto' %}{% endif %}
+        <div class="nb-item nb-rec-item"
+             data-tab-rec="{{ _trec }}"
+             data-mes="{{ f.data_vencimento[:7] if f.data_vencimento else '' }}"
+             {% if _trec != 'proximas' %}style="display:none;"{% endif %}>
+          <button class="nb-star-btn" type="button" title="Favorito">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1.002l3.086 -6.253l3.086 6.253l6.9 1.002l-5 4.867l1.179 6.873z"></path></svg>
           </button>
-          {% else %}
-          <span class="nb-item-status">✓</span>
-          {% endif %}
+          <div class="nb-item-data">{{ f.data_vencimento[8:10] }}/{{ f.data_vencimento[5:7] }}</div>
+          <div class="nb-item-centro">
+            <div class="nb-item-desc">{{ f.uc_apelido or f.codigo_uc or '—' }}</div>
+            <div class="nb-item-cat" style="color:#1D9E75;">
+              {{ f.ref_mes_ano or '' }}{% if f.status %} · {{ f.status }}{% endif %}
+            </div>
+          </div>
+          <div class="nb-item-val {{ 'nb-negativo' if f.status == 'Atrasada' else 'nb-positivo' }}">
+            {{ (f.valor_final_cobrado or 0)|brl }}
+          </div>
         </div>
-      </div>
-      {% endfor %}
+        {% endfor %}
       {% else %}
-      <div class="nb-vazio">Nenhuma entrada no período.</div>
+      <div class="nb-vazio">Nenhuma fatura pendente.</div>
       {% endif %}
     </div>
   </div>
 
-  {# ↓ Saídas #}
+  {# ↓ Pagamentos #}
   <div class="nb-card nb-panel">
     <div class="nb-panel-header nb-sai-header">
       <span class="nb-panel-arrow">↓</span>
-      <span class="nb-panel-title">Saídas</span>
-      <span class="nb-panel-total nb-negativo" id="tot-saidas">{{ _sai.tot|brl }}</span>
+      <span class="nb-panel-title">Pagamentos</span>
+    </div>
+    <div class="nb-tab-bar">
+      <button class="nb-tab-btn nb-tab-ativo" data-panel="pag" data-tab="todos" onclick="nbTab(this,'pag','todos')">
+        Próximos a pagar
+      </button>
+      <button class="nb-tab-btn" data-panel="pag" data-tab="pendente" onclick="nbTab(this,'pag','pendente')">
+        Em aberto<br><span class="nb-tab-amt">{{ _pag_ns.nao_conc|brl }}</span>
+      </button>
+      <button class="nb-tab-btn" data-panel="pag" data-tab="conciliado" onclick="nbTab(this,'pag','conciliado')">
+        Vencido<br><span class="nb-tab-amt nb-negativo">{{ _pag_ns.conc|brl }}</span>
+      </button>
     </div>
     <div class="nb-panel-body">
-      {% set _sais = lancamentos | selectattr('tipo','equalto','debito') | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
-      {% if _sais %}
-      {% for l in _sais %}
-      {% set conciliado = l.conciliado %}
-      {% set cat = l.categorias_financeiras %}
-      <div class="nb-item ext-row ext-row-sai"
-           data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
-           data-valor="{{ l.valor|abs }}"
-           data-conciliado="{{ 'true' if conciliado else 'false' }}">
-        <div class="nb-item-data {{ '' if conciliado else 'nb-pendente-data' }}">
-          {{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] if l.data_transacao else '—' }}
-        </div>
-        <div class="nb-item-centro">
-          <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
-          <div class="nb-item-cat">{{ cat.nome if cat else '—' }}</div>
-        </div>
-        <div class="nb-item-dir">
-          <div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div>
-          {% if not conciliado %}
-          <button class="btn btn-secondary btn-sm nb-btn-conciliar"
-                  onclick="abrirConciliarModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor or 0) }}','{{ l.tipo }}')">
-            Conciliar
+      {% if _sais_list %}
+        {% for l in _sais_list %}
+        {% set conciliado = l.conciliado %}
+        {% set cat = l.categorias_financeiras %}
+        <div class="nb-item nb-pag-item ext-row ext-row-sai"
+             data-tab-pag="{{ 'conciliado' if conciliado else 'pendente' }}"
+             data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
+             data-valor="{{ l.valor|abs }}"
+             data-conciliado="{{ 'true' if conciliado else 'false' }}">
+          <button class="nb-star-btn" type="button" title="Favorito">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1.002l3.086 -6.253l3.086 6.253l6.9 1.002l-5 4.867l1.179 6.873z"></path></svg>
           </button>
-          {% else %}
-          <span class="nb-item-status">✓</span>
-          {% endif %}
+          <div class="nb-item-data {{ '' if conciliado else 'nb-pendente-data' }}">
+            {{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] if l.data_transacao else '—' }}
+          </div>
+          <div class="nb-item-centro">
+            <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+            <div class="nb-item-cat" style="color:var(--red);">{{ cat.nome if cat else '—' }}</div>
+          </div>
+          <div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div>
         </div>
-      </div>
-      {% endfor %}
+        {% endfor %}
       {% else %}
       <div class="nb-vazio">Nenhuma saída no período.</div>
       {% endif %}
@@ -407,49 +415,50 @@
 {# ════════════════════════════════════════════════════════
    SEÇÃO 4 — Extrato Consolidado
    ════════════════════════════════════════════════════════ #}
-<details class="nb-consolidado">
-  <summary class="nb-consolidado-summary">
-    <span>Extrato Consolidado</span>
-    <span style="font-size:11px;font-weight:400;color:var(--muted);">inclui transferências e fundos</span>
-    <span class="nb-positivo" id="extrato-saldo" style="margin-left:auto;font-weight:800;font-size:15px;">
-      {{ (_ent.tot - _sai.tot)|brl }}
-    </span>
-  </summary>
-  <div class="tabela-wrap" style="margin-top:12px;">
-    <table>
-      <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Natureza</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for l in lancamentos %}
-        {% set especial = l._transferencia or l._neutro %}
-        <tr class="ext-row ext-row-cons"
-            data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
-            data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}"
-            data-conciliado="{{ 'true' if l.conciliado else 'false' }}"
-            data-especial="{{ 'true' if especial else 'false' }}"
-            style="{% if especial %}color:#9CA3AF;{% elif not l.conciliado %}background:#FEFCE8;{% endif %}">
-          <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
-          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ l.descricao or l.descricao_original }}">
-            {% if especial %}<span class="badge-transf">{{ 'Transf.' if l._transferencia else 'Fundo' }}</span>{% endif %}
-            {{ l.descricao or l.descricao_original or '—' }}
-          </td>
-          <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">
-            {{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}
-          </td>
-          <td style="font-size:12px;color:var(--muted);">
-            {% set _cat = l.categorias_financeiras %}
-            {{ _cat.nome if _cat else ('Transferência' if l._transferencia else ('Fundo' if l._neutro else '—')) }}
-          </td>
-          <td>
-            {% if especial %}<span class="badge badge-cinza" style="font-size:10px;">Auto</span>
-            {% elif l.conciliado %}<span class="badge badge-verde" style="font-size:10px;">Conciliado</span>
-            {% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="nb-card nb-panel" style="margin-bottom:24px;">
+  <div class="nb-panel-header" style="background:var(--bg2);cursor:pointer;" onclick="toggleConsolidado()">
+    <span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">Extrato Consolidado</span>
+    <span style="font-size:11px;color:var(--muted);margin-right:12px;">inclui transferências e fundos</span>
+    <span class="nb-positivo" id="extrato-saldo" style="font-weight:700;font-size:14px;margin-right:12px;">—</span>
+    <svg id="consolidado-caret" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);transition:transform .15s;"><path d="M6 9l6 6l6 -6"></path></svg>
   </div>
-</details>
+  <div id="consolidado-body" style="display:none;">
+    <div class="tabela-wrap" style="border-radius:0;border:none;">
+      <table>
+        <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Natureza</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for l in lancamentos %}
+          {% set especial = l._transferencia or l._neutro %}
+          <tr class="ext-row ext-row-cons"
+              data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}"
+              data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}"
+              data-conciliado="{{ 'true' if l.conciliado else 'false' }}"
+              data-especial="{{ 'true' if especial else 'false' }}"
+              style="{% if especial %}color:#9CA3AF;{% elif not l.conciliado %}background:#FEFCE8;{% endif %}">
+            <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
+            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ l.descricao or l.descricao_original }}">
+              {% if especial %}<span class="badge-transf">{{ 'Transf.' if l._transferencia else 'Fundo' }}</span>{% endif %}
+              {{ l.descricao or l.descricao_original or '—' }}
+            </td>
+            <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">
+              {{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}
+            </td>
+            <td style="font-size:12px;color:var(--muted);">
+              {% set _cat = l.categorias_financeiras %}
+              {{ _cat.nome if _cat else ('Transferência' if l._transferencia else ('Fundo' if l._neutro else '—')) }}
+            </td>
+            <td>
+              {% if especial %}<span class="badge badge-cinza" style="font-size:10px;">Auto</span>
+              {% elif l.conciliado %}<span class="badge badge-verde" style="font-size:10px;">Conciliado</span>
+              {% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 {% else %}
 <div class="vazio">Nenhum lançamento encontrado.</div>
@@ -474,86 +483,6 @@
 </div>
 
 </div>{# /page-content #}
-
-{# ══ MODAL EDITAR USINA ══ #}
-<div id="edit-modal" class="modal-overlay" onclick="if(event.target===this)fecharEditModal()" style="display:none;">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span style="font-weight:700;font-size:15px;">Editar usina</span>
-      <button class="modal-close" onclick="fecharEditModal()">✕</button>
-    </div>
-    <form method="POST" action="{{ url_for('admin.usina_editar', usina_id=usina.id) }}">
-      <div class="modal-body">
-        <div class="form-row">
-          <div class="form-group"><label>Razão Social</label>
-            <input type="text" name="razao_social" value="{{ usina.razao_social or '' }}" /></div>
-          <div class="form-group"><label>Nome Fantasia</label>
-            <input type="text" name="nome_fantasia" value="{{ usina.nome_fantasia or '' }}" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>CNPJ</label>
-            <input type="text" name="cnpj" value="{{ usina.cnpj or '' }}" /></div>
-          <div class="form-group"><label>Status</label>
-            <select name="status">
-              <option value="Ativa" {{ 'selected' if usina.status == 'Ativa' }}>Ativa</option>
-              <option value="Inativa" {{ 'selected' if usina.status == 'Inativa' }}>Inativa</option>
-              <option value="Em implantação" {{ 'selected' if usina.status == 'Em implantação' }}>Em implantação</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Modalidade GD</label>
-            <select name="modalidade_gd">
-              <option value="GD I"  {{ 'selected' if usina.modalidade_gd == 'GD I' }}>GD I</option>
-              <option value="GD II" {{ 'selected' if usina.modalidade_gd == 'GD II' }}>GD II</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Potência (kWp)</label>
-            <input type="number" name="potencia_instalada_kwp" step="0.1"
-                   value="{{ usina.potencia_instalada_kwp or '' }}" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Geração Média (kWh/mês)</label>
-            <input type="number" name="geracao_media_mensal_kwh" step="1"
-                   value="{{ usina.geracao_media_mensal_kwh or '' }}" /></div>
-          <div class="form-group"><label>Início operação</label>
-            <input type="date" name="data_inicio_operacao"
-                   value="{{ usina.data_inicio_operacao or '' }}" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Banco</label>
-            <input type="text" name="banco" value="{{ usina.banco or '' }}" /></div>
-          <div class="form-group"><label>Agência</label>
-            <input type="text" name="agencia" value="{{ usina.agencia or '' }}" /></div>
-          <div class="form-group"><label>Conta Corrente</label>
-            <input type="text" name="conta_corrente" value="{{ usina.conta_corrente or '' }}" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>PIX Tipo</label>
-            <select name="pix_tipo">
-              <option value="">—</option>
-              <option value="CNPJ"      {{ 'selected' if usina.pix_tipo == 'CNPJ' }}>CNPJ</option>
-              <option value="CPF"       {{ 'selected' if usina.pix_tipo == 'CPF' }}>CPF</option>
-              <option value="EMAIL"     {{ 'selected' if usina.pix_tipo == 'EMAIL' }}>E-mail</option>
-              <option value="ALEATORIA" {{ 'selected' if usina.pix_tipo == 'ALEATORIA' }}>Aleatória</option>
-            </select>
-          </div>
-          <div class="form-group"><label>PIX Chave</label>
-            <input type="text" name="pix_chave" value="{{ usina.pix_chave or '' }}" /></div>
-        </div>
-        <div class="form-group">
-          <label>Observações</label>
-          <textarea name="observacoes" rows="2"
-            style="width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:6px;font-size:14px;font-family:inherit;resize:vertical;">{{ usina.observacoes or '' }}</textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="fecharEditModal()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Salvar</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 
 {# ══ MODAL CONCILIAR ══ #}
@@ -782,6 +711,32 @@
 details[open] .nb-consolidado-summary::before { transform:rotate(90deg); }
 .nb-consolidado .tabela-wrap { border-radius:0; border:none; }
 
+/* ── Tabs dos painéis ── */
+.nb-tab-bar {
+  display:flex; border-bottom:0.5px solid rgba(23,33,28,0.08);
+  background:#fff;
+}
+.nb-tab-btn {
+  flex:1; padding:10px 14px 9px; background:none; border:none;
+  border-bottom:2px solid transparent; cursor:pointer;
+  font-size:12px; font-weight:400; color:var(--muted);
+  text-align:left; line-height:1.3; transition:color .12s, border-color .12s;
+}
+.nb-tab-btn:first-child { padding-left:18px; }
+.nb-tab-btn.nb-tab-ativo {
+  color:var(--accent2); border-bottom-color:var(--accent); font-weight:500;
+}
+.nb-tab-btn:hover:not(.nb-tab-ativo) { color:var(--text); background:var(--bg2); }
+.nb-tab-amt { display:block; font-size:12.5px; font-weight:500; color:var(--text); margin-top:1px; }
+
+/* ── Star button ── */
+.nb-star-btn {
+  background:none; border:none; cursor:pointer; padding:3px; color:#D1D5DB;
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  border-radius:4px; transition:color .12s;
+}
+.nb-star-btn:hover { color:#F59E0B; }
+
 .badge-transf {
   display:inline-block; font-size:10px; font-weight:500;
   padding:1px 7px; border-radius:8px;
@@ -879,8 +834,10 @@ function navFluxo(delta) {
 (function() {
   if (document.querySelector('#tab-extrato.ativo')) {
     iniciarGraficosExtrato();
-    /* Pré-selecionar o mês mais recente */
-    const rows = document.querySelectorAll('.ext-row[data-mes]');
+    // Inicializar saldo do consolidado
+    filtrarExtrato();
+    /* Pré-selecionar o mês mais recente dos lançamentos */
+    const rows = document.querySelectorAll('.nb-pag-item[data-mes]');
     if (rows.length) {
       const meses = Array.from(rows).map(r => r.dataset.mes).filter(Boolean).sort();
       const ultimo = meses[meses.length - 1];
@@ -890,9 +847,27 @@ function navFluxo(delta) {
   }
 })();
 
-/* ── Editar modal ── */
-function abrirEditModal()   { document.getElementById('edit-modal').style.display='flex'; document.body.style.overflow='hidden'; }
-function fecharEditModal()  { document.getElementById('edit-modal').style.display='none'; document.body.style.overflow=''; }
+/* ── Tabs Recebimentos/Pagamentos ── */
+function nbTab(btn, panel, tab) {
+  document.querySelectorAll('.nb-tab-btn[data-panel="' + panel + '"]').forEach(function(b) {
+    b.classList.remove('nb-tab-ativo');
+  });
+  btn.classList.add('nb-tab-ativo');
+  var attr = 'data-tab-' + panel;
+  document.querySelectorAll('[' + attr + ']').forEach(function(item) {
+    item.style.display = (tab === 'todos' || item.getAttribute(attr) === tab) ? '' : 'none';
+  });
+}
+
+/* ── Extrato Consolidado toggle ── */
+function toggleConsolidado() {
+  var body = document.getElementById('consolidado-body');
+  var caret = document.getElementById('consolidado-caret');
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  if (caret) caret.style.transform = open ? '' : 'rotate(180deg)';
+}
 
 /* ── Conciliar modal ── */
 function abrirConciliarModal(id, desc, valor, tipo) {
@@ -907,7 +882,7 @@ function abrirConciliarModal(id, desc, valor, tipo) {
 function fecharConciliarModal() { document.getElementById('conciliar-modal').style.display='none'; document.body.style.overflow=''; }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') {
-  fecharEditModal(); fecharConciliarModal();
+  fecharConciliarModal();
 }});
 
 function fmtBrl(v) {
@@ -920,16 +895,24 @@ function filtrarExtrato() {
   const mes = document.getElementById('filtro-mes').value;
   let totEnt = 0, totSai = 0, totConsEnt = 0, totConsSai = 0;
 
-  document.querySelectorAll('.ext-row-ent').forEach(r => {
-    const ok = !mes || r.dataset.mes === mes;
-    r.style.display = ok ? '' : 'none';
-    if (ok) totEnt += parseFloat(r.dataset.valor || 0);
+  // Pagamentos (lancamentos débito) — respeita tab ativa
+  const curTabPag = (document.querySelector('.nb-tab-btn[data-panel="pag"].nb-tab-ativo') || {}).dataset?.tab || 'todos';
+  document.querySelectorAll('.nb-pag-item').forEach(r => {
+    const mesOk = !mes || r.dataset.mes === mes;
+    const tabOk = curTabPag === 'todos' || r.getAttribute('data-tab-pag') === curTabPag;
+    r.style.display = (mesOk && tabOk) ? '' : 'none';
+    if (mesOk) totSai += parseFloat(r.dataset.valor || 0);
   });
-  document.querySelectorAll('.ext-row-sai').forEach(r => {
-    const ok = !mes || r.dataset.mes === mes;
-    r.style.display = ok ? '' : 'none';
-    if (ok) totSai += parseFloat(r.dataset.valor || 0);
+
+  // Recebimentos (faturas) — respeita tab ativa
+  const curTabRec = (document.querySelector('.nb-tab-btn[data-panel="rec"].nb-tab-ativo') || {}).dataset?.tab || 'proximas';
+  document.querySelectorAll('.nb-rec-item').forEach(r => {
+    const mesOk = !mes || r.dataset.mes === mes;
+    const tabOk = r.getAttribute('data-tab-rec') === curTabRec;
+    r.style.display = (mesOk && tabOk) ? '' : 'none';
   });
+
+  // Extrato consolidado
   document.querySelectorAll('.ext-row-cons').forEach(r => {
     const ok = !mes || r.dataset.mes === mes;
     r.style.display = ok ? '' : 'none';
@@ -940,25 +923,18 @@ function filtrarExtrato() {
     }
   });
 
-  const elEnt   = document.getElementById('tot-entradas');
-  const elSai   = document.getElementById('tot-saidas');
   const elSaldo = document.getElementById('extrato-saldo');
-  if (elEnt)   elEnt.textContent  = fmtBrl(totEnt);
-  if (elSai)   elSai.textContent  = fmtBrl(totSai);
   if (elSaldo) {
     const s = totConsEnt - totConsSai;
     elSaldo.textContent = fmtBrl(s);
     elSaldo.style.color = s >= 0 ? '#16A34A' : '#DC2626';
   }
 
-  // Fluxo de caixa — resumo
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-
-  // Sincroniza chart com o dropdown (se o usuário mudou o dropdown manualmente)
+  // Sincroniza chart com o dropdown
   if (mes && _MESES.includes(mes) && _MESES[_fluxoMesIdx] !== mes) _sincronizarFluxo(mes);
 
-  // Saldo anterior: último ponto do fluxo antes deste mês (ou saldo_inicial se for o 1º)
   const saldoAnt = mes ? _dadosFluxoMes(mes).saldoAnt : _SALDO_INI;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('fluxo-saldo-ini', fmtBrl(saldoAnt));
   set('fluxo-ent', fmtBrl(totEnt));
   set('fluxo-sai', fmtBrl(totSai));
@@ -969,7 +945,6 @@ function filtrarExtrato() {
     elRes.style.color = res >= 0 ? '#16A34A' : '#DC2626';
   }
 
-  // Pie chart: atualiza para o mês filtrado
   atualizarPie(mes);
 }
 
