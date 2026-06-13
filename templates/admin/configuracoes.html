@@ -13,13 +13,16 @@
   {# ── Menu lateral ── #}
   <nav class="cfg-nav">
     <button class="cfg-nav-item ativo" data-tab="usuarios" onclick="cfgTab('usuarios',this)">
-      <span class="cfg-nav-icon">👥</span> Usuários
+      <svg class="cfg-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+      Usuários
     </button>
     <button class="cfg-nav-item" data-tab="novo_usuario" onclick="cfgTab('novo_usuario',this)">
-      <span class="cfg-nav-icon">＋</span> Novo usuário
+      <svg class="cfg-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M16 19h6"/><path d="M19 16v6"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4"/></svg>
+      Novo usuário
     </button>
     <button class="cfg-nav-item" data-tab="naturezas" onclick="cfgTab('naturezas',this)">
-      <span class="cfg-nav-icon">🏷</span> Naturezas
+      <svg class="cfg-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 21h-4.5a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v7"/><path d="M16 19h6"/><path d="M19 16v6"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+      Naturezas
     </button>
   </nav>
 
@@ -34,23 +37,26 @@
       {% for inv in investidores %}
       <div class="inv-card mb-12">
         <div class="inv-row">
+          <div class="inv-avatar">{{ (inv.nome or '?')[0]|upper }}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:14px;">{{ inv.nome }}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px;">
-              {{ inv.username or inv.email.replace('@portal.local','') if inv.email else '—' }}
+            <div style="font-weight:600;font-size:14px;color:var(--text);">{{ inv.nome }}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:1px;font-family:'Geist Mono',monospace;">
+              {{ inv.username or inv.email.replace('@portal.local','') if inv.email else '—' }}@investidor
             </div>
-            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
               {% if inv.usina_ids %}
                 {% for uid in inv.usina_ids %}
                   {% set _u = usinas | selectattr('id', 'equalto', uid) | first | default(None) %}
                   {% set _c = empresas_veiculos | selectattr('slug', 'equalto', uid) | first | default(None) %}
                   {% if _u %}
-                  <span class="badge badge-muted" style="font-size:10px;">
-                    <span style="color:var(--accent);margin-right:3px;">⚡</span>{{ _u.nome }}
+                  <span class="badge badge-verde" style="font-size:10px;gap:4px;">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/></svg>
+                    {{ _u.nome }}
                   </span>
                   {% elif _c %}
-                  <span class="badge badge-muted" style="font-size:10px;">
-                    <span style="color:#2563EB;margin-right:3px;">🚗</span>{{ _c.nome }}
+                  <span class="badge badge-azul" style="font-size:10px;gap:4px;">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+                    {{ _c.nome }}
                   </span>
                   {% endif %}
                 {% endfor %}
@@ -59,22 +65,25 @@
               {% endif %}
             </div>
           </div>
-          <div style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;flex-shrink:0;">
-            <button type="button" onclick="toggleAcesso('{{ inv.id }}')"
-                    class="btn btn-secondary btn-sm">Editar acesso</button>
-            <form method="POST"
-                  action="{{ url_for('admin.redefinir_senha', investidor_id=inv.id) }}"
-                  style="display:flex;gap:4px;align-items:center;">
-              <input type="password" name="nova_senha" placeholder="Nova senha"
-                     minlength="6"
-                     style="padding:5px 8px;font-size:12px;border:1px solid #E5E7EB;
-                            border-radius:6px;width:110px;" />
-              <button type="submit" class="btn btn-secondary btn-sm">Redefinir</button>
+          <div style="display:flex;gap:6px;align-items:flex-start;flex-shrink:0;">
+            <button type="button" onclick="toggleAcesso('{{ inv.id }}')" class="btn btn-secondary btn-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5h-5a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-5"/><path d="M15.232 2.232a2.828 2.828 0 0 1 4 4l-8.232 8.232l-4 1l1 -4z"/></svg>
+              Editar acesso
+            </button>
+            <form method="POST" action="{{ url_for('admin.redefinir_senha', investidor_id=inv.id) }}" style="display:flex;gap:4px;align-items:center;">
+              <input type="password" name="nova_senha" placeholder="Nova senha" minlength="6"
+                     style="padding:5px 8px;font-size:12px;width:110px;" />
+              <button type="submit" class="btn btn-secondary btn-sm">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/><path d="M12 16m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M8 11v-4a4 4 0 0 1 8 0v4"/></svg>
+                Redefinir
+              </button>
             </form>
-            <form method="POST"
-                  action="{{ url_for('admin.excluir_usuario', investidor_id=inv.id) }}"
+            <form method="POST" action="{{ url_for('admin.excluir_usuario', investidor_id=inv.id) }}"
                   onsubmit="return confirm('Excluir o usuário {{ inv.nome }}? Esta ação não pode ser desfeita.');">
-              <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+              <button type="submit" class="btn btn-danger btn-sm">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3h6v3"/></svg>
+                Excluir
+              </button>
             </form>
           </div>
         </div>
@@ -83,97 +92,148 @@
           <form method="POST" action="{{ url_for('admin.atualizar_acesso', investidor_id=inv.id) }}">
             <div class="acesso-cols">
               <div>
-                <div class="acesso-label">Investimentos com acesso</div>
+                <div class="acesso-label">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6"/><path d="M9 15h6"/></svg>
+                  Investimentos com acesso
+                </div>
                 {% if usinas or empresas_veiculos %}
-                <div class="checkboxes-grid" style="max-height:200px;">
+                <div class="toggle-list">
                   {% if usinas %}
-                  <div class="inv-grupo-label">⚡ Usinas</div>
+                  <div class="toggle-grupo-label">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/></svg>
+                    Usinas
+                  </div>
                   {% for usina in usinas %}
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="usina_ids" value="{{ usina.id }}"
-                      {{ 'checked' if usina.id in (inv.usina_ids or []) }} />
-                    <span>{{ usina.nome }}</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">{{ usina.nome }}</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="usina_ids" value="{{ usina.id }}"
+                        {{ 'checked' if usina.id in (inv.usina_ids or []) }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
                   {% endfor %}
                   {% endif %}
                   {% if empresas_veiculos %}
-                  <div class="inv-grupo-label" style="margin-top:6px;">🚗 Carros</div>
+                  <div class="toggle-grupo-label" style="margin-top:10px;">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+                    Carros
+                  </div>
                   {% for emp in empresas_veiculos %}
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="usina_ids" value="{{ emp.slug }}"
-                      {{ 'checked' if emp.slug in (inv.usina_ids or []) }} />
-                    <span>{{ emp.nome }}</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">{{ emp.nome }}</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="usina_ids" value="{{ emp.slug }}"
+                        {{ 'checked' if emp.slug in (inv.usina_ids or []) }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
                   {% endfor %}
                   {% endif %}
                 </div>
                 {% else %}
-                <div style="font-size:12px;color:var(--muted);">Nenhum investimento cadastrado.</div>
+                <div style="font-size:12px;color:var(--muted);padding:12px 0;">Nenhum investimento cadastrado.</div>
                 {% endif %}
               </div>
+
               <div>
-                <div class="acesso-label">Seções visíveis</div>
-                <div class="perms-grid">
-                  {% set cur_perms = inv.permissions or [] %}
-                  {% set all_checked = 'all' in cur_perms %}
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="visao_geral"
-                      {{ 'checked' if all_checked or 'visao_geral' in cur_perms }} />
-                    <span>Visão Geral</span>
+                <div class="acesso-label">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0 -18"/><path d="M9 12l2 2l4 -4"/></svg>
+                  Seções visíveis
+                </div>
+                {% set cur_perms = inv.permissions or [] %}
+                {% set all_checked = 'all' in cur_perms %}
+                <div class="toggle-list">
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Visão Geral</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="visao_geral"
+                        {{ 'checked' if all_checked or 'visao_geral' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="carros"
-                      {{ 'checked' if all_checked or 'carros' in cur_perms }} />
-                    <span>🚗 Carros</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Carros</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="carros"
+                        {{ 'checked' if all_checked or 'carros' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="socios"
-                      {{ 'checked' if all_checked or 'socios' in cur_perms }} />
-                    <span>Sócios</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Sócios</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="socios"
+                        {{ 'checked' if all_checked or 'socios' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="clientes"
-                      {{ 'checked' if all_checked or 'clientes' in cur_perms }} />
-                    <span>Clientes</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Clientes</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="clientes"
+                        {{ 'checked' if all_checked or 'clientes' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="extrato_bancario"
-                      {{ 'checked' if all_checked or 'extrato_bancario' in cur_perms or 'fluxo_de_caixa' in cur_perms }} />
-                    <span>Fluxo de Caixa</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Fluxo de Caixa</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="extrato_bancario"
+                        {{ 'checked' if all_checked or 'extrato_bancario' in cur_perms or 'fluxo_de_caixa' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="dre"
-                      {{ 'checked' if all_checked or 'dre' in cur_perms }} />
-                    <span>DRE</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">DRE</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="dre"
+                        {{ 'checked' if all_checked or 'dre' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 0 4px;">Dados Visuais</div>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="retorno_mensal"
-                      {{ 'checked' if all_checked or 'retorno_mensal' in cur_perms }} />
-                    <span>Retorno Mensal</span>
+                  <div class="toggle-subgrupo">Dados Visuais</div>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Retorno Mensal</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="retorno_mensal"
+                        {{ 'checked' if all_checked or 'retorno_mensal' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="energia"
-                      {{ 'checked' if all_checked or 'energia' in cur_perms }} />
-                    <span>Energia / Compensação</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Energia / Compensação</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="energia"
+                        {{ 'checked' if all_checked or 'energia' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="pnl"
-                      {{ 'checked' if all_checked or 'pnl' in cur_perms }} />
-                    <span>P&L da Usina</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">P&L da Usina</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="pnl"
+                        {{ 'checked' if all_checked or 'pnl' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="saldo_creditos"
-                      {{ 'checked' if all_checked or 'saldo_creditos' in cur_perms }} />
-                    <span>Saldo de Créditos kWh</span>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Saldo de Créditos kWh</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="saldo_creditos"
+                        {{ 'checked' if all_checked or 'saldo_creditos' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
                   </label>
                 </div>
               </div>
             </div>
-            <div style="margin-top:12px;display:flex;gap:8px;">
-              <button type="submit" class="btn btn-primary btn-sm">Salvar acesso</button>
-              <button type="button" onclick="toggleAcesso('{{ inv.id }}')"
-                      class="btn btn-ghost btn-sm">Cancelar</button>
+            <div style="margin-top:16px;display:flex;gap:8px;">
+              <button type="submit" class="btn btn-primary btn-sm">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>
+                Salvar acesso
+              </button>
+              <button type="button" onclick="toggleAcesso('{{ inv.id }}')" class="btn btn-ghost btn-sm">Cancelar</button>
             </div>
           </form>
         </div>
@@ -200,102 +260,127 @@
                      pattern="[a-zA-Z0-9._-]+" title="Apenas letras, números, ponto, hífen ou _" />
             </div>
           </div>
+
           <div class="form-group">
             <label>Tipo de acesso *</label>
-            <div style="display:flex; gap:12px; margin-top:4px;">
-              <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:13px; text-transform:none; letter-spacing:0; font-weight:400; color:var(--text);">
+            <div class="tipo-selector">
+              <label class="tipo-option" id="tipo-inv-label">
                 <input type="radio" name="tipo" value="investidor" checked
-                       onchange="document.getElementById('perms-section').style.display='block'" />
-                <span>@investidor <span style="color:var(--muted); font-size:11px;">— acesso limitado ao portal</span></span>
+                       onchange="document.getElementById('perms-section').style.display='block';document.getElementById('tipo-inv-label').classList.add('selecionado');document.getElementById('tipo-adm-label').classList.remove('selecionado')" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
+                <div>
+                  <div style="font-weight:600;font-size:13px;">@investidor</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:1px;">Acesso limitado ao portal</div>
+                </div>
               </label>
-              <label style="display:flex; align-items:center; gap:7px; cursor:pointer; font-size:13px; text-transform:none; letter-spacing:0; font-weight:400; color:var(--text);">
+              <label class="tipo-option" id="tipo-adm-label">
                 <input type="radio" name="tipo" value="admin"
-                       onchange="document.getElementById('perms-section').style.display='none'" />
-                <span>@admin <span style="color:var(--muted); font-size:11px;">— acesso total ao painel</span></span>
+                       onchange="document.getElementById('perms-section').style.display='none';document.getElementById('tipo-adm-label').classList.add('selecionado');document.getElementById('tipo-inv-label').classList.remove('selecionado')" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0 -18"/><path d="M9 12l2 2l4 -4"/></svg>
+                <div>
+                  <div style="font-weight:600;font-size:13px;">@admin</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:1px;">Acesso total ao painel</div>
+                </div>
               </label>
             </div>
           </div>
+
           <div class="form-group">
             <label>Senha inicial *</label>
             <input type="password" name="senha" minlength="8" required />
           </div>
 
           <div id="perms-section">
-          {% if usinas or empresas_veiculos %}
-          <div class="form-group">
-            <label>Investimentos com acesso <span style="font-weight:400;color:var(--muted);">(visualização)</span></label>
-            <div class="checkboxes-grid">
-              {% if usinas %}
-              <div class="inv-grupo-label">⚡ Usinas</div>
-              {% for usina in usinas %}
-              <label class="checkbox-item">
-                <input type="checkbox" name="usina_ids" value="{{ usina.id }}" />
-                <span>{{ usina.nome }}</span>
-              </label>
-              {% endfor %}
-              {% endif %}
-              {% if empresas_veiculos %}
-              <div class="inv-grupo-label" style="margin-top:6px;">🚗 Carros</div>
-              {% for emp in empresas_veiculos %}
-              <label class="checkbox-item">
-                <input type="checkbox" name="usina_ids" value="{{ emp.slug }}" />
-                <span>{{ emp.nome }}</span>
-              </label>
-              {% endfor %}
-              {% endif %}
+            {% if usinas or empresas_veiculos %}
+            <div class="form-group">
+              <label>Investimentos com acesso <span style="font-weight:400;color:var(--muted);text-transform:none;">(visualização)</span></label>
+              <div class="toggle-list" style="border:0.5px solid rgba(23,33,28,0.12);border-radius:10px;padding:12px 14px;background:var(--bg);">
+                {% if usinas %}
+                <div class="toggle-grupo-label">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/></svg>
+                  Usinas
+                </div>
+                {% for usina in usinas %}
+                <label class="toggle-item">
+                  <span class="toggle-item-label">{{ usina.nome }}</span>
+                  <span class="toggle">
+                    <input type="checkbox" name="usina_ids" value="{{ usina.id }}" />
+                    <span class="toggle-slider"></span>
+                  </span>
+                </label>
+                {% endfor %}
+                {% endif %}
+                {% if empresas_veiculos %}
+                <div class="toggle-grupo-label" style="margin-top:10px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+                  Carros
+                </div>
+                {% for emp in empresas_veiculos %}
+                <label class="toggle-item">
+                  <span class="toggle-item-label">{{ emp.nome }}</span>
+                  <span class="toggle">
+                    <input type="checkbox" name="usina_ids" value="{{ emp.slug }}" />
+                    <span class="toggle-slider"></span>
+                  </span>
+                </label>
+                {% endfor %}
+                {% endif %}
+              </div>
             </div>
-          </div>
-          {% endif %}
+            {% endif %}
 
-          <div class="form-group">
-            <label>Seções visíveis</label>
-            <div class="perms-grid">
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="visao_geral" checked />
-                <span>Visão Geral</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="carros" />
-                <span>🚗 Carros</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="socios" checked />
-                <span>Sócios</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="clientes" />
-                <span>Clientes</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="extrato_bancario" />
-                <span>Fluxo de Caixa</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="dre" />
-                <span>DRE</span>
-              </label>
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 0 4px;">Dados Visuais</div>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="retorno_mensal" />
-                <span>Retorno Mensal</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="energia" />
-                <span>Energia / Compensação</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="pnl" />
-                <span>P&L da Usina</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="saldo_creditos" />
-                <span>Saldo de Créditos kWh</span>
-              </label>
+            <div class="form-group">
+              <label>Seções visíveis</label>
+              <div class="toggle-list" style="border:0.5px solid rgba(23,33,28,0.12);border-radius:10px;padding:12px 14px;background:var(--bg);">
+                <label class="toggle-item">
+                  <span class="toggle-item-label">Visão Geral</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="visao_geral" checked /><span class="toggle-slider"></span></span>
+                </label>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">Carros</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="carros" /><span class="toggle-slider"></span></span>
+                </label>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">Sócios</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="socios" checked /><span class="toggle-slider"></span></span>
+                </label>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">Clientes</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="clientes" /><span class="toggle-slider"></span></span>
+                </label>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">Fluxo de Caixa</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="extrato_bancario" /><span class="toggle-slider"></span></span>
+                </label>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">DRE</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="dre" /><span class="toggle-slider"></span></span>
+                </label>
+                <div class="toggle-subgrupo">Dados Visuais</div>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">Retorno Mensal</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="retorno_mensal" /><span class="toggle-slider"></span></span>
+                </label>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">Energia / Compensação</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="energia" /><span class="toggle-slider"></span></span>
+                </label>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">P&L da Usina</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="pnl" /><span class="toggle-slider"></span></span>
+                </label>
+                <label class="toggle-item">
+                  <span class="toggle-item-label">Saldo de Créditos kWh</span>
+                  <span class="toggle"><input type="checkbox" name="permissions" value="saldo_creditos" /><span class="toggle-slider"></span></span>
+                </label>
+              </div>
             </div>
-          </div>
           </div>{# /perms-section #}
 
-          <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">Criar usuário</button>
+          <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>
+            Criar usuário
+          </button>
         </form>
       </div>
     </div>
@@ -308,7 +393,7 @@
       </p>
 
       <div class="tabela-wrap" style="margin-bottom:24px;">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr>
               <th class="nat-th">Cód.</th>
@@ -321,18 +406,19 @@
             {% for cat in categorias %}
             {% set cod = '01' if cat.tipo == 'receita' else '02' %}
             {% set em_uso = cat.id in cats_em_uso %}
-            <tr style="border-bottom:1px solid #F3F4F6;">
+            <tr style="border-bottom:0.5px solid rgba(23,33,28,0.07);">
               <td class="nat-td">
                 <span class="cod-badge {{ 'cod-01' if cod == '01' else 'cod-02' }}">{{ cod }}</span>
               </td>
               <td class="nat-td" style="font-weight:500;color:#111827;">{{ cat.nome }}</td>
-              <td class="nat-td" style="color:#6B7280;">{{ 'Entrada' if cat.tipo == 'receita' else 'Saída' }}</td>
+              <td class="nat-td" style="color:var(--muted);">{{ 'Entrada' if cat.tipo == 'receita' else 'Saída' }}</td>
               <td class="nat-td" style="text-align:right;">
-                <form method="POST"
-                      action="{{ url_for('admin.natureza_excluir', cat_id=cat.id) }}"
+                <form method="POST" action="{{ url_for('admin.natureza_excluir', cat_id=cat.id) }}"
                       onsubmit="return confirmarExclusaoNatureza(this, '{{ cat.nome }}', {{ 'true' if em_uso else 'false' }});">
-                  <button type="submit" class="btn btn-danger btn-sm"
-                          style="font-size:11px;padding:3px 10px;">Excluir</button>
+                  <button type="submit" class="btn btn-danger btn-sm" style="font-size:11px;padding:3px 10px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3h6v3"/></svg>
+                    Excluir
+                  </button>
                 </form>
               </td>
             </tr>
@@ -350,12 +436,15 @@
         </div>
         <div class="form-group" style="margin:0;min-width:160px;">
           <label>Tipo</label>
-          <select name="tipo" style="height:38px;width:100%;border:1px solid #E5E7EB;border-radius:6px;padding:0 10px;font-size:13px;">
+          <select name="tipo">
             <option value="receita">01 — Entrada</option>
             <option value="despesa">02 — Saída</option>
           </select>
         </div>
-        <button type="submit" class="btn btn-primary btn-sm" style="height:38px;white-space:nowrap;">+ Adicionar</button>
+        <button type="submit" class="btn btn-primary btn-sm" style="height:38px;white-space:nowrap;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          Adicionar
+        </button>
       </form>
     </div>
 
@@ -366,142 +455,143 @@
 
 {% block scripts %}
 <style>
-/* Layout */
-.cfg-layout {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
+/* ── Layout ── */
+.cfg-layout { display: flex; gap: 24px; align-items: flex-start; }
+
 .cfg-nav {
-  width: 200px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: #fff;
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  padding: 8px;
-  position: sticky;
-  top: 80px;
+  width: 196px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--bg); border: 0.5px solid rgba(23,33,28,0.12);
+  border-radius: 14px; padding: 8px;
+  position: sticky; top: 80px;
+  box-shadow: var(--shadow);
 }
 .cfg-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border: none;
-  background: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  text-align: left;
-  transition: background .12s, color .12s;
-  width: 100%;
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 13px; border: none; background: none;
+  border-radius: 9px; font-size: 13px; font-weight: 500;
+  color: var(--muted); cursor: pointer; text-align: left;
+  transition: background .12s, color .12s; width: 100%;
+  font-family: inherit;
 }
-.cfg-nav-item:hover { background: #F3F4F6; }
-.cfg-nav-item.ativo { background: #FFF3E8; color: #E8621A; font-weight: 700; }
-.cfg-nav-icon { font-size: 15px; }
+.cfg-nav-item:hover { background: var(--bg2); color: var(--text); }
+.cfg-nav-item.ativo { background: rgba(29,158,117,.08); color: var(--accent2); font-weight: 600; }
+.cfg-nav-item.ativo .cfg-nav-icon { color: var(--accent); }
+.cfg-nav-icon { width: 16px; height: 16px; flex-shrink: 0; }
+
 .cfg-body { flex: 1; min-width: 0; }
-.cfg-tab { }
 .cfg-section-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 16px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #E5E7EB;
+  font-size: 14px; font-weight: 600; color: var(--text);
+  margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 0.5px solid rgba(23,33,28,0.10);
+  display: flex; align-items: center; gap: 8px;
 }
 
-/* Naturezas table */
+/* ── Toggle switch ── */
+.toggle {
+  position: relative; display: inline-flex;
+  width: 38px; height: 22px; flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: rgba(23,33,28,0.14); border-radius: 22px;
+  cursor: pointer; transition: background .2s;
+}
+.toggle-slider::before {
+  content: ""; position: absolute;
+  height: 16px; width: 16px;
+  left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%;
+  transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18);
+}
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+/* ── Toggle list ── */
+.toggle-list { display: flex; flex-direction: column; gap: 0; }
+.toggle-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 0; border-bottom: 0.5px solid rgba(23,33,28,0.06);
+  cursor: pointer; gap: 12px;
+}
+.toggle-item:last-child { border-bottom: none; padding-bottom: 0; }
+.toggle-item:first-child { padding-top: 0; }
+.toggle-item-label { font-size: 13px; color: var(--text); flex: 1; }
+.toggle-grupo-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--accent2);
+  padding: 6px 0 4px; opacity: .75;
+}
+.toggle-subgrupo {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted);
+  padding: 12px 0 4px;
+}
+
+/* ── User card ── */
+.inv-card {
+  border: 0.5px solid rgba(23,33,28,0.12);
+  border-radius: 14px; overflow: hidden;
+  background: var(--bg); box-shadow: var(--shadow);
+}
+.inv-row {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 16px 20px;
+}
+.inv-avatar {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 50%; background: rgba(29,158,117,.12);
+  color: var(--accent2); font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.acesso-panel {
+  display: none; padding: 16px 20px;
+  border-top: 0.5px solid rgba(23,33,28,0.08);
+  background: var(--bg2);
+}
+.acesso-panel.aberto { display: block; }
+.acesso-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media(max-width: 720px) { .acesso-cols { grid-template-columns: 1fr; } }
+.acesso-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); margin-bottom: 10px;
+}
+
+/* ── Tipo selector ── */
+.tipo-selector { display: flex; gap: 10px; margin-top: 4px; }
+.tipo-option {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border: 0.5px solid rgba(23,33,28,0.14);
+  border-radius: 10px; cursor: pointer; transition: border-color .15s, background .15s;
+  color: var(--text);
+}
+.tipo-option input[type=radio] { display: none; }
+.tipo-option:hover { border-color: rgba(29,158,117,.35); background: rgba(29,158,117,.03); }
+.tipo-option.selecionado { border-color: var(--accent); background: rgba(29,158,117,.06); }
+.tipo-option svg { color: var(--accent); flex-shrink: 0; }
+
+/* ── Naturezas table ── */
 .nat-th {
-  text-align: left;
-  padding: 9px 14px;
-  background: #F9FAFB;
-  border-bottom: 1px solid #E5E7EB;
-  font-size: 11px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  font-weight: 600;
+  text-align: left; padding: 9px 16px;
+  background: var(--bg2); border-bottom: 0.5px solid rgba(23,33,28,0.08);
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .04em; font-weight: 600;
 }
-.nat-td { padding: 10px 14px; vertical-align: middle; }
-.cod-badge {
-  font-size: 11px; font-weight: 700;
-  padding: 2px 9px; border-radius: 10px;
-}
+.nat-td { padding: 10px 16px; vertical-align: middle; }
+.cod-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; }
 .cod-01 { background: #ECFDF5; color: #059669; }
 .cod-02 { background: #FEF2F2; color: #DC2626; }
 
-/* Shared */
-.checkboxes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 6px;
-  margin-top: 8px;
-  max-height: 180px;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px;
-  background: #FAFAFA;
-}
-.perms-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #FAFAFA;
-}
-.perms-grid .checkbox-item { min-width: 130px; }
-.checkbox-item {
-  display: flex; align-items: center; gap: 7px; font-size: 13px;
-  cursor: pointer; padding: 4px 6px; border-radius: 4px;
-  transition: background .1s;
-}
-.checkbox-item:hover { background: #F0F1F5; }
-.checkbox-item input[type="checkbox"] { accent-color: var(--accent); }
-
-.inv-card {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  background: #fff;
-}
-.inv-row {
-  display: flex; align-items: flex-start; gap: 16px;
-  padding: 16px 20px;
-}
-.acesso-panel {
-  display: none;
-  padding: 16px 20px;
-  border-top: 1px solid var(--border);
-  background: #F9FAFB;
-}
-.acesso-panel.aberto { display: block; }
-.acesso-cols {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
-}
-@media(max-width: 720px) { .acesso-cols { grid-template-columns: 1fr; } }
-.acesso-label {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--muted); margin-bottom: 4px;
-}
 .mb-12 { margin-bottom: 12px; }
-.inv-grupo-label {
-  grid-column: 1 / -1;
-  font-size: 10px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--muted);
-  padding: 2px 0 4px;
-}
+
 @media(max-width: 680px) {
   .cfg-layout { flex-direction: column; }
   .cfg-nav { width: 100%; flex-direction: row; flex-wrap: wrap; position: static; }
+  .tipo-selector { flex-direction: column; }
 }
 </style>
 
@@ -515,8 +605,7 @@ function cfgTab(id, btn) {
 }
 
 function toggleAcesso(id) {
-  const el = document.getElementById('acesso-' + id);
-  el.classList.toggle('aberto');
+  document.getElementById('acesso-' + id).classList.toggle('aberto');
 }
 
 function confirmarExclusaoNatureza(form, nome, emUso) {
@@ -532,6 +621,8 @@ function confirmarExclusaoNatureza(form, nome, emUso) {
   const h = window.location.hash.replace('#', '');
   const btn = document.querySelector('.cfg-nav-item[data-tab="' + h + '"]');
   if (btn) cfgTab(h, btn);
+  // Marcar tipo-inv-label como selecionado por padrão
+  document.getElementById('tipo-inv-label').classList.add('selecionado');
 })();
 </script>
 {% endblock %}
