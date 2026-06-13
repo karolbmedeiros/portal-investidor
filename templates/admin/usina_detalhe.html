@@ -751,7 +751,8 @@
 .dtab-link:hover { color:var(--accent2); }
 .dtab-link.ativo { color:var(--accent2); border-bottom-color:var(--accent); font-weight:500; }
 .dtab-content { display:none; }
-.dtab-content.ativo { display:block; }
+.dtab-content.ativo { display:block; animation: dtabIn .18s ease; }
+@keyframes dtabIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 
 /* ── KPI ── */
 .kpi-filter { display:flex; align-items:center; gap:12px; margin-bottom:20px; }

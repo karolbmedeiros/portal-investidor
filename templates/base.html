@@ -237,6 +237,9 @@
       .topnav-nav a span { display: none; }
       .admin-main { padding: 20px 16px 40px; }
     }
+    .dtab-content { display:none; }
+    .dtab-content.ativo { display:block; animation: dtabIn .18s ease; }
+    @keyframes dtabIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   </style>
 </head>
 <body>
@@ -293,6 +296,34 @@ document.addEventListener("click", function(e) {
     next.style.display = next.style.display === "table-row" ? "none" : "table-row";
   }
 });
+
+(function(){
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('.dtab-link');
+    if (!link || link.classList.contains('desabilitado')) return;
+    var bar = link.closest('.dtab-bar');
+    if (!bar) return;
+    var href = link.getAttribute('href');
+    if (!href || href === '#') return;
+    try {
+      var url = new URL(href, location.href);
+      if (url.pathname !== location.pathname) return;
+      var tabParam = url.searchParams.get('tab') || 'visao_geral';
+      var targets = document.querySelectorAll('[data-tab="' + tabParam + '"]');
+      if (!targets.length) {
+        var single = document.getElementById('tab-' + tabParam);
+        if (!single) return;
+        targets = [single];
+      }
+      e.preventDefault();
+      bar.querySelectorAll('.dtab-link').forEach(function(l) { l.classList.remove('ativo'); });
+      link.classList.add('ativo');
+      document.querySelectorAll('.dtab-content').forEach(function(c) { c.classList.remove('ativo'); });
+      targets.forEach(function(t) { t.classList.add('ativo'); });
+      history.pushState(null, '', href);
+    } catch(_) {}
+  });
+})();
 </script>
 {% block scripts %}{% endblock %}
 </body>

@@ -114,7 +114,7 @@
 </div>
 {% endif %}
 
-{% if tab == 'visao_geral' %}
+<div id="tab-visao_geral" data-tab="visao_geral" class="dtab-content {{ 'ativo' if tab == 'visao_geral' }}">
 <!-- ── Métricas + chart ── -->
 <section class="db-top">
 
@@ -299,9 +299,9 @@
 
 </section>
 
-{% endif %}{# /visao_geral métricas #}
+</div>{# /tab-visao_geral pt1 #}
 
-{% if tab == 'retorno_mensal' %}
+<div id="tab-retorno_mensal" data-tab="retorno_mensal" class="dtab-content {{ 'ativo' if tab == 'retorno_mensal' }}">
 <div style="padding-top:4px;">
   {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
   {% if retorno_mensal %}
@@ -349,9 +349,9 @@
     </section>
   {% else %}<div class="vazio">Sem dados de retorno para esta usina.</div>{% endif %}
 </div>
-{% endif %}
+</div>{# /tab-retorno_mensal #}
 
-{% if tab == 'energia' %}
+<div id="tab-energia" data-tab="energia" class="dtab-content {{ 'ativo' if tab == 'energia' }}">
 <div style="padding-top:4px;">
   {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
   {% if leituras_det %}
@@ -396,9 +396,9 @@
     </section>
   {% else %}<div class="vazio">Sem leituras cadastradas para esta usina.</div>{% endif %}
 </div>
-{% endif %}
+</div>{# /tab-energia #}
 
-{% if tab == 'pnl' %}
+<div id="tab-pnl" data-tab="pnl" class="dtab-content {{ 'ativo' if tab == 'pnl' }}">
 <div style="padding-top:4px;">
   {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
   {% if pnl %}
@@ -451,9 +451,9 @@
     </section>
   {% else %}<div class="vazio">Sem dados de P&L para esta usina.</div>{% endif %}
 </div>
-{% endif %}
+</div>{# /tab-pnl #}
 
-{% if tab == 'saldo_creditos' %}
+<div id="tab-saldo_creditos" data-tab="saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}">
 <div style="padding-top:4px;">
   {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
   {% if saldo_creditos %}
@@ -486,9 +486,9 @@
     </section>
   {% else %}<div class="vazio">Sem dados de saldo de créditos.</div>{% endif %}
 </div>
-{% endif %}
+</div>{# /tab-saldo_creditos #}
 
-{% if tab == 'visao_geral' %}
+<div id="tab-visao_geral-2" data-tab="visao_geral" class="dtab-content {{ 'ativo' if tab == 'visao_geral' }}">
 <!-- ── Contas a Receber ── -->
 <section class="card mt-16">
   <div class="db-list-header" style="margin-bottom:16px;">
@@ -554,7 +554,7 @@
   </div>
   {% endif %}
 </section>
-{% endif %}{# /visao_geral faturas #}
+</div>{# /tab-visao_geral pt2 #}
 
 {% endblock %}
 
