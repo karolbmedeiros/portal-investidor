@@ -24,7 +24,7 @@
       --red:     #D94040;
       --radius:  12px;
       --shadow:  0 1px 3px rgba(0,0,0,.05);
-      --sidebar: 236px;
+      --topnav:  56px;
     }
     html, body { height: 100%; }
     body {
@@ -36,62 +36,69 @@
     a { color: var(--accent); text-decoration: none; }
     svg { flex: none; }
 
-    /* ── Layout: sidebar + main ── */
-    .admin-shell { display: flex; min-height: 100vh; }
+    /* ── Layout: topnav + main ── */
+    .admin-shell { display: flex; flex-direction: column; min-height: 100vh; }
 
-    /* ── Sidebar ── */
-    .sidebar {
-      width: var(--sidebar); flex: none;
-      position: sticky; top: 0; height: 100vh;
-      background: var(--bg); border-right: 0.5px solid rgba(23,33,28,0.10);
-      display: flex; flex-direction: column;
-      padding: 22px 14px; overflow-y: auto;
+    /* ── Topnav ── */
+    .topnav {
+      height: var(--topnav); flex: none;
+      position: sticky; top: 0; z-index: 100;
+      background: var(--bg); border-bottom: 0.5px solid rgba(23,33,28,0.10);
+      display: flex; align-items: center; gap: 0;
+      padding: 0 40px;
     }
-    .sidebar-logo {
-      padding: 4px 10px 20px;
+
+    /* Logo */
+    .topnav-logo {
+      display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+      padding-right: 24px; border-right: 0.5px solid rgba(23,33,28,0.10);
+      margin-right: 16px; text-decoration: none; flex: none;
     }
-    .sidebar-logo-text {
-      font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: var(--text);
+    .topnav-logo-text {
+      font-size: 18px; font-weight: 500; letter-spacing: -0.02em; color: var(--text);
+      line-height: 1;
     }
-    .sidebar-logo-dot { color: var(--accent); }
-    .sidebar-logo-sub {
-      font-family: "Geist Mono", monospace; font-size: 9px; font-weight: 400;
-      letter-spacing: 0.24em; color: var(--muted); text-transform: uppercase; margin-top: 3px;
+    .topnav-logo-dot { color: var(--accent); }
+    .topnav-logo-sub {
+      font-family: "Geist Mono", monospace; font-size: 8px; font-weight: 400;
+      letter-spacing: 0.22em; color: var(--muted); text-transform: uppercase; margin-top: 3px;
     }
-    .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
-    .sidebar-nav a {
-      display: flex; align-items: center; gap: 11px;
-      padding: 9px 11px; border-radius: 10px;
-      font-size: 13.5px; font-weight: 400; color: #5C655F;
-      text-decoration: none; transition: background .12s, color .12s;
+
+    /* Nav links */
+    .topnav-nav { display: flex; align-items: center; gap: 1px; }
+    .topnav-nav a {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 11px; border-radius: 8px;
+      font-size: 13px; font-weight: 400; color: #5C655F;
+      text-decoration: none; white-space: nowrap;
+      transition: background .12s, color .12s;
     }
-    .sidebar-nav a:hover { background: var(--bg2); color: var(--text); }
-    .sidebar-nav a.ativo { background: #EAF6F1; color: var(--accent2); font-weight: 500; }
-    .sidebar-nav a svg { color: currentColor; }
-    .sidebar-nav a.desabilitado {
-      opacity: .35; pointer-events: none; cursor: default;
+    .topnav-nav a:hover { background: var(--bg2); color: var(--text); }
+    .topnav-nav a.ativo { background: #EAF6F1; color: var(--accent2); font-weight: 500; }
+    .topnav-nav a svg { color: currentColor; }
+    .topnav-nav a.desabilitado { opacity: .35; pointer-events: none; cursor: default; }
+
+    /* User section */
+    .topnav-user {
+      display: flex; align-items: center; gap: 8px;
+      padding-left: 16px; border-left: 0.5px solid rgba(23,33,28,0.10);
+      margin-left: auto; flex: none;
     }
-    .sidebar-footer {
-      margin-top: auto; padding-top: 16px;
-      border-top: 0.5px solid rgba(23,33,28,0.10);
-      display: flex; align-items: center; gap: 10px;
-    }
-    .sidebar-avatar {
-      width: 36px; height: 36px; flex: none; border-radius: 50%;
+    .topnav-avatar {
+      width: 30px; height: 30px; flex: none; border-radius: 50%;
       background: var(--accent); color: #fff;
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 500;
+      font-size: 11px; font-weight: 500;
     }
-    .sidebar-user-nome { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sidebar-user-role { font-size: 11px; color: var(--muted); }
-    .sidebar-logout { margin-left: auto; flex: none; color: var(--muted); display: flex; align-items: center; text-decoration: none; }
-    .sidebar-logout:hover { color: #e05555; }
+    .topnav-user-nome { font-size: 12.5px; font-weight: 500; color: var(--text); white-space: nowrap; }
+    .topnav-user-role { font-size: 10.5px; color: var(--muted); }
+    .topnav-logout { color: var(--muted); display: flex; align-items: center; text-decoration: none; padding: 4px; border-radius: 6px; transition: color .12s; margin-left: 4px; }
+    .topnav-logout:hover { color: #e05555; }
 
     /* ── Main ── */
     .admin-main {
       flex: 1; min-width: 0;
-      padding: 28px 36px 56px;
-      max-width: 1080px;
+      padding: 28px 40px 56px;
     }
 
     /* ── Flash ── */
@@ -238,7 +245,7 @@
     .code-block { background: var(--bg2); border: 0.5px solid rgba(23,33,28,0.12); border-radius: 8px; padding: 14px 16px; font-family: "Geist Mono", monospace; font-size: 12px; line-height: 1.7; overflow-x: auto; }
 
     @media(max-width:900px){
-      .sidebar { display: none; }
+      .topnav-nav a span { display: none; }
       .admin-main { padding: 20px 16px 40px; }
     }
   </style>
@@ -246,13 +253,13 @@
 <body>
 <div class="admin-shell">
 
-  <!-- ── Sidebar ── -->
-  <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-text">Gestora<span class="sidebar-logo-dot">.</span></div>
-      <div class="sidebar-logo-sub">by Ativuz</div>
-    </div>
+  <!-- ── Topnav ── -->
+  <nav class="topnav">
 
+    <a class="topnav-logo" href="{{ url_for('admin.dashboard') }}">
+      <div class="topnav-logo-text">Gestora<span class="topnav-logo-dot">.</span></div>
+      <div class="topnav-logo-sub">by Ativuz</div>
+    </a>
 
     {# ── Detecta tipo de ativo na sessão ── #}
     {% set _ativo_tipo = session.get('ativo_tipo', '') %}
@@ -262,21 +269,21 @@
       {% set _ativo_id   = ativo_selecionado.id %}
     {% endif %}
 
-    <nav class="sidebar-nav">
+    <div class="topnav-nav">
 
       {# 1 — Dashboard #}
       <a href="{{ url_for('admin.dashboard') }}"
          class="{{ 'ativo' if request.endpoint == 'admin.dashboard' }}">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v8h-6z"/><path d="M4 16h6v4h-6z"/><path d="M14 12h6v8h-6z"/><path d="M14 4h6v4h-6z"/></svg>
-        Dashboard
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v8h-6z"/><path d="M4 16h6v4h-6z"/><path d="M14 12h6v8h-6z"/><path d="M14 4h6v4h-6z"/></svg>
+        <span>Dashboard</span>
       </a>
 
       {# 2 — Portfólio de usinas: oculto quando carro selecionado #}
       {% if _ativo_tipo != 'carro' %}
       <a href="{{ url_for('admin.portfolio_usinas') }}"
          class="{{ 'ativo' if request.endpoint == 'admin.portfolio_usinas' }}">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
-        Portfólio de usinas
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
+        <span>Usinas</span>
       </a>
       {% endif %}
 
@@ -284,12 +291,12 @@
       {% if _ativo_tipo != 'usina' %}
       <a href="{{ url_for('admin.portfolio_carros') }}"
          class="{{ 'ativo' if request.endpoint == 'admin.portfolio_carros' }}">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
-        Portfólio de carros
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+        <span>Carros</span>
       </a>
       {% endif %}
 
-      {# 4 — Fluxo de Caixa: usina → tab extrato; sem seleção → rota global #}
+      {# 4 — Fluxo de Caixa #}
       {% if _ativo_tipo == 'usina' and _ativo_id %}
         {% set _url_fluxo = url_for('admin.usina_detalhe', usina_id=_ativo_id, tab='extrato') %}
         {% set _fluxo_ativo = request.endpoint in ('admin.fluxo_de_caixa','admin.fluxo_importar') or (request.endpoint == 'admin.usina_detalhe' and request.args.get('tab') == 'extrato') %}
@@ -297,13 +304,12 @@
         {% set _url_fluxo = url_for('admin.fluxo_de_caixa') %}
         {% set _fluxo_ativo = request.endpoint in ('admin.fluxo_de_caixa','admin.fluxo_importar') %}
       {% endif %}
-      <a href="{{ _url_fluxo }}"
-         class="{{ 'ativo' if _fluxo_ativo }}">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l0 18"/><path d="M3 18l4 -4l4 4l4 -4l4 4"/><path d="M3 12l4 -4l4 4l4 -4l4 4"/></svg>
-        Fluxo de Caixa
+      <a href="{{ _url_fluxo }}" class="{{ 'ativo' if _fluxo_ativo }}">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l0 18"/><path d="M3 18l4 -4l4 4l4 -4l4 4"/><path d="M3 12l4 -4l4 4l4 -4l4 4"/></svg>
+        <span>Fluxo de Caixa</span>
       </a>
 
-      {# 5 — Sócios: só navega quando usina selecionada #}
+      {# 5 — Sócios #}
       {% if _ativo_tipo == 'usina' and _ativo_id %}
         {% set _url_socios = url_for('admin.usina_detalhe', usina_id=_ativo_id, tab='socios') %}
       {% else %}
@@ -311,8 +317,8 @@
       {% endif %}
       <a href="{{ _url_socios }}"
          class="{{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and request.args.get('tab','socios') == 'socios' }} {{ 'desabilitado' if not _ativo_id or _ativo_tipo != 'usina' }}">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
-        Sócios
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+        <span>Sócios</span>
       </a>
 
       {# 6 — Clientes #}
@@ -323,8 +329,8 @@
       {% endif %}
       <a href="{{ _url_clientes }}"
          class="{{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and request.args.get('tab') == 'clientes' }} {{ 'desabilitado' if not _ativo_id or _ativo_tipo != 'usina' }}">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
-        Clientes
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
+        <span>Clientes</span>
       </a>
 
       {# 7 — DRE #}
@@ -335,33 +341,34 @@
       {% endif %}
       <a href="{{ _url_dre }}"
          class="{{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and request.args.get('tab') == 'dre' }} {{ 'desabilitado' if not _ativo_id or _ativo_tipo != 'usina' }}">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
-        DRE
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+        <span>DRE</span>
       </a>
 
       {# 8 — Configurações #}
       <a href="{{ url_for('admin.configuracoes') }}"
          class="{{ 'ativo' if 'configuracoes' in request.endpoint or 'usuario' in request.endpoint or 'redefinir' in request.endpoint or 'excluir_usuario' in request.endpoint }}">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
-        Configurações
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
+        <span>Configurações</span>
       </a>
 
-    </nav>
+    </div>{# /topnav-nav #}
 
-    <div class="sidebar-footer">
+    <!-- User + logout -->
+    <div class="topnav-user">
       {% if usuario %}
       {% set _iniciais = '' %}
       {% set _partes = (usuario.nome or '').strip().split() %}
       {% if _partes|length >= 2 %}{% set _iniciais = (_partes[0][0] + _partes[-1][0])|upper %}
       {% elif _partes|length == 1 %}{% set _iniciais = _partes[0][:2]|upper %}
       {% else %}{% set _iniciais = 'AD' %}{% endif %}
-      <div class="sidebar-avatar">{{ _iniciais }}</div>
-      <div style="min-width:0;">
-        <div class="sidebar-user-nome">{{ usuario.nome or usuario.email }}</div>
-        <div class="sidebar-user-role">Admin · Gestora</div>
+      <div class="topnav-avatar">{{ _iniciais }}</div>
+      <div>
+        <div class="topnav-user-nome">{{ usuario.nome or usuario.email }}</div>
+        <div class="topnav-user-role">Admin · Gestora</div>
       </div>
-      <a href="{{ url_for('auth.logout_page') }}" class="sidebar-logout" title="Sair">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <a href="{{ url_for('auth.logout_page') }}" class="topnav-logout" title="Sair">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
           <polyline points="16 17 21 12 16 7"/>
           <line x1="21" y1="12" x2="9" y2="12"/>
@@ -369,7 +376,8 @@
       </a>
       {% endif %}
     </div>
-  </aside>
+
+  </nav>
 
   <!-- ── Main ── -->
   <main class="admin-main">
