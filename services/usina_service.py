@@ -195,15 +195,65 @@ def leituras_da_usina(usina_id: str, limite: int = 12) -> list:
 
 def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
     sb = get_service_client()
-    res = (
-        sb.table("v_pnl_usina_mensal")
-        .select("*")
-        .eq("usina_id", usina_id)
-        .order("ref_mes_ano", desc=True)
-        .limit(limite)
-        .execute()
-    )
-    return [r for r in (res.data or []) if r.get("ref_mes_ano")]
+
+    # Despesas da view (custo_*, kwh_faturado, qtd_faturas)
+    view_rows = {
+        str(r["ref_mes_ano"])[:7]: r
+        for r in (sb.table("v_pnl_usina_mensal")
+                    .select("*")
+                    .eq("usina_id", usina_id)
+                    .order("ref_mes_ano", desc=True)
+                    .limit(limite)
+                    .execute().data or [])
+        if r.get("ref_mes_ano")
+    }
+
+    # Receita = créditos bancários de mesma titularidade
+    usina_row = (sb.table("usinas")
+                   .select("razao_social,nome_fantasia")
+                   .eq("id", usina_id).execute().data or [{}])[0]
+    razao = (usina_row.get("razao_social") or usina_row.get("nome_fantasia") or "")
+    razao_titular = razao[:8]   # para achar a conta bancária
+    razao_desc    = razao[:12]  # para filtrar créditos na descrição
+
+    contas = (sb.from_("contas_bancarias").select("id")
+                .ilike("titular_nome", f"%{razao_titular}%")
+                .execute().data or [])
+
+    receita_por_mes: dict = {}
+    for conta in contas:
+        lancs = (sb.table("lancamentos_bancarios")
+                   .select("mes_competencia,data_transacao,valor")
+                   .eq("conta_bancaria_id", conta["id"])
+                   .eq("tipo", "credito")
+                   .ilike("descricao", f"%{razao_desc}%")
+                   .execute().data or [])
+        for l in lancs:
+            mes = (l.get("mes_competencia") or l.get("data_transacao") or "")[:7]
+            if mes:
+                receita_por_mes[mes] = receita_por_mes.get(mes, 0) + abs(l.get("valor") or 0)
+
+    # Monta resultado unificando os dois conjuntos de meses
+    todos_meses = sorted(set(list(view_rows.keys()) + list(receita_por_mes.keys())), reverse=True)[:limite]
+    result = []
+    for mes in todos_meses:
+        base = dict(view_rows.get(mes, {
+            "usina_id": usina_id, "usina": razao,
+            "ref_mes_ano": mes + "-01",
+            "total_despesas": 0, "kwh_faturado": 0, "qtd_faturas": 0,
+            "custo_emprestimo": 0, "custo_aluguel": 0, "custo_contabilidade": 0,
+            "custo_impostos": 0, "custo_cosern": 0, "custo_taxa_admin": 0,
+            "custo_seguro": 0, "custo_outros": 0,
+        }))
+        receita      = round(receita_por_mes.get(mes, 0), 2)
+        total_desp   = round(base.get("total_despesas") or 0, 2)
+        resultado    = round(receita - total_desp, 2)
+        base["receita_bruta"]     = receita
+        base["resultado_liquido"] = resultado
+        base["margem_liquida"]    = round(resultado / receita, 4) if receita else None
+        result.append(base)
+
+    return result
 
 
 def retorno_mensal_investidor(usina_id: str, investidor_id: str = None) -> list:
