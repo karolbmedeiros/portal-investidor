@@ -30,17 +30,25 @@ def home():
     ativos = [{"id": us["id"], "nome": us["nome"], "tipo": "usina"} for us in all_usinas]
 
     # Filtro por ativo selecionado
-    ativo_id = request.args.get("ativo_id", "")
+    # Atualiza sessão apenas quando há seleção explícita no dropdown
+    if "ativo_id" in request.args:
+        ativo_id = request.args.get("ativo_id", "")
+        ativo_selecionado = next((a for a in ativos if a["id"] == ativo_id), None)
+        if ativo_selecionado:
+            _sess["inv_ativo_id"]   = ativo_selecionado["id"]
+            _sess["inv_ativo_nome"] = ativo_selecionado["nome"]
+        else:
+            _sess.pop("inv_ativo_id",   None)
+            _sess.pop("inv_ativo_nome", None)
+    else:
+        # Sem seleção explícita: preserva sessão ou auto-seleciona se tiver uma só usina
+        ativo_id = _sess.get("inv_ativo_id", "")
+        if not ativo_id and len(all_usinas) == 1:
+            ativo_id = all_usinas[0]["id"]
+            _sess["inv_ativo_id"]   = ativo_id
+            _sess["inv_ativo_nome"] = all_usinas[0].get("nome", "")
+
     ativo_selecionado = next((a for a in ativos if a["id"] == ativo_id), None)
-
-    # Persiste seleção na sessão (igual ao admin)
-    if ativo_selecionado:
-        _sess["inv_ativo_id"]   = ativo_selecionado["id"]
-        _sess["inv_ativo_nome"] = ativo_selecionado["nome"]
-    elif not ativo_id:
-        _sess.pop("inv_ativo_id",   None)
-        _sess.pop("inv_ativo_nome", None)
-
     usinas = [us for us in all_usinas if us["id"] == ativo_id] if ativo_id else all_usinas
     partic_vis = [p for p in partic if not ativo_id or p["usina_id"] == ativo_id]
 
