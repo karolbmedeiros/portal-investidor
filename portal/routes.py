@@ -122,6 +122,30 @@ def home():
     except Exception:
         pass
 
+    # Dados visuais — só busca se tiver usina selecionada e permissão
+    from services.usina_service import (
+        retorno_mensal_investidor, leituras_detalhadas,
+        saldo_creditos_da_usina, pnl_da_usina,
+    )
+    perms     = u.get("permissions", [])
+    all_perms = "all" in perms
+
+    home_tabs = ["visao_geral"]
+    if ativo_id:
+        if all_perms or "retorno_mensal" in perms: home_tabs.append("retorno_mensal")
+        if all_perms or "energia"        in perms: home_tabs.append("energia")
+        if all_perms or "pnl"            in perms: home_tabs.append("pnl")
+        if all_perms or "saldo_creditos" in perms: home_tabs.append("saldo_creditos")
+
+    tab = request.args.get("tab", "visao_geral")
+    if tab not in home_tabs:
+        tab = "visao_geral"
+
+    retorno_mensal = retorno_mensal_investidor(ativo_id) if ativo_id and "retorno_mensal" in home_tabs else []
+    leituras_det   = leituras_detalhadas(ativo_id)       if ativo_id and "energia"        in home_tabs else []
+    pnl            = pnl_da_usina(ativo_id)              if ativo_id and "pnl"            in home_tabs else []
+    saldo_creditos = saldo_creditos_da_usina(ativo_id)   if ativo_id and "saldo_creditos" in home_tabs else []
+
     return render_template(
         "portal/home.html",
         usinas=usinas,
@@ -136,6 +160,12 @@ def home():
         ativo_id=ativo_id,
         ativo_selecionado=ativo_selecionado,
         usuario=u,
+        tab=tab,
+        home_tabs=home_tabs,
+        retorno_mensal=retorno_mensal,
+        leituras_det=leituras_det,
+        pnl=pnl,
+        saldo_creditos=saldo_creditos,
     )
 
 
