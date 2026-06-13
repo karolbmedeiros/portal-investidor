@@ -1,18 +1,81 @@
 {% extends "base.html" %}
 
 {% block header_nav %}
+{% set perms = usuario.permissions if usuario else [] %}
+{% set all_perms = 'all' in perms %}
+{% set _inv_usina = session.get('inv_ativo_id', '') %}
+
+{# 1 — Dashboard #}
 <a href="{{ url_for('portal.home') }}"
-   class="{{ 'ativo' if request.endpoint in ('portal.home', 'portal.usina_detalhe') }}">
-  Minhas Usinas
+   class="{{ 'ativo' if request.endpoint == 'portal.home' }}">
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v8h-6z"/><path d="M4 16h6v4h-6z"/><path d="M14 12h6v8h-6z"/><path d="M14 4h6v4h-6z"/></svg>
+  <span>Dashboard</span>
 </a>
+
+{# 2 — Sócios (se tem permissão + usina selecionada) #}
+{% if all_perms or 'socios' in perms %}
+{% if _inv_usina %}
+<a href="{{ url_for('portal.usina_detalhe', usina_id=_inv_usina) }}"
+   class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab','') == 'socios' }}">
+{% else %}
+<a href="#" class="desabilitado">
+{% endif %}
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
+  <span>Sócios</span>
+</a>
+{% endif %}
+
+{# 3 — Extrato Bancário (se tem permissão + usina selecionada) #}
+{% if all_perms or 'extrato_bancario' in perms %}
+{% if _inv_usina %}
+<a href="{{ url_for('portal.usina_detalhe', usina_id=_inv_usina) }}"
+   class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab','') == 'extrato' }}">
+{% else %}
+<a href="#" class="desabilitado">
+{% endif %}
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l0 18"/><path d="M3 18l4 -4l4 4l4 -4l4 4"/><path d="M3 12l4 -4l4 4l4 -4l4 4"/></svg>
+  <span>Fluxo de Caixa</span>
+</a>
+{% endif %}
+
+{# 4 — DRE (se tem permissão + usina selecionada) #}
+{% if all_perms or 'dre' in perms %}
+{% if _inv_usina %}
+<a href="{{ url_for('portal.usina_detalhe', usina_id=_inv_usina) }}"
+   class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab','') == 'dre' }}">
+{% else %}
+<a href="#" class="desabilitado">
+{% endif %}
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+  <span>DRE</span>
+</a>
+{% endif %}
+
+{# 5 — Documentos #}
 <a href="{{ url_for('portal.documentos') }}"
    class="{{ 'ativo' if request.endpoint == 'portal.documentos' }}">
-  Documentos
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+  <span>Documentos</span>
 </a>
 {% endblock %}
 
 {% block header_user %}
-<span class="header-user-nome">{{ usuario.nome if usuario else '' }}</span>
-<span class="header-user-sep">|</span>
-<a href="{{ url_for('auth.logout_page') }}">Sair</a>
+{% if usuario %}
+{% set _partes = (usuario.nome or '').strip().split() %}
+{% if _partes|length >= 2 %}{% set _iniciais = (_partes[0][0] + _partes[-1][0])|upper %}
+{% elif _partes|length == 1 %}{% set _iniciais = _partes[0][:2]|upper %}
+{% else %}{% set _iniciais = 'IN' %}{% endif %}
+<div class="topnav-avatar">{{ _iniciais }}</div>
+<div>
+  <div class="topnav-user-nome">{{ usuario.nome or usuario.email }}</div>
+  <div class="topnav-user-role">Investidor</div>
+</div>
+<a href="{{ url_for('auth.logout_page') }}" class="topnav-logout" title="Sair">
+  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+    <polyline points="16 17 21 12 16 7"/>
+    <line x1="21" y1="12" x2="9" y2="12"/>
+  </svg>
+</a>
+{% endif %}
 {% endblock %}

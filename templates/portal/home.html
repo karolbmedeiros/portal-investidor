@@ -1,151 +1,478 @@
 {% extends "portal/layout.html" %}
-{% block title %}Minhas Usinas{% endblock %}
+{% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <div class="page-title">Minhas Usinas</div>
-  <div class="page-subtitle">
-    {{ usinas|length }} usina{{ 's' if usinas|length != 1 }} na sua carteira
+{% set ns = namespace(kwp=kwp|default(0.0)) %}
+{% set first_name = (usuario.nome or '').split()[0] if usuario else 'Investidor' %}
+{% set filtrado = ativo_selecionado is not none %}
+
+<!-- ── Header ── -->
+<header class="db-header">
+  <div>
+    <h1 class="db-greeting">Olá, {{ first_name }}</h1>
+    <p class="db-date" id="db-date-txt">—</p>
   </div>
+  <div class="db-header-right">
+
+    {# ── Seletor de investimento ── #}
+    <div class="db-selector-wrap" id="seletor-wrap">
+      <button class="db-selector-btn {{ 'db-selector-ativo' if filtrado }}"
+              id="seletor-btn"
+              onclick="toggleSeletor(event)"
+              type="button">
+        {% if filtrado %}
+          <span class="db-selector-tipo-dot db-selector-tipo-dot--usina"></span>
+          <span class="db-selector-label">{{ ativo_selecionado.nome }}</span>
+          <span class="db-selector-badge">Usina</span>
+        {% else %}
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+          <span class="db-selector-label">Todos os investimentos</span>
+        {% endif %}
+        <svg class="db-selector-caret" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>
+      </button>
+
+      <div class="db-selector-dropdown" id="seletor-dropdown">
+        <a href="{{ url_for('portal.home') }}"
+           class="db-sel-item {{ 'db-sel-item--ativo' if not filtrado }}">
+          <span class="db-sel-item-nome">Todos os investimentos</span>
+          {% if not filtrado %}<span class="db-sel-check">✓</span>{% endif %}
+        </a>
+        {% if ativos %}
+        <div class="db-sel-group">Usinas</div>
+        {% for a in ativos %}
+        <a href="{{ url_for('portal.home', ativo_id=a.id) }}"
+           class="db-sel-item {{ 'db-sel-item--ativo' if filtrado and ativo_id == a.id }}">
+          <span class="db-sel-dot db-sel-dot--usina"></span>
+          <span class="db-sel-item-nome">{{ a.nome }}</span>
+          {% if filtrado and ativo_id == a.id %}<span class="db-sel-check">✓</span>{% endif %}
+        </a>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <button class="db-bell" title="Notificações">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+    </button>
+
+    <div class="db-badge-ativa">
+      <span class="db-dot"></span>
+      <span>Conta ativa</span>
+    </div>
+  </div>
+</header>
+
+{% if filtrado %}
+<div class="db-filtro-banner">
+  <span>Exibindo dados de <strong>{{ ativo_selecionado.nome }}</strong>
+    <span class="badge badge-verde" style="font-size:10px;margin-left:4px;">Usina</span>
+  </span>
+  <a href="{{ url_for('portal.home') }}" class="db-filtro-limpar">
+    Limpar filtro
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+  </a>
 </div>
+{% endif %}
 
-<div class="page-content">
-  {% if usinas %}
-  <div class="usinas-grid">
-    {% for usina in usinas %}
-    {% set cota_pct = (cotas.get(usina.id, 0) * 100)|round(1) %}
-    <a href="{{ url_for('portal.usina_detalhe', usina_id=usina.id) }}" class="usina-card">
+<!-- ── Métricas + chart ── -->
+<section class="db-top">
 
-      <div class="uc-header">
-        <div class="uc-nome" title="{{ usina.nome }}">{{ usina.nome }}</div>
-        <div class="uc-badges">
-          {% if usina.modalidade_gd %}
-          <span class="uc-badge uc-badge-gd">{{ usina.modalidade_gd }}</span>
-          {% endif %}
-          <span class="uc-badge {{ 'uc-badge-ativa' if usina.status == 'Ativa' else 'uc-badge-inativa' }}">
-            {{ usina.status or 'N/D' }}
+  <div class="db-metrics">
+
+    {# Card: Ativos em Usinas #}
+    {% if not filtrado %}
+    <div class="db-metric-card">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Ativos em usinas</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        <span class="db-mc-value">{{ usinas|length }}</span>
+        <span class="db-mc-unit">usina{{ 's' if usinas|length != 1 }}</span>
+      </div>
+      <div class="db-mc-sub">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"/></svg>
+        {% if ns.kwp > 0 %}{{ "{:,.0f}".format(ns.kwp).replace(",",".") }} kWp{% else %}—{% endif %}
+      </div>
+    </div>
+    {% else %}
+    {# Quando filtrado: card expandido com lista de usinas #}
+    <div class="db-metric-card db-metric-card--usina-big">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Ativos em usinas</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        <span class="db-mc-value">{{ usinas|length }}</span>
+        <span class="db-mc-unit">usina{{ 's' if usinas|length != 1 }}</span>
+      </div>
+      <div class="db-mc-sub">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"/></svg>
+        {% if ns.kwp > 0 %}{{ "{:,.0f}".format(ns.kwp).replace(",",".") }} kWp{% else %}—{% endif %}
+      </div>
+      {% if usinas %}
+      <div style="margin-top:16px; border-top:0.5px solid rgba(23,33,28,.07); padding-top:14px; display:flex; flex-direction:column; gap:10px;">
+        {% for us in usinas %}
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="width:32px; height:32px; flex:none; border-radius:8px; background:#EAF6F1; display:flex; align-items:center; justify-content:center;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
           </span>
-        </div>
-      </div>
-
-      <div class="uc-info">
-        <div class="uc-info-row">
-          <span class="uc-info-label">CNPJ</span>
-          <span class="uc-info-val">{{ usina.cnpj or '—' }}</span>
-        </div>
-        {% if usina.banco %}
-        <div class="uc-info-row">
-          <span class="uc-info-label">Banco</span>
-          <span class="uc-info-val">{{ usina.banco }}
-            {% if usina.agencia %} · Ag. {{ usina.agencia }}{% endif %}
-          </span>
-        </div>
-        {% endif %}
-      </div>
-
-      <div class="uc-stats">
-        <div class="uc-stat">
-          <div class="uc-stat-val">
-            {% if usina.geracao_media_mensal_kwh %}
-              {{ "{:,.0f}".format(usina.geracao_media_mensal_kwh).replace(",", ".") }}<small>kWh</small>
-            {% else %}—{% endif %}
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ us.nome }}</div>
+            <div style="font-size:11px; color:var(--muted);">
+              {% if us.potencia_instalada_kwp %}{{ "{:,.0f}".format(us.potencia_instalada_kwp).replace(",",".") }} kWp{% endif %}
+              {% if us.modalidade_gd %} · {{ us.modalidade_gd }}{% endif %}
+            </div>
           </div>
-          <div class="uc-stat-label">Geração Média</div>
+          <span class="badge {{ 'badge-verde' if us.status == 'Ativa' else 'badge-muted' }}">{{ us.status or 'N/D' }}</span>
         </div>
-        <div class="uc-stat">
-          <div class="uc-stat-val">
-            {% if usina.potencia_instalada_kwp %}
-              {{ "{:,.0f}".format(usina.potencia_instalada_kwp).replace(",", ".") }}<small>kWp</small>
-            {% else %}—{% endif %}
-          </div>
-          <div class="uc-stat-label">Potência</div>
-        </div>
-        {% if usina.id in cotas %}
-        <div class="uc-stat">
-          <div class="uc-stat-val" style="color:var(--accent);">
-            {{ cota_pct }}<small>%</small>
-          </div>
-          <div class="uc-stat-label">Sua Cota</div>
-        </div>
-        {% endif %}
-      </div>
-
-      {% if usina.id in cotas and cota_pct > 0 %}
-      <div class="uc-cota-bar">
-        <div class="uc-cota-fill" style="width:{{ [cota_pct, 100]|min|round(1) }}%;"></div>
+        {% endfor %}
       </div>
       {% endif %}
+    </div>
+    {% endif %}
 
-    </a>
-    {% endfor %}
+    {# Card: Total Investido #}
+    <div class="db-metric-card {{ 'db-metric-card--span2' if filtrado }}">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Total investido</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"/><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4"/></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        {% if total_investido %}
+          <span class="db-mc-value db-mc-value--lg">{{ total_investido|brl }}</span>
+        {% else %}
+          <span class="db-mc-value db-mc-value--lg text-muted">—</span>
+        {% endif %}
+      </div>
+      <div class="db-mc-sub {% if not total_investido %}text-muted{% endif %}">
+        {% if total_investido %}
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></svg>
+        Capital aportado
+        {% else %}
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#9BA39E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 2"/></svg>
+        Sem dados cadastrados
+        {% endif %}
+      </div>
+    </div>
+
+    {# Card: Rendimento Acumulado #}
+    <div class="db-metric-card">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Rendimento acumulado</span>
+        <span class="db-mc-icon">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        {% if rendimento_total is not none %}
+        <span class="db-mc-value db-mc-value--lg">{{ rendimento_total|brl }}</span>
+        {% else %}
+        <span class="db-mc-value db-mc-value--lg text-muted">—</span>
+        {% endif %}
+      </div>
+      <div class="db-mc-sub text-muted">
+        {% if rendimento_total is not none %}Últ. 6 meses · proporcional à cota{% else %}Sem movimentações{% endif %}
+      </div>
+    </div>
+
   </div>
+
+  <!-- Chart -->
+  <div class="db-chart-card">
+    <div class="db-chart-header">
+      <div>
+        <div class="db-chart-title">
+          {% if filtrado %}{{ ativo_selecionado.nome }}{% else %}Evolução do portfólio{% endif %}
+        </div>
+        <div class="db-chart-sub">Últimos 6 meses</div>
+      </div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
+      {% if rendimento_meses and rendimento_meses|length > 1 %}
+        {% set _vals = rendimento_meses|map(attribute='valor')|list %}
+        {% set _max  = _vals|max %}
+        {% set _min  = _vals|min %}
+        {% set _range = (_max - _min) if _max != _min else 1 %}
+        {% set _n    = _vals|length %}
+        {% set _W = 360 %}
+        {% set _H = 130 %}
+        {% set _pad = 10 %}
+        {% set _pts = namespace(line='', area='M') %}
+        {% for v in _vals %}
+          {% set _x = (_pad + ((_W - 2*_pad) / (_n - 1)) * loop.index0)|round(1) %}
+          {% set _y = (_pad + (_H - 2*_pad) * (1 - (v - _min) / _range))|round(1) %}
+          {% if loop.first %}
+            {% set _pts.line = _pts.line + 'M' + _x|string + ' ' + _y|string %}
+            {% set _pts.area = 'M' + _x|string + ' 149 L' + _x|string + ' ' + _y|string %}
+          {% else %}
+            {% set _pts.line = _pts.line + ' L' + _x|string + ' ' + _y|string %}
+            {% set _pts.area = _pts.area + ' L' + _x|string + ' ' + _y|string %}
+          {% endif %}
+        {% endfor %}
+        {% set _last_x = (_pad + ((_W - 2*_pad) / (_n - 1)) * (_n - 1))|round(1) %}
+        {% set _area_close = _pts.area + ' L' + _last_x|string + ' 149 Z' %}
+        <div style="position:relative;">
+          <div id="db-spark-tip" style="display:none; position:absolute; background:#17211C; color:#fff; font-size:12px; font-weight:500; padding:6px 10px; border-radius:8px; pointer-events:none; white-space:nowrap; transform:translate(-50%,-100%); margin-top:-8px;"></div>
+          <svg id="db-sparkline" viewBox="0 0 360 150" style="width:100%; height:auto; display:block; overflow:visible;">
+            <line x1="0" y1="40"  x2="360" y2="40"  stroke="#EEF1EF" stroke-width="1"/>
+            <line x1="0" y1="82"  x2="360" y2="82"  stroke="#EEF1EF" stroke-width="1"/>
+            <line x1="0" y1="124" x2="360" y2="124" stroke="#EEF1EF" stroke-width="1"/>
+            <path d="{{ _area_close }}" fill="#1D9E75" fill-opacity="0.07"/>
+            <path d="{{ _pts.line }}" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            {% for m in rendimento_meses %}
+              {% set _xi = (_pad + ((_W - 2*_pad) / (_n - 1)) * loop.index0)|round(1) %}
+              {% set _yi = (_pad + (_H - 2*_pad) * (1 - (m.valor - _min) / _range))|round(1) %}
+              <circle class="db-spark-pt" cx="{{ _xi }}" cy="{{ _yi }}" r="5"
+                      fill="#fff" stroke="#1D9E75" stroke-width="2"
+                      data-mes="{{ m.mes }}" data-val="{{ m.valor }}"
+                      style="cursor:crosshair;"/>
+            {% endfor %}
+          </svg>
+        </div>
+        <div class="db-spark-labels">
+          {% for m in rendimento_meses %}<span>{{ m.mes }}</span>{% endfor %}
+        </div>
+      {% else %}
+        <svg viewBox="0 0 360 150" style="width:100%; height:auto; display:block; overflow:visible;">
+          <line x1="0" y1="40"  x2="360" y2="40"  stroke="#EEF1EF" stroke-width="1"/>
+          <line x1="0" y1="82"  x2="360" y2="82"  stroke="#EEF1EF" stroke-width="1"/>
+          <line x1="0" y1="124" x2="360" y2="124" stroke="#EEF1EF" stroke-width="1"/>
+          <path d="M0 149 L0 130 L72 110 L144 90 L216 68 L288 45 L360 22 L360 149 Z"
+                fill="#1D9E75" fill-opacity="0.07"/>
+          <path d="M0 130 L72 110 L144 90 L216 68 L288 45 L360 22"
+                fill="none" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+        <div class="db-spark-labels">
+          <span>jan</span><span>fev</span><span>mar</span><span>abr</span><span>mai</span><span>jun</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</section>
+
+<!-- ── Contas a Receber ── -->
+<section class="card mt-16">
+  <div class="db-list-header" style="margin-bottom:16px;">
+    <div>
+      <div class="db-list-title">Contas a Receber</div>
+      <div class="text-muted text-sm">Faturas pendentes · em aberto</div>
+    </div>
+    {% if faturas_pendentes %}
+    <span class="db-badge-ativa" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">
+      {{ faturas_pendentes|length }} fatura{{ 's' if faturas_pendentes|length != 1 }}
+    </span>
+    {% endif %}
+  </div>
+
+  {% if not faturas_pendentes %}
+  <div class="vazio text-sm" style="padding:24px 0;">Nenhuma fatura pendente.</div>
   {% else %}
-  <div class="vazio">
-    <div style="font-size:36px;margin-bottom:12px;opacity:.3;">☀️</div>
-    Você ainda não possui acesso a nenhuma usina.<br>
-    Entre em contato com a gestora.
+  <div style="overflow-x:auto;">
+    <table class="db-fat-table">
+      <thead>
+        <tr>
+          <th>Nº Fatura</th>
+          <th>UC</th>
+          <th>Usina</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th style="text-align:right;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in faturas_pendentes %}
+        {% set dias = f.dias_vencimento %}
+        <tr>
+          <td class="text-mono text-sm">{{ f.numero_fatura or '—' }}</td>
+          <td><span class="text-sm">{{ f.uc_apelido or f.codigo_uc }}</span></td>
+          <td class="text-muted text-sm">{{ (f.usina_razao_social or '—')|truncate(28, True, '…') }}</td>
+          <td>
+            <span class="text-sm">{{ f.data_vencimento[:10]|fmtdata }}</span>
+            {% if dias < 0 %}
+            <span class="db-fat-tag db-fat-tag--vencida">{{ dias|abs }}d atraso</span>
+            {% elif dias == 0 %}
+            <span class="db-fat-tag db-fat-tag--hoje">hoje</span>
+            {% elif dias <= 7 %}
+            <span class="db-fat-tag db-fat-tag--urgente">{{ dias }}d</span>
+            {% endif %}
+          </td>
+          <td><span class="db-fat-status db-fat-status--{{ f.status|lower }}">{{ f.status }}</span></td>
+          <td style="text-align:right;" class="text-sm font-500">
+            {{ (f.valor_final_cobrado or f.valor_total_cobrado or f.valor_liquido)|brl }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right;font-size:12px;color:var(--muted);padding-top:10px;">Total em aberto</td>
+          <td style="text-align:right;font-weight:500;padding-top:10px;">
+            {{ faturas_pendentes|sum(attribute='valor_final_cobrado')|default(0)|brl }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
   </div>
   {% endif %}
-</div>
+</section>
+
 {% endblock %}
 
 {% block scripts %}
 <style>
-.usinas-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+.db-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:16px; }
+.db-greeting { font-size:22px; font-weight:500; letter-spacing:-0.02em; color:var(--text); margin:0; }
+.db-date     { font-size:13px; color:var(--muted); margin:4px 0 0; }
+.db-header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.db-bell {
+  width:40px; height:40px; flex:none; border:0.5px solid rgba(23,33,28,0.14);
+  background:var(--bg); border-radius:11px; color:#5C655F;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:border-color .15s, color .15s;
 }
-@media (max-width: 1100px) { .usinas-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 680px)  { .usinas-grid { grid-template-columns: 1fr; } }
+.db-bell:hover { border-color:var(--accent); color:var(--accent); }
+.db-badge-ativa {
+  display:flex; align-items:center; gap:7px;
+  padding:9px 14px; border-radius:11px; background:#EAF6F1;
+  font-size:12.5px; font-weight:500; color:#15805F;
+}
+.db-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); }
 
-.usina-card {
-  display: flex; flex-direction: column;
-  background: #fff; border: 1px solid #E5E7EB;
-  border-radius: 12px; padding: 20px; gap: 16px;
-  text-decoration: none; color: inherit;
-  transition: box-shadow .15s, border-color .15s, transform .12s;
+.db-selector-wrap { position:relative; }
+.db-selector-btn {
+  display:flex; align-items:center; gap:7px;
+  padding:9px 13px; border-radius:11px;
+  border:0.5px solid rgba(23,33,28,0.14);
+  background:var(--bg); color:#5C655F;
+  font-size:13px; font-weight:400; font-family:inherit;
+  cursor:pointer; transition:border-color .15s, color .15s, background .15s;
+  max-width:240px; white-space:nowrap; overflow:hidden;
 }
-.usina-card:hover {
-  box-shadow: 0 4px 20px rgba(0,0,0,.1);
-  border-color: #E8621A;
-  transform: translateY(-2px);
+.db-selector-btn:hover { border-color:rgba(23,33,28,0.28); color:var(--text); }
+.db-selector-btn.db-selector-ativo { border-color:var(--accent); background:#EAF6F1; color:var(--accent2); font-weight:500; }
+.db-selector-label { flex:1; overflow:hidden; text-overflow:ellipsis; min-width:0; text-align:left; }
+.db-selector-badge { flex:none; font-size:10px; font-weight:500; padding:2px 7px; border-radius:99px; background:rgba(29,158,117,.15); color:var(--accent2); }
+.db-selector-caret { flex:none; transition:transform .15s; }
+.db-selector-wrap.aberto .db-selector-caret { transform:rotate(180deg); }
+.db-selector-tipo-dot { width:7px; height:7px; flex:none; border-radius:50%; }
+.db-selector-tipo-dot--usina { background:var(--accent); }
+
+.db-selector-dropdown {
+  display:none; position:absolute; top:calc(100% + 6px); right:0;
+  width:260px; background:var(--bg);
+  border:0.5px solid rgba(23,33,28,0.14); border-radius:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+  z-index:200; overflow:hidden; padding:6px 0;
 }
-.uc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.uc-nome {
-  font-size: 14px; font-weight: 700; color: #111827; line-height: 1.3;
-  overflow: hidden; display: -webkit-box;
-  -webkit-line-clamp: 2; -webkit-box-orient: vertical; flex: 1;
+.db-selector-wrap.aberto .db-selector-dropdown { display:block; }
+.db-sel-group { padding:8px 14px 4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
+.db-sel-item { display:flex; align-items:center; gap:9px; padding:9px 14px; font-size:13px; color:var(--text); text-decoration:none; transition:background .1s; cursor:pointer; }
+.db-sel-item:hover { background:var(--bg2); }
+.db-sel-item--ativo { background:#EAF6F1; color:var(--accent2); font-weight:500; }
+.db-sel-item-nome { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.db-sel-dot { width:8px; height:8px; flex:none; border-radius:50%; }
+.db-sel-dot--usina { background:var(--accent); }
+.db-sel-check { flex:none; font-size:12px; color:var(--accent); }
+
+.db-filtro-banner {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 16px; border-radius:11px; margin-bottom:16px;
+  background:#EAF6F1; border:0.5px solid rgba(29,158,117,.2); font-size:13px; color:var(--text);
 }
-.uc-badges { display: flex; gap: 4px; flex-shrink: 0; }
-.uc-badge {
-  font-size: 10px; font-weight: 700; letter-spacing: .4px;
-  padding: 2px 7px; border-radius: 20px; text-transform: uppercase;
-}
-.uc-badge-gd     { background: #FFF3E8; color: #E8621A; }
-.uc-badge-ativa  { background: #ECFDF5; color: #059669; }
-.uc-badge-inativa{ background: #FEF2F2; color: #DC2626; }
-.uc-info { display: flex; flex-direction: column; gap: 5px; }
-.uc-info-row { display: flex; gap: 8px; font-size: 12px; align-items: baseline; }
-.uc-info-label {
-  color: #9CA3AF; font-weight: 600; text-transform: uppercase;
-  font-size: 10px; letter-spacing: .4px; min-width: 36px; flex-shrink: 0;
-}
-.uc-info-val { color: #374151; font-weight: 500; }
-.uc-stats {
-  display: flex; background: #F7F8FA; border-radius: 8px; overflow: hidden;
-}
-.uc-stat {
-  flex: 1; padding: 10px 12px; text-align: center; border-right: 1px solid #E5E7EB;
-}
-.uc-stat:last-child { border-right: none; }
-.uc-stat-val { font-size: 16px; font-weight: 700; color: #111827; line-height: 1; }
-.uc-stat-val small { font-size: 10px; font-weight: 500; color: #6B7280; margin-left: 1px; }
-.uc-stat-label {
-  font-size: 10px; color: #9CA3AF; margin-top: 4px;
-  text-transform: uppercase; letter-spacing: .4px; font-weight: 600;
-}
-.uc-cota-bar { height: 6px; background: #E5E7EB; border-radius: 3px; overflow: hidden; }
-.uc-cota-fill { height: 100%; background: #E8621A; border-radius: 3px; }
+.db-filtro-limpar { display:flex; align-items:center; gap:4px; font-size:12px; font-weight:500; color:var(--accent2); text-decoration:none; flex-shrink:0; }
+.db-filtro-limpar:hover { opacity:.7; }
+
+.db-top { display:grid; grid-template-columns:1.3fr 1fr; gap:16px; align-items:stretch; margin-bottom:16px; }
+@media(max-width:960px){ .db-top { grid-template-columns:1fr; } }
+
+.db-metrics { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:12px; align-self:stretch; height:100%; }
+.db-metric-card--usina-big { grid-column:1; grid-row:1 / span 2; }
+.db-metric-card--span2 { grid-column:2; grid-row:1; }
+.db-metric-card { background:var(--bg); border:0.5px solid rgba(23,33,28,0.12); border-radius:15px; padding:20px 21px; display:flex; flex-direction:column; justify-content:space-between; min-height:0; }
+.db-mc-top { display:flex; align-items:center; justify-content:space-between; }
+.db-mc-label { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
+.db-mc-icon { width:34px; height:34px; border-radius:10px; flex:none; background:#EAF6F1; color:var(--accent); display:flex; align-items:center; justify-content:center; }
+.db-mc-value-row { display:flex; align-items:baseline; gap:6px; }
+.db-mc-value { font-size:31px; font-weight:500; letter-spacing:-0.02em; color:var(--text); line-height:1; }
+.db-mc-value--lg { font-size:26px; }
+.db-mc-unit { font-size:13px; color:var(--muted); }
+.db-mc-sub { font-size:12px; color:#5C655F; display:flex; align-items:center; gap:5px; }
+
+.db-chart-card { background:var(--bg); border:0.5px solid rgba(23,33,28,0.12); border-radius:15px; padding:20px 22px 16px; display:flex; flex-direction:column; gap:12px; }
+.db-chart-header { display:flex; align-items:flex-start; justify-content:space-between; }
+.db-chart-title { font-size:14.5px; font-weight:500; color:var(--text); }
+.db-chart-sub   { font-size:12px; color:var(--muted); margin-top:2px; }
+.db-spark-labels { display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:var(--muted); }
+
+.db-list-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.db-list-title { font-size:15px; font-weight:500; color:var(--text); display:flex; align-items:center; gap:9px; }
+
+.db-fat-table { width:100%; border-collapse:collapse; font-size:13px; }
+.db-fat-table th { text-align:left; font-size:11px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:0 10px 10px 0; border-bottom:0.5px solid rgba(23,33,28,0.10); white-space:nowrap; }
+.db-fat-table td { padding:10px 10px 10px 0; border-bottom:0.5px solid rgba(23,33,28,0.06); vertical-align:middle; }
+.db-fat-table tbody tr:hover td { background:var(--bg2); }
+.db-fat-table tfoot td { border-top:0.5px solid rgba(23,33,28,0.10); border-bottom:none; }
+.db-fat-tag { display:inline-block; font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px; margin-left:6px; }
+.db-fat-tag--vencida { background:#FEE2E2; color:#991B1B; }
+.db-fat-tag--hoje    { background:#DBEAFE; color:#1E40AF; }
+.db-fat-tag--urgente { background:#FEF3C7; color:#92400E; }
+.db-fat-status { display:inline-block; font-size:11px; font-weight:500; padding:3px 8px; border-radius:20px; }
+.db-fat-status--pendente  { background:#FEF3C7; color:#92400E; }
+.db-fat-status--emitida   { background:#DBEAFE; color:#1E40AF; }
+.db-fat-status--enviada   { background:#EDE9FE; color:#5B21B6; }
+.db-fat-status--atrasada  { background:#FEE2E2; color:#991B1B; }
+.text-mono { font-family:ui-monospace, monospace; }
+.font-500  { font-weight:500; }
+.mt-16 { margin-top:16px; }
 </style>
+
+<script>
+(function () {
+  var dias = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  var d = new Date();
+  document.getElementById('db-date-txt').textContent =
+    dias[d.getDay()] + ' · ' + d.getDate() + ' de ' + meses[d.getMonth()] + ' de ' + d.getFullYear();
+})();
+
+function toggleSeletor(e) {
+  e.stopPropagation();
+  document.getElementById('seletor-wrap').classList.toggle('aberto');
+}
+document.addEventListener('click', function (e) {
+  var wrap = document.getElementById('seletor-wrap');
+  if (wrap && !wrap.contains(e.target)) wrap.classList.remove('aberto');
+});
+
+(function () {
+  var tip = document.getElementById('db-spark-tip');
+  var svg = document.getElementById('db-sparkline');
+  if (!tip || !svg) return;
+  function fmtBRL(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  svg.querySelectorAll('.db-spark-pt').forEach(function (pt) {
+    pt.addEventListener('mouseenter', function () {
+      var sr = svg.getBoundingClientRect(), pr = pt.getBoundingClientRect();
+      tip.textContent = pt.dataset.mes.charAt(0).toUpperCase() + pt.dataset.mes.slice(1) + ' · ' + fmtBRL(pt.dataset.val);
+      tip.style.left = (pr.left - sr.left + pr.width / 2) + 'px';
+      tip.style.top  = (pr.top  - sr.top) + 'px';
+      tip.style.display = 'block';
+      pt.setAttribute('r', '7');
+    });
+    pt.addEventListener('mouseleave', function () {
+      tip.style.display = 'none';
+      pt.setAttribute('r', '5');
+    });
+  });
+})();
+</script>
 {% endblock %}

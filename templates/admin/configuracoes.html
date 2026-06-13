@@ -117,19 +117,19 @@
                   {% set cur_perms = inv.permissions or [] %}
                   {% set all_checked = 'all' in cur_perms %}
                   <label class="checkbox-item">
+                    <input type="checkbox" name="permissions" value="visao_geral"
+                      {{ 'checked' if all_checked or 'visao_geral' in cur_perms }} />
+                    <span>Visão Geral</span>
+                  </label>
+                  <label class="checkbox-item">
                     <input type="checkbox" name="permissions" value="socios"
                       {{ 'checked' if all_checked or 'socios' in cur_perms }} />
                     <span>Sócios</span>
                   </label>
                   <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="clientes"
-                      {{ 'checked' if all_checked or 'clientes' in cur_perms }} />
-                    <span>Clientes</span>
-                  </label>
-                  <label class="checkbox-item">
-                    <input type="checkbox" name="permissions" value="fluxo_de_caixa"
-                      {{ 'checked' if all_checked or 'fluxo_de_caixa' in cur_perms or 'extrato_bancario' in cur_perms }} />
-                    <span>Fluxo de Caixa</span>
+                    <input type="checkbox" name="permissions" value="extrato_bancario"
+                      {{ 'checked' if all_checked or 'extrato_bancario' in cur_perms or 'fluxo_de_caixa' in cur_perms }} />
+                    <span>Extrato Bancário</span>
                   </label>
                   <label class="checkbox-item">
                     <input type="checkbox" name="permissions" value="dre"
@@ -204,16 +204,16 @@
             <label>Seções visíveis</label>
             <div class="perms-grid">
               <label class="checkbox-item">
+                <input type="checkbox" name="permissions" value="visao_geral" checked />
+                <span>Visão Geral</span>
+              </label>
+              <label class="checkbox-item">
                 <input type="checkbox" name="permissions" value="socios" checked />
                 <span>Sócios</span>
               </label>
               <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="clientes" checked />
-                <span>Clientes</span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" name="permissions" value="fluxo_de_caixa" />
-                <span>Fluxo de Caixa</span>
+                <input type="checkbox" name="permissions" value="extrato_bancario" />
+                <span>Extrato Bancário</span>
               </label>
               <label class="checkbox-item">
                 <input type="checkbox" name="permissions" value="dre" />

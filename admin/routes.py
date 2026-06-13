@@ -348,7 +348,7 @@ def novo_usuario():
     usina_ids = request.form.getlist("usina_ids")
     permissions = request.form.getlist("permissions")
     if not permissions:
-        permissions = ["visao_geral", "distribuicoes", "documentos", "leituras"]
+        permissions = ["visao_geral", "socios"]
     if not all([username, senha, nome]):
         flash("Preencha todos os campos.", "erro")
         return redirect(url_for("admin.configuracoes"))
