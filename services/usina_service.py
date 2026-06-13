@@ -253,8 +253,9 @@ def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
 
     for conta in contas:
         all_lancs = (sb.table("lancamentos_bancarios")
-                       .select("mes_competencia,data_transacao,valor,tipo,descricao,categoria_id")
+                       .select("mes_competencia,data_transacao,valor,tipo,descricao,categoria_id,conciliado")
                        .eq("conta_bancaria_id", conta["id"])
+                       .eq("conciliado", True)
                        .execute().data or [])
         for l in all_lancs:
             mes = (l.get("mes_competencia") or l.get("data_transacao") or "")[:7]
