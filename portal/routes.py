@@ -62,9 +62,11 @@ def home():
         por_mes: dict = {}
         total_rend = 0.0
         for us in usinas:
-            razao = (us.get("razao_social") or us.get("nome") or "")[:8]
+            razao = (us.get("razao_social") or us.get("nome") or "")
+            razao_busca = razao[:8]
+            razao_desc  = razao[:12]
             contas = sb.from_("contas_bancarias").select("id") \
-                       .ilike("titular_nome", f"%{razao}%").execute().data or []
+                       .ilike("titular_nome", f"%{razao_busca}%").execute().data or []
             cota = cotas.get(us["id"], 1.0)
             for conta in contas:
                 lanctos = sb.from_("lancamentos_bancarios") \
@@ -72,6 +74,7 @@ def home():
                              .eq("conta_bancaria_id", conta["id"]) \
                              .eq("tipo", "credito") \
                              .gte("data_transacao", str(inicio)) \
+                             .ilike("descricao", f"%{razao_desc}%") \
                              .is_("deleted_at", "null") \
                              .execute().data or []
                 for l in lanctos:
