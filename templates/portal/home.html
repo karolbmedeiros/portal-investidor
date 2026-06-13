@@ -712,102 +712,112 @@ document.addEventListener('click', function (e) {
   });
 })();
 
-// ── Dados Visuais charts ──
+// ── Dados Visuais charts (lazy init — só quando canvas está visível) ──
 (function () {
   function fmtBrl(v) {
     return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+  function visible(el) { return el && el.offsetParent !== null; }
 
-  // Retorno Mensal
-  var ctxR = document.getElementById('chart-retorno-home');
-  if (ctxR) {
-    var retorno = {{ retorno_mensal | tojson }};
-    var MA = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    var labelsR = retorno.map(function(r) { var m=(r.ref_mes_ano||'').slice(0,7); return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); });
-    var valsR   = retorno.map(function(r) { return r.participacao_lucro || 0; });
-    new Chart(ctxR, {
-      type: 'bar',
-      data: { labels: labelsR, datasets: [{ label: 'Participação no resultado', data: valsR,
-        backgroundColor: valsR.map(function(v) { return v >= 0 ? 'rgba(22,163,74,0.8)' : 'rgba(220,38,38,0.8)'; }),
-        borderRadius: 4, borderSkipped: false }] },
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false },
-          tooltip: { callbacks: { label: function(c) { return fmtBrl(c.parsed.y); } } } },
-        scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                  y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
-    });
-  }
+  var MA = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  var _inited = {};
 
-  // Energia
-  var ctxE = document.getElementById('chart-energia-home');
-  if (ctxE) {
-    var leituras = {{ leituras_det | tojson }};
-    var MAe = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    var mesMap = {};
-    leituras.forEach(function(l) {
-      var m = (l.ref_mes_ano||'').slice(0,7);
-      if (!mesMap[m]) mesMap[m] = { comp: 0, cons: 0 };
-      mesMap[m].comp += l.kwh_compensado || 0;
-      mesMap[m].cons += l.kwh_consumido  || 0;
-    });
-    var mesesE = Object.keys(mesMap).sort();
-    new Chart(ctxE, {
-      type: 'bar',
-      data: { labels: mesesE.map(function(m) { return MAe[parseInt(m.slice(5))]+'/'+m.slice(0,4); }),
-        datasets: [
-          { label: 'Compensado (kWh)', data: mesesE.map(function(m) { return mesMap[m].comp; }), backgroundColor: 'rgba(29,158,117,0.8)', borderRadius: 3 },
-          { label: 'Consumido (kWh)',  data: mesesE.map(function(m) { return mesMap[m].cons; }), backgroundColor: 'rgba(148,163,184,0.5)', borderRadius: 3 }
-        ] },
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
-        scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } }, y: { grid: { color: '#EEF0EF' }, ticks: { font: { size: 10 } } } } }
-    });
-  }
-
-  // P&L bar
-  var ctxPB = document.getElementById('chart-pnl-bar-home');
-  if (ctxPB) {
-    var pnlData = {{ pnl | tojson }};
-    var MApnl = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    var rev = pnlData.slice().reverse();
-    new Chart(ctxPB, {
-      type: 'bar',
-      data: { labels: rev.map(function(p) { var m=(p.ref_mes_ano||'').slice(0,7); return MApnl[parseInt(m.slice(5))]+'/'+m.slice(0,4); }),
-        datasets: [
-          { label: 'Receita',   data: rev.map(function(p) { return p.receita_bruta    || 0; }), backgroundColor: 'rgba(22,163,74,0.8)',  borderRadius: 3 },
-          { label: 'Despesas',  data: rev.map(function(p) { return p.total_despesas   || 0; }), backgroundColor: 'rgba(220,38,38,0.8)',  borderRadius: 3 },
-          { label: 'Resultado', data: rev.map(function(p) { return p.resultado_liquido|| 0; }),
-            backgroundColor: rev.map(function(p) { return (p.resultado_liquido||0)>=0?'rgba(29,158,117,0.6)':'rgba(239,68,68,0.6)'; }),
-            type: 'line', tension: 0.3, pointRadius: 3, borderWidth: 2, borderColor: '#1D9E75', fill: false }
-        ] },
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
-          tooltip: { callbacks: { label: function(c) { return c.dataset.label+': '+fmtBrl(c.parsed.y); } } } },
-        scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                  y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
-    });
-  }
-
-  // P&L pie (último mês)
-  var ctxPP = document.getElementById('chart-pnl-pie-home');
-  if (ctxPP) {
-    var pnlPie = {{ pnl | tojson }};
-    var ult  = pnlPie[0] || {};
-    var NOMES = ['Empréstimo','Aluguel','Contabilidade','Impostos','COSERN','Taxa admin.','Seguro','Outros'];
-    var KEYS  = ['custo_emprestimo','custo_aluguel','custo_contabilidade','custo_impostos','custo_cosern','custo_taxa_admin','custo_seguro','custo_outros'];
-    var CORES = ['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6','#EC4899','#94A3B8'];
-    var vPie = [], nPie = [], cPie = [];
-    KEYS.forEach(function(k, i) { var v = ult[k]||0; if (v > 0) { vPie.push(v); nPie.push(NOMES[i]); cPie.push(CORES[i]); } });
-    if (vPie.length) {
-      new Chart(ctxPP, {
-        type: 'doughnut',
-        data: { labels: nPie, datasets: [{ data: vPie, backgroundColor: cPie, borderWidth: 2 }] },
+  function tryInitCharts() {
+    // Retorno Mensal
+    var ctxR = document.getElementById('chart-retorno-home');
+    if (ctxR && !_inited['R'] && visible(ctxR)) {
+      _inited['R'] = true;
+      var retorno = {{ retorno_mensal | tojson }};
+      var labelsR = retorno.map(function(r) { var m=(r.ref_mes_ano||'').slice(0,7); return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); });
+      var valsR   = retorno.map(function(r) { return r.participacao_lucro || 0; });
+      new Chart(ctxR, {
+        type: 'bar',
+        data: { labels: labelsR, datasets: [{ label: 'Participação no resultado', data: valsR,
+          backgroundColor: valsR.map(function(v) { return v >= 0 ? 'rgba(22,163,74,0.8)' : 'rgba(220,38,38,0.8)'; }),
+          borderRadius: 4, borderSkipped: false }] },
         options: { responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
-            tooltip: { callbacks: { label: function(c) { return c.label+': '+fmtBrl(c.parsed); } } } } }
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: function(c) { return fmtBrl(c.parsed.y); } } } },
+          scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
       });
     }
+
+    // Energia
+    var ctxE = document.getElementById('chart-energia-home');
+    if (ctxE && !_inited['E'] && visible(ctxE)) {
+      _inited['E'] = true;
+      var leituras = {{ leituras_det | tojson }};
+      var mesMap = {};
+      leituras.forEach(function(l) {
+        var m = (l.ref_mes_ano||'').slice(0,7);
+        if (!mesMap[m]) mesMap[m] = { comp: 0, cons: 0 };
+        mesMap[m].comp += l.kwh_compensado || 0;
+        mesMap[m].cons += l.kwh_consumido  || 0;
+      });
+      var mesesE = Object.keys(mesMap).sort();
+      new Chart(ctxE, {
+        type: 'bar',
+        data: { labels: mesesE.map(function(m) { return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); }),
+          datasets: [
+            { label: 'Compensado (kWh)', data: mesesE.map(function(m) { return mesMap[m].comp; }), backgroundColor: 'rgba(29,158,117,0.8)', borderRadius: 3 },
+            { label: 'Consumido (kWh)',  data: mesesE.map(function(m) { return mesMap[m].cons; }), backgroundColor: 'rgba(148,163,184,0.5)', borderRadius: 3 }
+          ] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+          scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } }, y: { grid: { color: '#EEF0EF' }, ticks: { font: { size: 10 } } } } }
+      });
+    }
+
+    // P&L bar
+    var ctxPB = document.getElementById('chart-pnl-bar-home');
+    if (ctxPB && !_inited['PB'] && visible(ctxPB)) {
+      _inited['PB'] = true;
+      var pnlData = {{ pnl | tojson }};
+      var rev = pnlData.slice().reverse();
+      new Chart(ctxPB, {
+        type: 'bar',
+        data: { labels: rev.map(function(p) { var m=(p.ref_mes_ano||'').slice(0,7); return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); }),
+          datasets: [
+            { label: 'Receita',   data: rev.map(function(p) { return p.receita_bruta    || 0; }), backgroundColor: 'rgba(22,163,74,0.8)',  borderRadius: 3 },
+            { label: 'Despesas',  data: rev.map(function(p) { return p.total_despesas   || 0; }), backgroundColor: 'rgba(220,38,38,0.8)',  borderRadius: 3 },
+            { label: 'Resultado', data: rev.map(function(p) { return p.resultado_liquido|| 0; }),
+              backgroundColor: rev.map(function(p) { return (p.resultado_liquido||0)>=0?'rgba(29,158,117,0.6)':'rgba(239,68,68,0.6)'; }),
+              type: 'line', tension: 0.3, pointRadius: 3, borderWidth: 2, borderColor: '#1D9E75', fill: false }
+          ] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+            tooltip: { callbacks: { label: function(c) { return c.dataset.label+': '+fmtBrl(c.parsed.y); } } } },
+          scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
+      });
+    }
+
+    // P&L pie
+    var ctxPP = document.getElementById('chart-pnl-pie-home');
+    if (ctxPP && !_inited['PP'] && visible(ctxPP)) {
+      _inited['PP'] = true;
+      var pnlPie = {{ pnl | tojson }};
+      var ult  = pnlPie[0] || {};
+      var NOMES = ['Empréstimo','Aluguel','Contabilidade','Impostos','COSERN','Taxa admin.','Seguro','Outros'];
+      var KEYS  = ['custo_emprestimo','custo_aluguel','custo_contabilidade','custo_impostos','custo_cosern','custo_taxa_admin','custo_seguro','custo_outros'];
+      var CORES = ['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6','#EC4899','#94A3B8'];
+      var vPie = [], nPie = [], cPie = [];
+      KEYS.forEach(function(k, i) { var v = ult[k]||0; if (v > 0) { vPie.push(v); nPie.push(NOMES[i]); cPie.push(CORES[i]); } });
+      if (vPie.length) {
+        new Chart(ctxPP, {
+          type: 'doughnut',
+          data: { labels: nPie, datasets: [{ data: vPie, backgroundColor: cPie, borderWidth: 2 }] },
+          options: { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+              tooltip: { callbacks: { label: function(c) { return c.label+': '+fmtBrl(c.parsed); } } } } }
+        });
+      }
+    }
   }
+
+  tryInitCharts();
+  window.addEventListener('resize', tryInitCharts);
 })();
 </script>
 {% endblock %}

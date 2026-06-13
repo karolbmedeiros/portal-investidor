@@ -321,6 +321,12 @@ document.addEventListener("click", function(e) {
       document.querySelectorAll('.dtab-content').forEach(function(c) { c.classList.remove('ativo'); });
       targets.forEach(function(t) { t.classList.add('ativo'); });
       history.pushState(null, '', href);
+      // Scroll para manter a barra de tabs visível no topo
+      var barTop = bar.getBoundingClientRect().top + window.scrollY;
+      var navH = (document.querySelector('.topnav') || {offsetHeight: 60}).offsetHeight;
+      window.scrollTo({ top: Math.max(0, barTop - navH - 8), behavior: 'smooth' });
+      // Redimensiona gráficos Chart.js que estavam ocultos
+      setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 20);
     } catch(_) {}
   });
 })();
