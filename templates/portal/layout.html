@@ -30,56 +30,6 @@
   <span>Carros</span>
 </a>
 
-{# 4 — Fluxo de Caixa #}
-{% set _tem_fluxo = all_perms or 'extrato_bancario' in perms or 'fluxo_de_caixa' in perms %}
-{% if _inv_usina and _tem_fluxo %}
-<a href="{{ url_for('portal.usina_detalhe', usina_id=_inv_usina, tab='extrato') }}"
-   class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab') == 'extrato' }}">
-{% else %}
-<a href="#" class="desabilitado">
-{% endif %}
-  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l0 18"/><path d="M3 18l4 -4l4 4l4 -4l4 4"/><path d="M3 12l4 -4l4 4l4 -4l4 4"/></svg>
-  <span>Fluxo de Caixa</span>
-</a>
-
-{# 5 — Sócios #}
-{% if _inv_usina and (all_perms or 'socios' in perms) %}
-<a href="{{ url_for('portal.usina_detalhe', usina_id=_inv_usina, tab='socios') }}"
-   class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab') == 'socios' }}">
-{% else %}
-<a href="#" class="desabilitado">
-{% endif %}
-  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
-  <span>Sócios</span>
-</a>
-
-{# 6 — Clientes #}
-{% if _inv_usina and (all_perms or 'clientes' in perms) %}
-<a href="{{ url_for('portal.usina_detalhe', usina_id=_inv_usina, tab='clientes') }}"
-   class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab') == 'clientes' }}">
-{% else %}
-<a href="#" class="desabilitado">
-{% endif %}
-  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
-  <span>Clientes</span>
-</a>
-
-{# 7 — DRE #}
-{% if _inv_usina and (all_perms or 'dre' in perms) %}
-<a href="{{ url_for('portal.usina_detalhe', usina_id=_inv_usina, tab='dre') }}"
-   class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab') == 'dre' }}">
-{% else %}
-<a href="#" class="desabilitado">
-{% endif %}
-  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
-  <span>DRE</span>
-</a>
-
-{# 8 — Configurações: sempre desabilitado para investidores #}
-<a href="#" class="desabilitado">
-  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
-  <span>Configurações</span>
-</a>
 {% endblock %}
 
 {% block header_user %}

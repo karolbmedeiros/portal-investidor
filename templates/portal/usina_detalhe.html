@@ -37,14 +37,14 @@
   'pnl': 'P&L',
   'saldo_creditos': 'Créditos kWh'
 } %}
-{% if valid_tabs | length > 1 %}
 <div class="dtab-bar">
+  <a href="{{ url_for('portal.home', ativo_id=usina.id) }}"
+     class="dtab-link">Visão Geral</a>
   {% for t in valid_tabs %}
   <a href="{{ url_for('portal.usina_detalhe', usina_id=usina.id, tab=t) }}"
      class="dtab-link {{ 'ativo' if tab == t }}">{{ _tab_labels.get(t, t) }}</a>
   {% endfor %}
 </div>
-{% endif %}
 
 {# ══════════════════════════════════════════════ SÓCIOS ═══ #}
 {% if all_perms or 'socios' in perms %}

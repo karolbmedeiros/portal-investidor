@@ -79,14 +79,38 @@
   'retorno_mensal': 'Retorno Mensal',
   'energia': 'Energia',
   'pnl': 'P&L',
-  'saldo_creditos': 'Créditos kWh'
+  'saldo_creditos': 'Créditos kWh',
+  'socios': 'Sócios',
+  'clientes': 'Clientes',
+  'extrato': 'Fluxo de Caixa',
+  'dre': 'DRE'
 } %}
-{% if home_tabs | length > 1 %}
+{% set _perms = usuario.permissions if usuario else [] %}
+{% set _all   = 'all' in _perms %}
+{% if filtrado or home_tabs | length > 1 %}
 <div class="dtab-bar" style="margin-bottom:20px;">
   {% for t in home_tabs %}
   <a href="{{ url_for('portal.home', ativo_id=ativo_id, tab=t) if ativo_id else url_for('portal.home', tab=t) }}"
      class="dtab-link {{ 'ativo' if tab == t }}">{{ _tab_labels.get(t, t) }}</a>
   {% endfor %}
+  {% if filtrado %}
+    {% if _all or 'socios' in _perms %}
+    <a href="{{ url_for('portal.usina_detalhe', usina_id=ativo_id, tab='socios') }}"
+       class="dtab-link {{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab') == 'socios' }}">Sócios</a>
+    {% endif %}
+    {% if _all or 'clientes' in _perms %}
+    <a href="{{ url_for('portal.usina_detalhe', usina_id=ativo_id, tab='clientes') }}"
+       class="dtab-link {{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab') == 'clientes' }}">Clientes</a>
+    {% endif %}
+    {% if _all or 'extrato_bancario' in _perms or 'fluxo_de_caixa' in _perms %}
+    <a href="{{ url_for('portal.usina_detalhe', usina_id=ativo_id, tab='extrato') }}"
+       class="dtab-link {{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab') == 'extrato' }}">Fluxo de Caixa</a>
+    {% endif %}
+    {% if _all or 'dre' in _perms %}
+    <a href="{{ url_for('portal.usina_detalhe', usina_id=ativo_id, tab='dre') }}"
+       class="dtab-link {{ 'ativo' if request.endpoint == 'portal.usina_detalhe' and request.args.get('tab') == 'dre' }}">DRE</a>
+    {% endif %}
+  {% endif %}
 </div>
 {% endif %}
 
