@@ -137,7 +137,8 @@ def usina_detalhe(usina_id):
     from services.usina_service import (
         buscar_usina, usinas_do_investidor,
         distribuicoes_da_usina, leituras_da_usina,
-        pnl_da_usina, documentos_da_usina,
+        pnl_da_usina, documentos_da_usina, clientes_da_usina,
+        participacoes_da_usina, listar_lancamentos,
     )
     u = usuario_logado()
     usina_ids = u.get("usina_ids", [])
@@ -152,15 +153,42 @@ def usina_detalhe(usina_id):
             abort(403)
 
     minha_part = next((p for p in partic if p["usina_id"] == usina_id), None)
+    usina = buscar_usina(usina_id)
+
+    # Mantém sessão sincronizada com a usina sendo visualizada
+    _sess["inv_ativo_id"]   = usina_id
+    _sess["inv_ativo_nome"] = usina.get("nome", "") if usina else ""
+
+    perms = u.get("permissions", [])
+    all_perms = "all" in perms
+
+    clientes = clientes_da_usina(usina_id) if (all_perms or "clientes" in perms) else []
+
+    socios_raw = participacoes_da_usina(usina_id) if (all_perms or "socios" in perms) else []
+    socios_usina = [
+        {
+            "nome": (p.get("investidores") or {}).get("nome") or (p.get("investidores") or {}).get("email") or "—",
+            "percentual": p.get("percentual") or 0,
+            "valor_investido_total": p.get("valor_investido_total"),
+            "data_entrada": p.get("data_entrada"),
+        }
+        for p in socios_raw
+    ]
+
+    lancamentos = listar_lancamentos(usina_id) if (all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms) else []
+    pnl = pnl_da_usina(usina_id)
 
     return render_template(
         "portal/usina_detalhe.html",
-        usina=buscar_usina(usina_id),
+        usina=usina,
         minha_participacao=minha_part,
         distribuicoes=distribuicoes_da_usina(usina_id),
         leituras=leituras_da_usina(usina_id),
-        pnl=pnl_da_usina(usina_id),
+        pnl=pnl,
         documentos=documentos_da_usina(usina_id),
+        clientes=clientes,
+        socios_usina=socios_usina,
+        lancamentos=lancamentos,
         usuario=u,
     )
 

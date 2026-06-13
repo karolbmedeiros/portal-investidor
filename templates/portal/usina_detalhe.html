@@ -29,13 +29,16 @@
   {% set vtabs = [] %}
   {% if all_perms or 'visao_geral' in perms or not perms %}{% set _ = vtabs.append('visao-geral') %}{% endif %}
   {% if all_perms or 'socios' in perms %}{% set _ = vtabs.append('socios') %}{% endif %}
+  {% if all_perms or 'clientes' in perms %}{% set _ = vtabs.append('clientes') %}{% endif %}
   {% if all_perms or 'extrato_bancario' in perms or 'fluxo_de_caixa' in perms %}{% set _ = vtabs.append('extrato') %}{% endif %}
   {% if all_perms or 'dre' in perms %}{% set _ = vtabs.append('dre') %}{% endif %}
-  {% set tab_labels = {'visao-geral': 'Visão Geral', 'socios': 'Sócios', 'extrato': 'Extrato Bancário', 'dre': 'DRE'} %}
+  {% set tab_labels = {'visao-geral': 'Visão Geral', 'socios': 'Sócios', 'clientes': 'Clientes', 'extrato': 'Fluxo de Caixa', 'dre': 'DRE'} %}
+  {% set tab_req = request.args.get('tab', '') %}
+  {% set tab_inicial = tab_req if tab_req in vtabs else (vtabs[0] if vtabs else 'visao-geral') %}
 
   <div class="detalhe-tabs" style="margin-top:20px;">
     {% for tab in vtabs %}
-    <button class="dtab {{ 'ativo' if loop.first }}" onclick="showTab('{{ tab }}', this)">
+    <button class="dtab {{ 'ativo' if tab == tab_inicial }}" onclick="showTab('{{ tab }}', this)">
       {{ tab_labels[tab] }}
     </button>
     {% endfor %}
@@ -45,7 +48,7 @@
 <div class="page-content">
 
   {# ═══════════════════════════════════════════════════════ VISÃO GERAL ═══ #}
-  <div id="tab-visao-geral" class="dtab-content {{ 'ativo' if vtabs and vtabs[0] == 'visao-geral' }}">
+  <div id="tab-visao-geral" class="dtab-content {{ 'ativo' if tab_inicial == 'visao-geral' }}">
     <div class="detail-grid">
       <div class="card mb-0">
         <div class="card-label">Dados da usina</div>
@@ -108,8 +111,121 @@
     {% endif %}
   </div>
 
+  {# ══════════════════════════════════════════════════════ CLIENTES ═══ #}
+  <div id="tab-clientes" class="dtab-content {{ 'ativo' if tab_inicial == 'clientes' }}">
+    {% if clientes %}
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>UC</th>
+            <th>Desconto</th>
+            <th>Vencimento</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in clientes %}
+          <tr>
+            <td style="font-weight:600;">{{ c.nome_cliente }}</td>
+            <td class="text-muted">{{ c.codigo_uc }}{% if c.apelido_uc %} · {{ c.apelido_uc }}{% endif %}</td>
+            <td>{{ c.percentual_desconto or '—' }}%</td>
+            <td class="text-muted">Dia {{ c.dia_vencimento or '—' }}</td>
+            <td>
+              <span class="badge {{ 'badge-verde' if c.status == 'ativo' else 'badge-muted' }}">
+                {{ c.status or '—' }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vazio">Nenhum cliente registrado para esta usina.</div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════════════════════════════ SÓCIOS ═══ #}
+  <div id="tab-socios" class="dtab-content {{ 'ativo' if tab_inicial == 'socios' }}">
+    {% if socios_usina %}
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Investidor</th><th>Cota</th><th>Valor Investido</th><th>Entrada</th></tr>
+        </thead>
+        <tbody>
+          {% for s in socios_usina %}
+          <tr>
+            <td style="font-weight:600;">{{ s.nome or s.email or '—' }}</td>
+            <td>{{ (s.percentual * 100)|round(1) }}%</td>
+            <td>{% if s.valor_investido_total %}R$ {{ "%.2f"|format(s.valor_investido_total) }}{% else %}—{% endif %}</td>
+            <td class="text-muted">{{ s.data_entrada or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vazio">Nenhum sócio registrado.</div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════════════════════════════ FLUXO DE CAIXA ═══ #}
+  <div id="tab-extrato" class="dtab-content {{ 'ativo' if tab_inicial == 'extrato' }}">
+    {% if lancamentos %}
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr>
+        </thead>
+        <tbody>
+          {% for l in lancamentos %}
+          <tr>
+            <td class="text-muted text-sm">{{ l.data_transacao or '—' }}</td>
+            <td>{{ l.descricao or '—' }}</td>
+            <td><span class="badge {{ 'badge-verde' if l.tipo == 'credito' else 'badge-muted' }}">{{ l.tipo or '—' }}</span></td>
+            <td style="font-weight:700;color:{{ 'var(--green)' if l.tipo == 'credito' else 'var(--red)' }};">
+              R$ {{ "%.2f"|format(l.valor or 0) }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vazio">Nenhum lançamento encontrado.</div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════════════════════════════ DRE ═══ #}
+  <div id="tab-dre" class="dtab-content {{ 'ativo' if tab_inicial == 'dre' }}">
+    {% if pnl %}
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Mês</th><th>Receita</th><th>Despesas</th><th>Resultado</th></tr>
+        </thead>
+        <tbody>
+          {% for d in pnl %}
+          <tr>
+            <td style="font-weight:600;">{{ d.ref_mes_ano[:7] if d.ref_mes_ano else '—' }}</td>
+            <td style="color:var(--green);">R$ {{ "%.2f"|format(d.receita_bruta or 0) }}</td>
+            <td style="color:var(--red);">R$ {{ "%.2f"|format(d.total_despesas or 0) }}</td>
+            <td style="font-weight:700;">R$ {{ "%.2f"|format(d.resultado_liquido or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="vazio">Nenhum dado de DRE disponível.</div>
+    {% endif %}
+  </div>
+
   {# ══════════════════════════════════════════════════════ DISTRIBUIÇÕES ═══ #}
-  <div id="tab-distribuicoes" class="dtab-content {{ 'ativo' if vtabs and vtabs[0] == 'distribuicoes' }}">
+  <div id="tab-distribuicoes" class="dtab-content">
     {% if distribuicoes %}
     <div class="tabela-wrap">
       <table>
@@ -139,7 +255,7 @@
   </div>
 
   {# ══════════════════════════════════════════════════════ DOCUMENTOS ═══ #}
-  <div id="tab-documentos" class="dtab-content {{ 'ativo' if vtabs and vtabs[0] == 'documentos' }}">
+  <div id="tab-documentos" class="dtab-content">
     {% if documentos %}
     <div class="tabela-wrap">
       <table>
@@ -173,7 +289,7 @@
   </div>
 
   {# ══════════════════════════════════════════════════════ LEITURAS ═══ #}
-  <div id="tab-leituras" class="dtab-content {{ 'ativo' if vtabs and vtabs[0] == 'leituras' }}">
+  <div id="tab-leituras" class="dtab-content">
     {% if leituras %}
     <div class="tabela-wrap">
       <table>
