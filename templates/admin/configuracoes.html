@@ -247,7 +247,7 @@
     {# ══ Novo Usuário ══ #}
     <div id="cfg-novo_usuario" class="cfg-tab" style="display:none;">
       <div class="cfg-section-title">Criar novo usuário</div>
-      <div style="max-width:560px;">
+      <div>
         <form method="POST" action="{{ url_for('admin.novo_usuario') }}" style="margin-top:4px;">
           <div class="form-row">
             <div class="form-group">
@@ -291,90 +291,96 @@
           </div>
 
           <div id="perms-section">
-            {% if usinas or empresas_veiculos %}
-            <div class="form-group">
-              <label>Investimentos com acesso <span style="font-weight:400;color:var(--muted);text-transform:none;">(visualização)</span></label>
-              <div class="toggle-list" style="border:0.5px solid rgba(23,33,28,0.12);border-radius:10px;padding:12px 14px;background:var(--bg);">
-                {% if usinas %}
-                <div class="toggle-grupo-label">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/></svg>
-                  Usinas
-                </div>
-                {% for usina in usinas %}
-                <label class="toggle-item">
-                  <span class="toggle-item-label">{{ usina.nome }}</span>
-                  <span class="toggle">
-                    <input type="checkbox" name="usina_ids" value="{{ usina.id }}" />
-                    <span class="toggle-slider"></span>
-                  </span>
-                </label>
-                {% endfor %}
-                {% endif %}
-                {% if empresas_veiculos %}
-                <div class="toggle-grupo-label" style="margin-top:10px;">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
-                  Carros
-                </div>
-                {% for emp in empresas_veiculos %}
-                <label class="toggle-item">
-                  <span class="toggle-item-label">{{ emp.nome }}</span>
-                  <span class="toggle">
-                    <input type="checkbox" name="usina_ids" value="{{ emp.slug }}" />
-                    <span class="toggle-slider"></span>
-                  </span>
-                </label>
-                {% endfor %}
-                {% endif %}
-              </div>
-            </div>
-            {% endif %}
+            <div class="novo-perms-grid">
 
-            <div class="form-group">
-              <label>Seções visíveis</label>
-              <div class="toggle-list" style="border:0.5px solid rgba(23,33,28,0.12);border-radius:10px;padding:12px 14px;background:var(--bg);">
-                <label class="toggle-item">
-                  <span class="toggle-item-label">Visão Geral</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="visao_geral" checked /><span class="toggle-slider"></span></span>
-                </label>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">Carros</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="carros" /><span class="toggle-slider"></span></span>
-                </label>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">Sócios</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="socios" checked /><span class="toggle-slider"></span></span>
-                </label>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">Clientes</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="clientes" /><span class="toggle-slider"></span></span>
-                </label>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">Fluxo de Caixa</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="extrato_bancario" /><span class="toggle-slider"></span></span>
-                </label>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">DRE</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="dre" /><span class="toggle-slider"></span></span>
-                </label>
-                <div class="toggle-subgrupo">Dados Visuais</div>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">Retorno Mensal</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="retorno_mensal" /><span class="toggle-slider"></span></span>
-                </label>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">Energia / Compensação</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="energia" /><span class="toggle-slider"></span></span>
-                </label>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">P&L da Usina</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="pnl" /><span class="toggle-slider"></span></span>
-                </label>
-                <label class="toggle-item">
-                  <span class="toggle-item-label">Saldo de Créditos kWh</span>
-                  <span class="toggle"><input type="checkbox" name="permissions" value="saldo_creditos" /><span class="toggle-slider"></span></span>
-                </label>
+              {# Coluna esquerda: investimentos #}
+              {% if usinas or empresas_veiculos %}
+              <div class="form-group" style="margin:0;">
+                <label>Investimentos com acesso <span style="font-weight:400;color:var(--muted);text-transform:none;">(visualização)</span></label>
+                <div class="toggle-list toggle-box">
+                  {% if usinas %}
+                  <div class="toggle-grupo-label">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/></svg>
+                    Usinas
+                  </div>
+                  {% for usina in usinas %}
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">{{ usina.nome }}</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="usina_ids" value="{{ usina.id }}" />
+                      <span class="toggle-slider"></span>
+                    </span>
+                  </label>
+                  {% endfor %}
+                  {% endif %}
+                  {% if empresas_veiculos %}
+                  <div class="toggle-grupo-label" style="margin-top:10px;">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+                    Carros
+                  </div>
+                  {% for emp in empresas_veiculos %}
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">{{ emp.nome }}</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="usina_ids" value="{{ emp.slug }}" />
+                      <span class="toggle-slider"></span>
+                    </span>
+                  </label>
+                  {% endfor %}
+                  {% endif %}
+                </div>
               </div>
-            </div>
+              {% endif %}
+
+              {# Coluna direita: seções visíveis #}
+              <div class="form-group" style="margin:0;">
+                <label>Seções visíveis</label>
+                <div class="toggle-list toggle-box">
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Visão Geral</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="visao_geral" checked /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Carros</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="carros" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Sócios</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="socios" checked /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Clientes</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="clientes" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Fluxo de Caixa</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="extrato_bancario" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">DRE</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="dre" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <div class="toggle-subgrupo">Dados Visuais</div>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Retorno Mensal</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="retorno_mensal" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Energia / Compensação</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="energia" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">P&L da Usina</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="pnl" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Saldo de Créditos kWh</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="saldo_creditos" /><span class="toggle-slider"></span></span>
+                  </label>
+                </div>
+              </div>
+
+            </div>{# /novo-perms-grid #}
           </div>{# /perms-section #}
 
           <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">
@@ -588,6 +594,22 @@
 
 .mb-12 { margin-bottom: 12px; }
 
+/* ── Novo usuário: grid 2 colunas ── */
+.novo-perms-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.toggle-box {
+  border: 0.5px solid rgba(23,33,28,0.12);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--bg);
+  height: 100%;
+}
+
+@media(max-width: 900px) { .novo-perms-grid { grid-template-columns: 1fr; } }
 @media(max-width: 680px) {
   .cfg-layout { flex-direction: column; }
   .cfg-nav { width: 100%; flex-direction: row; flex-wrap: wrap; position: static; }
