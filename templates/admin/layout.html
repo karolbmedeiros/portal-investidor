@@ -261,14 +261,6 @@
       <div class="topnav-logo-sub">by Ativuz</div>
     </a>
 
-    {# ── Detecta tipo de ativo na sessão ── #}
-    {% set _ativo_tipo = session.get('ativo_tipo', '') %}
-    {% set _ativo_id   = session.get('ativo_id', '') %}
-    {% if ativo_selecionado is defined and ativo_selecionado %}
-      {% set _ativo_tipo = ativo_selecionado.tipo %}
-      {% set _ativo_id   = ativo_selecionado.id %}
-    {% endif %}
-
     <div class="topnav-nav">
 
       {# 1 — Dashboard #}
@@ -280,7 +272,7 @@
 
       {# 2 — Portfólio de usinas #}
       <a href="{{ url_for('admin.portfolio_usinas') }}"
-         class="{{ 'ativo' if request.endpoint == 'admin.portfolio_usinas' }}">
+         class="{{ 'ativo' if request.endpoint in ('admin.portfolio_usinas', 'admin.usina_detalhe') }}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
         <span>Usinas</span>
       </a>
@@ -292,56 +284,14 @@
         <span>Carros</span>
       </a>
 
-      {# 4 — Fluxo de Caixa #}
-      {% if _ativo_tipo == 'usina' and _ativo_id %}
-        {% set _url_fluxo = url_for('admin.usina_detalhe', usina_id=_ativo_id, tab='extrato') %}
-        {% set _fluxo_ativo = request.endpoint in ('admin.fluxo_de_caixa','admin.fluxo_importar') or (request.endpoint == 'admin.usina_detalhe' and request.args.get('tab') == 'extrato') %}
-      {% else %}
-        {% set _url_fluxo = url_for('admin.fluxo_de_caixa') %}
-        {% set _fluxo_ativo = request.endpoint in ('admin.fluxo_de_caixa','admin.fluxo_importar') %}
-      {% endif %}
-      <a href="{{ _url_fluxo }}" class="{{ 'ativo' if _fluxo_ativo }}">
+      {# 4 — Fluxo de Caixa (global) #}
+      <a href="{{ url_for('admin.fluxo_de_caixa') }}"
+         class="{{ 'ativo' if request.endpoint in ('admin.fluxo_de_caixa', 'admin.fluxo_importar') }}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l0 18"/><path d="M3 18l4 -4l4 4l4 -4l4 4"/><path d="M3 12l4 -4l4 4l4 -4l4 4"/></svg>
         <span>Fluxo de Caixa</span>
       </a>
 
-      {# 5 — Sócios #}
-      {% if _ativo_tipo == 'usina' and _ativo_id %}
-        {% set _url_socios = url_for('admin.usina_detalhe', usina_id=_ativo_id, tab='socios') %}
-      {% else %}
-        {% set _url_socios = '#' %}
-      {% endif %}
-      <a href="{{ _url_socios }}"
-         class="{{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and request.args.get('tab','socios') == 'socios' }} {{ 'desabilitado' if not _ativo_id or _ativo_tipo != 'usina' }}">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>
-        <span>Sócios</span>
-      </a>
-
-      {# 6 — Clientes #}
-      {% if _ativo_tipo == 'usina' and _ativo_id %}
-        {% set _url_clientes = url_for('admin.usina_detalhe', usina_id=_ativo_id, tab='clientes') %}
-      {% else %}
-        {% set _url_clientes = '#' %}
-      {% endif %}
-      <a href="{{ _url_clientes }}"
-         class="{{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and request.args.get('tab') == 'clientes' }} {{ 'desabilitado' if not _ativo_id or _ativo_tipo != 'usina' }}">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
-        <span>Clientes</span>
-      </a>
-
-      {# 7 — DRE #}
-      {% if _ativo_tipo == 'usina' and _ativo_id %}
-        {% set _url_dre = url_for('admin.usina_detalhe', usina_id=_ativo_id, tab='dre') %}
-      {% else %}
-        {% set _url_dre = '#' %}
-      {% endif %}
-      <a href="{{ _url_dre }}"
-         class="{{ 'ativo' if request.endpoint == 'admin.usina_detalhe' and request.args.get('tab') == 'dre' }} {{ 'desabilitado' if not _ativo_id or _ativo_tipo != 'usina' }}">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
-        <span>DRE</span>
-      </a>
-
-      {# 8 — Configurações #}
+      {# 5 — Configurações #}
       <a href="{{ url_for('admin.configuracoes') }}"
          class="{{ 'ativo' if 'configuracoes' in request.endpoint or 'usuario' in request.endpoint or 'redefinir' in request.endpoint or 'excluir_usuario' in request.endpoint }}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>

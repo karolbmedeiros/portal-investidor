@@ -163,13 +163,16 @@ def usina_detalhe(usina_id):
         leituras_da_usina, pnl_da_usina,
         listar_lancamentos, listar_categorias, calcular_kpis,
         clientes_da_usina, auto_conciliar_neutros, listar_contas_da_usina,
+        retorno_mensal_investidor, leituras_detalhadas, saldo_creditos_da_usina,
     )
     usina = buscar_usina(usina_id)
     if not usina:
         abort(404)
 
     tab = request.args.get("tab", "socios")
-    if tab not in ("socios", "clientes", "extrato", "dre"):
+    _valid_tabs = ("socios", "clientes", "extrato", "dre",
+                   "retorno_mensal", "energia", "pnl", "saldo_creditos")
+    if tab not in _valid_tabs:
         tab = "socios"
 
     auto_conciliar_neutros(usina_id)
@@ -219,6 +222,10 @@ def usina_detalhe(usina_id):
     categorias  = listar_categorias()
     num_ativos  = sum(1 for c in clientes if c.get("status") == "Ativo")
 
+    retorno_mensal = retorno_mensal_investidor(usina_id) if tab == "retorno_mensal" else []
+    leituras_det   = leituras_detalhadas(usina_id)       if tab == "energia"        else []
+    saldo_creditos = saldo_creditos_da_usina(usina_id)   if tab == "saldo_creditos" else []
+
     return render_template(
         "admin/usina_detalhe.html",
         usina=usina,
@@ -237,6 +244,9 @@ def usina_detalhe(usina_id):
         chart_meses=chart_meses,
         chart_fluxo_dates=chart_fluxo_dates,
         chart_fluxo_pts=chart_fluxo_pts,
+        retorno_mensal=retorno_mensal,
+        leituras_det=leituras_det,
+        saldo_creditos=saldo_creditos,
     )
 
 

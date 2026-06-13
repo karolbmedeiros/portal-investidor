@@ -103,6 +103,28 @@
     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg>
   </a>
 </div>
+{% if ativo_selecionado.tipo == 'usina' %}
+<div class="dtab-bar" style="margin-bottom:20px;">
+  <a href="{{ url_for('admin.dashboard', ativo_id=ativo_id, ativo_tipo='usina') }}"
+     class="dtab-link ativo">Visão Geral</a>
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=ativo_id, tab='retorno_mensal') }}"
+     class="dtab-link">Retorno Mensal</a>
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=ativo_id, tab='energia') }}"
+     class="dtab-link">Energia</a>
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=ativo_id, tab='pnl') }}"
+     class="dtab-link">P&L</a>
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=ativo_id, tab='saldo_creditos') }}"
+     class="dtab-link">Créditos kWh</a>
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=ativo_id, tab='socios') }}"
+     class="dtab-link">Sócios</a>
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=ativo_id, tab='clientes') }}"
+     class="dtab-link">Clientes</a>
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=ativo_id, tab='extrato') }}"
+     class="dtab-link">Fluxo de Caixa</a>
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=ativo_id, tab='dre') }}"
+     class="dtab-link">DRE</a>
+</div>
+{% endif %}
 {% endif %}
 
 <!-- ── Métricas 2×2 + chart ── -->
@@ -383,6 +405,12 @@
 
 {% block scripts %}
 <style>
+/* ── Tab bar (reutilizado em usina_detalhe também) ── */
+.dtab-bar { display:flex; gap:0; border-bottom:0.5px solid rgba(23,33,28,0.10); margin-bottom:20px; overflow-x:auto; flex-wrap:nowrap; }
+.dtab-link { padding:10px 16px; font-size:13px; font-weight:400; color:var(--muted); text-decoration:none; border-bottom:2px solid transparent; white-space:nowrap; transition:color .14s, border-color .14s; flex-shrink:0; }
+.dtab-link:hover { color:var(--accent2); }
+.dtab-link.ativo { color:var(--accent2); border-bottom-color:var(--accent); font-weight:500; }
+
 /* ── Dashboard header ── */
 .db-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:16px; }
 .db-greeting { font-size:22px; font-weight:500; letter-spacing:-0.02em; color:var(--text); margin:0; }

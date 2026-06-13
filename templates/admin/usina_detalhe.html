@@ -25,6 +25,21 @@
 
 <div class="page-content">
 
+{# ── Barra de tabs in-page ── #}
+{% set _tab_labels = {
+  'socios': 'Sócios', 'clientes': 'Clientes', 'extrato': 'Fluxo de Caixa', 'dre': 'DRE',
+  'retorno_mensal': 'Retorno Mensal', 'energia': 'Energia', 'pnl': 'P&L', 'saldo_creditos': 'Créditos kWh'
+} %}
+{% set _all_tabs = ['socios','clientes','extrato','dre','retorno_mensal','energia','pnl','saldo_creditos'] %}
+<div class="dtab-bar">
+  <a href="{{ url_for('admin.dashboard', ativo_id=usina.id, ativo_tipo='usina') }}"
+     class="dtab-link">Visão Geral</a>
+  {% for t in _all_tabs %}
+  <a href="{{ url_for('admin.usina_detalhe', usina_id=usina.id, tab=t) }}"
+     class="dtab-link {{ 'ativo' if tab == t }}">{{ _tab_labels[t] }}</a>
+  {% endfor %}
+</div>
+
 {# ══════════════════════════════════════════════ SÓCIOS ═══ #}
 <div id="tab-socios" class="dtab-content {{ 'ativo' if tab == 'socios' }}">
   {% if participacoes %}
@@ -507,6 +522,184 @@
   </div>
 </div>
 
+{# ══════════════════════════════════════ RETORNO MENSAL ═══ #}
+<div id="tab-retorno_mensal" class="dtab-content {{ 'ativo' if tab == 'retorno_mensal' }}">
+  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+  {% if retorno_mensal %}
+    {% set _tot_lucro = namespace(v=0) %}
+    {% for r in retorno_mensal %}{% set _tot_lucro.v = _tot_lucro.v + (r.participacao_lucro or 0) %}{% endfor %}
+    {% set _tot_dist = namespace(v=0) %}
+    {% for r in retorno_mensal %}{% set _tot_dist.v = _tot_dist.v + (r.valor_distribuido or 0) %}{% endfor %}
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Resultado acumulado</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#DC2626' if _tot_lucro.v < 0 else 'var(--text)' }};">{{ _tot_lucro.v|brl }}</span></div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Total distribuído</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _tot_dist.v|brl }}</span></div>
+      </div>
+    </div>
+    <section class="card" style="margin-bottom:16px;">
+      <div class="db-chart-title" style="margin-bottom:12px;">Resultado mensal (participação no lucro)</div>
+      <div style="position:relative;height:240px;"><canvas id="chart-retorno-admin"></canvas></div>
+    </section>
+    <section class="card">
+      <table class="db-fat-table">
+        <thead><tr><th>Mês</th><th>Resultado usina</th><th>Participação</th><th>Distribuído</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for r in retorno_mensal | reverse %}
+          {% set _ms = r.ref_mes_ano[:7] if r.ref_mes_ano else '' %}
+          <tr>
+            <td style="font-weight:500;">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td>
+            <td style="font-weight:600;color:{{ '#16A34A' if (r.resultado_usina or 0)>=0 else '#DC2626' }};">{{ (r.resultado_usina or 0)|brl }}</td>
+            <td style="font-weight:600;color:{{ '#16A34A' if (r.participacao_lucro or 0)>=0 else '#DC2626' }};">{{ (r.participacao_lucro or 0)|brl }}</td>
+            <td>{{ (r.valor_distribuido or 0)|brl }}</td>
+            <td>{% if (r.valor_distribuido or 0)>0 %}<span class="db-fat-status" style="background:#D1FAE5;color:#065F46;">Distribuído</span>
+            {% elif (r.participacao_lucro or 0)>0 %}<span class="db-fat-status db-fat-status--emitida">A distribuir</span>
+            {% else %}<span class="db-fat-status" style="background:#F3F4F6;color:#6B7280;">Negativo</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% else %}<div class="vazio">Sem dados de retorno para esta usina.</div>{% endif %}
+</div>
+
+{# ══════════════════════════════════════════ ENERGIA ═══ #}
+<div id="tab-energia" class="dtab-content {{ 'ativo' if tab == 'energia' }}">
+  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+  {% if leituras_det %}
+    {% set _tc = namespace(v=0) %}{% for l in leituras_det %}{% set _tc.v = _tc.v+(l.kwh_compensado or 0) %}{% endfor %}
+    {% set _ts = namespace(v=0) %}{% for l in leituras_det %}{% set _ts.v = _ts.v+(l.kwh_consumido or 0) %}{% endfor %}
+    {% set _tr = namespace(v=0) %}{% for l in leituras_det %}{% set _tr.v = _tr.v+(l.valor_fatura_cosern_real or 0) %}{% endfor %}
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Total compensado</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _tc.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Total consumido</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ts.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Total fatura COSERN</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _tr.v|brl }}</span></div>
+      </div>
+    </div>
+    <section class="card" style="margin-bottom:16px;">
+      <div class="db-chart-title" style="margin-bottom:12px;">kWh compensado por mês</div>
+      <div style="position:relative;height:220px;"><canvas id="chart-energia-admin"></canvas></div>
+    </section>
+    <section class="card">
+      <table class="db-fat-table">
+        <thead><tr><th>Mês</th><th>Contrato</th><th>kWh compensado</th><th>kWh consumido</th><th>Saldo créditos</th><th>Fatura COSERN</th></tr></thead>
+        <tbody>
+          {% for l in leituras_det | reverse %}
+          {% set _ms = l.ref_mes_ano[:7] if l.ref_mes_ano else '' %}
+          <tr>
+            <td style="font-weight:500;white-space:nowrap;">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td>
+            <td class="text-muted text-sm">{{ l.numero_contrato or '—' }}</td>
+            <td style="font-weight:600;color:var(--accent);">{{ (l.kwh_compensado or 0)|round(0)|int }} kWh</td>
+            <td class="text-muted">{{ (l.kwh_consumido or 0)|round(0)|int }} kWh</td>
+            <td>{{ (l.saldo_creditos_kwh or 0)|round(0)|int }} kWh</td>
+            <td>{{ (l.valor_fatura_cosern_real or 0)|brl }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% else %}<div class="vazio">Sem leituras cadastradas para esta usina.</div>{% endif %}
+</div>
+
+{# ══════════════════════════════════════════════ P&L ═══ #}
+<div id="tab-pnl" class="dtab-content {{ 'ativo' if tab == 'pnl' }}">
+  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+  {% if pnl %}
+    {% set _ult = pnl[0] %}
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Receita bruta (último mês)</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#16A34A;">{{ (_ult.receita_bruta or 0)|brl }}</span></div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Total despesas</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#DC2626;">{{ (_ult.total_despesas or 0)|brl }}</span></div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Resultado líquido</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if (_ult.resultado_liquido or 0)>=0 else '#DC2626' }};">{{ (_ult.resultado_liquido or 0)|brl }}</span></div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:130px;padding:18px 20px;">
+        <div class="db-mc-label">Margem líquida</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ ((_ult.margem_liquida or 0)*100)|round(1) }}%</span></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <section class="card">
+        <div class="db-chart-title" style="margin-bottom:12px;">Receita vs Despesas</div>
+        <div style="position:relative;height:220px;"><canvas id="chart-pnl-bar-admin"></canvas></div>
+      </section>
+      <section class="card">
+        <div class="db-chart-title" style="margin-bottom:12px;">Composição de despesas (último mês)</div>
+        <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;"><canvas id="chart-pnl-pie-admin"></canvas></div>
+      </section>
+    </div>
+    <section class="card">
+      <table class="db-fat-table">
+        <thead><tr><th>Mês</th><th>Receita bruta</th><th>Despesas</th><th>Resultado</th><th>Margem</th><th>kWh fat.</th></tr></thead>
+        <tbody>
+          {% for p in pnl %}
+          {% set _ms = p.ref_mes_ano[:7] if p.ref_mes_ano else '' %}
+          <tr>
+            <td style="font-weight:500;white-space:nowrap;">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td>
+            <td style="font-weight:600;color:#16A34A;">{{ (p.receita_bruta or 0)|brl }}</td>
+            <td style="color:#DC2626;">{{ (p.total_despesas or 0)|brl }}</td>
+            <td style="font-weight:700;color:{{ '#16A34A' if (p.resultado_liquido or 0)>=0 else '#DC2626' }};">{{ (p.resultado_liquido or 0)|brl }}</td>
+            <td>{{ ((p.margem_liquida or 0)*100)|round(1) }}%</td>
+            <td class="text-muted">{{ (p.kwh_faturado or 0)|round(0)|int }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% else %}<div class="vazio">Sem dados de P&L para esta usina.</div>{% endif %}
+</div>
+
+{# ══════════════════════════════════════ CRÉDITOS kWh ═══ #}
+<div id="tab-saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}">
+  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+  {% if saldo_creditos %}
+    {% set _tk = namespace(v=0) %}{% for s in saldo_creditos %}{% set _tk.v = _tk.v+(s.kwh_total_compensado or 0) %}{% endfor %}
+    {% set _ts = namespace(v=0) %}{% for s in saldo_creditos %}{% set _ts.v = _ts.v+(s.saldo_atual_kwh or 0) %}{% endfor %}
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:180px;padding:18px 20px;">
+        <div class="db-mc-label">Total compensado (histórico)</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _tk.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Saldo atual total</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ 'var(--accent)' if _ts.v>0 else 'var(--text)' }};">{{ _ts.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+      </div>
+    </div>
+    <section class="card">
+      <table class="db-fat-table">
+        <thead><tr><th>Contrato</th><th>Total compensado</th><th>Saldo atual</th><th>Último mês</th></tr></thead>
+        <tbody>
+          {% for s in saldo_creditos %}
+          <tr>
+            <td style="font-weight:500;">{{ s.numero_contrato or s.contrato_id[:8] + '…' }}</td>
+            <td>{{ (s.kwh_total_compensado or 0)|round(0)|int }} kWh</td>
+            <td style="font-weight:700;color:{{ 'var(--accent)' if (s.saldo_atual_kwh or 0)>0 else 'var(--text)' }};">{{ (s.saldo_atual_kwh or 0)|round(0)|int }} kWh</td>
+            <td class="text-muted">{% if s.ultimo_mes_lancado %}{% set _ms=s.ultimo_mes_lancado[:7] %}{{ _ma[_ms[5:7]|int] }}/{{ _ms[:4] }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% else %}<div class="vazio">Sem dados de saldo de créditos.</div>{% endif %}
+</div>
+
 </div>{# /page-content #}
 
 
@@ -552,17 +745,12 @@
 
 {% block scripts %}
 <style>
-/* ── Abas ── */
-.detalhe-tabs { display:flex; gap:4px; border-bottom:0.5px solid rgba(23,33,28,0.10); }
-.dtab {
-  padding:9px 16px; font-size:13px; font-weight:400;
-  background:none; border:none; border-bottom:2px solid transparent;
-  color:var(--muted); cursor:pointer; margin-bottom:-1px;
-  transition:color .15s, border-color .15s;
-}
-.dtab.ativo, .dtab:hover { color:var(--accent2); }
-.dtab.ativo { border-bottom-color:var(--accent); font-weight:500; }
-.dtab-content { display:none; padding-top:24px; }
+/* ── Tab bar ── */
+.dtab-bar { display:flex; gap:0; border-bottom:0.5px solid rgba(23,33,28,0.10); margin-bottom:24px; overflow-x:auto; flex-wrap:nowrap; }
+.dtab-link { padding:10px 16px; font-size:13px; font-weight:400; color:var(--muted); text-decoration:none; border-bottom:2px solid transparent; white-space:nowrap; transition:color .14s, border-color .14s; flex-shrink:0; }
+.dtab-link:hover { color:var(--accent2); }
+.dtab-link.ativo { color:var(--accent2); border-bottom-color:var(--accent); font-weight:500; }
+.dtab-content { display:none; }
 .dtab-content.ativo { display:block; }
 
 /* ── KPI ── */
@@ -1116,5 +1304,98 @@ function exportarDrePdf() {
   w.document.close();
   setTimeout(() => { w.print(); }, 400);
 }
+
+// ── Retorno Mensal chart ──────────────────────────────────
+(function() {
+  var ctxR = document.getElementById('chart-retorno-admin');
+  if (!ctxR) return;
+  var retorno = {{ retorno_mensal | tojson }};
+  var MA = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  var labelsR = retorno.map(function(r) { var m=(r.ref_mes_ano||'').slice(0,7); return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); });
+  var valsR   = retorno.map(function(r) { return r.participacao_lucro || 0; });
+  new Chart(ctxR, {
+    type: 'bar',
+    data: { labels: labelsR, datasets: [{ label: 'Participação no resultado', data: valsR,
+      backgroundColor: valsR.map(function(v) { return v >= 0 ? 'rgba(22,163,74,0.8)' : 'rgba(220,38,38,0.8)'; }),
+      borderRadius: 4, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: function(c) { return fmtBrl(c.parsed.y); } } } },
+      scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
+  });
+})();
+
+// ── Energia chart ─────────────────────────────────────────
+(function() {
+  var ctxE = document.getElementById('chart-energia-admin');
+  if (!ctxE) return;
+  var leituras = {{ leituras_det | tojson }};
+  var MA = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  var mesMap = {};
+  leituras.forEach(function(l) {
+    var m = (l.ref_mes_ano||'').slice(0,7);
+    if (!mesMap[m]) mesMap[m] = { comp: 0, cons: 0 };
+    mesMap[m].comp += l.kwh_compensado || 0;
+    mesMap[m].cons += l.kwh_consumido  || 0;
+  });
+  var meses = Object.keys(mesMap).sort();
+  new Chart(ctxE, {
+    type: 'bar',
+    data: { labels: meses.map(function(m) { return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); }),
+      datasets: [
+        { label: 'Compensado (kWh)', data: meses.map(function(m) { return mesMap[m].comp; }), backgroundColor: 'rgba(29,158,117,0.8)', borderRadius: 3 },
+        { label: 'Consumido (kWh)',  data: meses.map(function(m) { return mesMap[m].cons; }), backgroundColor: 'rgba(148,163,184,0.5)', borderRadius: 3 }
+      ] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+      scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } }, y: { grid: { color: '#EEF0EF' }, ticks: { font: { size: 10 } } } } }
+  });
+})();
+
+// ── P&L charts ────────────────────────────────────────────
+(function() {
+  var ctxPB = document.getElementById('chart-pnl-bar-admin');
+  if (ctxPB) {
+    var pnlData = {{ pnl | tojson }};
+    var MA = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    var rev = pnlData.slice().reverse();
+    new Chart(ctxPB, {
+      type: 'bar',
+      data: { labels: rev.map(function(p) { var m=(p.ref_mes_ano||'').slice(0,7); return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); }),
+        datasets: [
+          { label: 'Receita',   data: rev.map(function(p) { return p.receita_bruta    || 0; }), backgroundColor: 'rgba(22,163,74,0.8)',  borderRadius: 3 },
+          { label: 'Despesas',  data: rev.map(function(p) { return p.total_despesas   || 0; }), backgroundColor: 'rgba(220,38,38,0.8)',  borderRadius: 3 },
+          { label: 'Resultado', data: rev.map(function(p) { return p.resultado_liquido|| 0; }),
+            backgroundColor: rev.map(function(p) { return (p.resultado_liquido||0)>=0?'rgba(29,158,117,0.6)':'rgba(239,68,68,0.6)'; }),
+            type: 'line', tension: 0.3, pointRadius: 3, borderWidth: 2, borderColor: '#1D9E75', fill: false }
+        ] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+          tooltip: { callbacks: { label: function(c) { return c.dataset.label+': '+fmtBrl(c.parsed.y); } } } },
+        scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                  y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
+    });
+  }
+  var ctxPP = document.getElementById('chart-pnl-pie-admin');
+  if (ctxPP) {
+    var pnlPie = {{ pnl | tojson }};
+    var ult  = pnlPie[0] || {};
+    var NOMES = ['Empréstimo','Aluguel','Contabilidade','Impostos','COSERN','Taxa admin.','Seguro','Outros'];
+    var KEYS  = ['custo_emprestimo','custo_aluguel','custo_contabilidade','custo_impostos','custo_cosern','custo_taxa_admin','custo_seguro','custo_outros'];
+    var CORES = ['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6','#EC4899','#94A3B8'];
+    var vPie = [], nPie = [], cPie = [];
+    KEYS.forEach(function(k, i) { var v = ult[k]||0; if (v > 0) { vPie.push(v); nPie.push(NOMES[i]); cPie.push(CORES[i]); } });
+    if (vPie.length) {
+      new Chart(ctxPP, {
+        type: 'doughnut',
+        data: { labels: nPie, datasets: [{ data: vPie, backgroundColor: cPie, borderWidth: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+            tooltip: { callbacks: { label: function(c) { return c.label+': '+fmtBrl(c.parsed); } } } } }
+      });
+    }
+  }
+})();
 </script>
 {% endblock %}
