@@ -43,11 +43,18 @@ def home():
         except Exception:
             pass
 
+    # Mapa slug→empresa para lookup rápido
+    carros_por_slug = {e["slug"]: e for e in empresas_carros}
+    ativos_carros = [{"id": e["slug"], "nome": e["nome"], "tipo": "carros"} for e in empresas_carros]
+
     # Filtro por ativo selecionado
     # Atualiza sessão apenas quando há seleção explícita no dropdown
     if "ativo_id" in request.args:
         ativo_id = request.args.get("ativo_id", "")
-        ativo_selecionado = next((a for a in ativos if a["id"] == ativo_id), None)
+        ativo_selecionado = (
+            next((a for a in ativos if a["id"] == ativo_id), None) or
+            next((a for a in ativos_carros if a["id"] == ativo_id), None)
+        )
         if ativo_selecionado:
             _sess["inv_ativo_id"]   = ativo_selecionado["id"]
             _sess["inv_ativo_nome"] = ativo_selecionado["nome"]
@@ -62,8 +69,13 @@ def home():
             _sess["inv_ativo_id"]   = ativo_id
             _sess["inv_ativo_nome"] = all_usinas[0].get("nome", "")
 
-    ativo_selecionado = next((a for a in ativos if a["id"] == ativo_id), None)
-    usinas = [us for us in all_usinas if us["id"] == ativo_id] if ativo_id else all_usinas
+    ativo_selecionado = (
+        next((a for a in ativos if a["id"] == ativo_id), None) or
+        next((a for a in ativos_carros if a["id"] == ativo_id), None)
+    )
+    ativo_tipo = ativo_selecionado["tipo"] if ativo_selecionado else "usina"
+
+    usinas = [us for us in all_usinas if us["id"] == ativo_id] if (ativo_id and ativo_tipo == "usina") else (all_usinas if ativo_tipo == "usina" else [])
     partic_vis = [p for p in partic if not ativo_id or p["usina_id"] == ativo_id]
 
     kwp = sum(float(us.get("potencia_instalada_kwp") or 0) for us in usinas)
@@ -73,44 +85,77 @@ def home():
     if total_investido == 0:
         total_investido = None
 
-    # Rendimento: créditos nas contas bancárias das usinas × cota
+    # Rendimento: depende do tipo de ativo
     rendimento_total = None
     rendimento_meses = []
-    try:
-        sb   = get_service_client()
-        hoje = date.today()
-        m6   = hoje.month - 6
-        inicio = date(hoje.year if m6 > 0 else hoje.year - 1, m6 if m6 > 0 else m6 + 12, 1)
-        por_mes: dict = {}
-        total_rend = 0.0
-        for us in usinas:
-            razao = (us.get("razao_social") or us.get("nome") or "")
-            razao_busca = razao[:8]
-            razao_desc  = razao[:12]
-            contas = sb.from_("contas_bancarias").select("id") \
-                       .ilike("titular_nome", f"%{razao_busca}%").execute().data or []
-            cota = cotas.get(us["id"], 1.0)
-            for conta in contas:
-                lanctos = sb.from_("lancamentos_bancarios") \
-                             .select("valor,data_transacao") \
-                             .eq("conta_bancaria_id", conta["id"]) \
-                             .eq("tipo", "credito") \
-                             .gte("data_transacao", str(inicio)) \
-                             .ilike("descricao", f"%{razao_desc}%") \
-                             .is_("deleted_at", "null") \
-                             .execute().data or []
-                for l in lanctos:
-                    v = float(l["valor"]) * cota
+    empresa_carros_sel = None
+
+    if ativo_tipo == "carros" and ativo_id in carros_por_slug:
+        # Receita de táxis: somar taxa_valor por mês (últimos 6 meses)
+        try:
+            from services.veiculos_service import recebimentos_da_empresa
+            empresa_carros_sel = carros_por_slug[ativo_id]
+            por_placa = recebimentos_da_empresa(empresa_carros_sel)
+            hoje = date.today()
+            m6 = hoje.month - 6
+            inicio_ym = (
+                f"{hoje.year if m6 > 0 else hoje.year - 1}-"
+                f"{m6 if m6 > 0 else m6 + 12:02d}"
+            )
+            por_mes: dict = {}
+            total_rend = 0.0
+            for rows in por_placa.values():
+                for row in rows:
+                    ym = str(row.get("data_semana") or "")[:7]
+                    if ym < inicio_ym:
+                        continue
+                    v = float(row.get("taxa_valor") or 0)
                     total_rend += v
-                    ym = str(l["data_transacao"])[:7]
                     por_mes[ym] = por_mes.get(ym, 0.0) + v
-        if total_rend > 0:
-            rendimento_total = round(total_rend, 2)
-        for ym, v in sorted(por_mes.items()):
-            mn = int(ym.split("-")[1]) - 1
-            rendimento_meses.append({"mes": _MESES[mn], "valor": round(v, 2)})
-    except Exception:
-        pass
+            if total_rend > 0:
+                rendimento_total = round(total_rend, 2)
+            for ym, v in sorted(por_mes.items()):
+                mn = int(ym.split("-")[1]) - 1
+                rendimento_meses.append({"mes": _MESES[mn], "valor": round(v, 2)})
+        except Exception:
+            pass
+    else:
+        # Rendimento: créditos nas contas bancárias das usinas × cota
+        try:
+            sb   = get_service_client()
+            hoje = date.today()
+            m6   = hoje.month - 6
+            inicio = date(hoje.year if m6 > 0 else hoje.year - 1, m6 if m6 > 0 else m6 + 12, 1)
+            por_mes: dict = {}
+            total_rend = 0.0
+            for us in usinas:
+                razao = (us.get("razao_social") or us.get("nome") or "")
+                razao_busca = razao[:8]
+                razao_desc  = razao[:12]
+                contas = sb.from_("contas_bancarias").select("id") \
+                           .ilike("titular_nome", f"%{razao_busca}%").execute().data or []
+                cota = cotas.get(us["id"], 1.0)
+                for conta in contas:
+                    lanctos = sb.from_("lancamentos_bancarios") \
+                                 .select("valor,data_transacao") \
+                                 .eq("conta_bancaria_id", conta["id"]) \
+                                 .eq("tipo", "credito") \
+                                 .gte("data_transacao", str(inicio)) \
+                                 .ilike("descricao", f"%{razao_desc}%") \
+                                 .is_("deleted_at", "null") \
+                                 .execute().data or []
+                    for l in lanctos:
+                        v = float(l["valor"]) * cota
+                        total_rend += v
+                        ym = str(l["data_transacao"])[:7]
+                        por_mes[ym] = por_mes.get(ym, 0.0) + v
+            if total_rend > 0:
+                rendimento_total = round(total_rend, 2)
+            for ym, v in sorted(por_mes.items()):
+                mn = int(ym.split("-")[1]) - 1
+                rendimento_meses.append({"mes": _MESES[mn], "valor": round(v, 2)})
+        except Exception:
+            pass
 
     # Faturas pendentes das usinas visíveis
     faturas_pendentes = []
@@ -164,10 +209,11 @@ def home():
     if tab not in home_tabs:
         tab = "visao_geral"
 
-    retorno_mensal  = retorno_mensal_investidor(ativo_id) if ativo_id and "retorno_mensal" in home_tabs else []
-    rentabilidade   = rentabilidade_investidor(ativo_id)  if ativo_id and "retorno_mensal" in home_tabs else {}
+    _is_usina = ativo_tipo == "usina"
+    retorno_mensal  = retorno_mensal_investidor(ativo_id) if _is_usina and ativo_id and "retorno_mensal" in home_tabs else []
+    rentabilidade   = rentabilidade_investidor(ativo_id)  if _is_usina and ativo_id and "retorno_mensal" in home_tabs else {}
     benchmarks_data = {}
-    if ativo_id and "benchmarks" in home_tabs:
+    if _is_usina and ativo_id and "benchmarks" in home_tabs:
         _rb = rentabilidade if rentabilidade else rentabilidade_investidor(ativo_id)
         _rm = retorno_mensal if retorno_mensal else retorno_mensal_investidor(ativo_id)
         benchmarks_data = comparativo_benchmarks(
@@ -175,14 +221,14 @@ def home():
             str(_rb.get("data_desembolso") or ""),
             _rm,
         )
-    leituras_det   = leituras_detalhadas(ativo_id)       if ativo_id and "saldo_creditos" in home_tabs else []
-    pnl            = pnl_da_usina(ativo_id)              if ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
-    saldo_creditos = saldo_creditos_da_usina(ativo_id)   if ativo_id and "saldo_creditos" in home_tabs else []
-    participacoes  = participacoes_da_usina(ativo_id)    if ativo_id and "socios"         in home_tabs else []
-    clientes       = clientes_da_usina(ativo_id)         if ativo_id and "clientes"       in home_tabs else []
+    leituras_det   = leituras_detalhadas(ativo_id)       if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
+    pnl            = pnl_da_usina(ativo_id)              if _is_usina and ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
+    saldo_creditos = saldo_creditos_da_usina(ativo_id)   if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
+    participacoes  = participacoes_da_usina(ativo_id)    if _is_usina and ativo_id and "socios"         in home_tabs else []
+    clientes       = clientes_da_usina(ativo_id)         if _is_usina and ativo_id and "clientes"       in home_tabs else []
 
-    tem_extrato = bool(ativo_id and "extrato" in home_tabs)
-    tem_dre     = bool(ativo_id and "dre"     in home_tabs)
+    tem_extrato = bool(_is_usina and ativo_id and "extrato" in home_tabs)
+    tem_dre     = bool(_is_usina and ativo_id and "dre"     in home_tabs)
     contas        = listar_contas_da_usina(ativo_id) if (tem_extrato or tem_dre) else []
     conta_id      = request.args.get("conta_id") or (contas[0]["id"] if contas else None)
     conta_atual   = next((c for c in contas if c["id"] == conta_id), contas[0] if contas else None)
@@ -223,6 +269,8 @@ def home():
         all_usinas=all_usinas,
         ativos=ativos,
         empresas_carros=empresas_carros,
+        empresa_carros_sel=empresa_carros_sel,
+        ativo_tipo=ativo_tipo,
         cotas=cotas,
         kwp=kwp,
         total_investido=total_investido,

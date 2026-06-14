@@ -21,9 +21,9 @@
               onclick="toggleSeletor(event)"
               type="button">
         {% if filtrado %}
-          <span class="db-selector-tipo-dot db-selector-tipo-dot--usina"></span>
+          <span class="db-selector-tipo-dot db-selector-tipo-dot--{{ ativo_tipo }}"></span>
           <span class="db-selector-label">{{ ativo_selecionado.nome }}</span>
-          <span class="db-selector-badge">Usina</span>
+          <span class="db-selector-badge">{{ 'Carros' if ativo_tipo == 'carros' else 'Usina' }}</span>
         {% else %}
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
           <span class="db-selector-label">Todos os investimentos</span>
@@ -51,10 +51,11 @@
         {% if empresas_carros %}
         <div class="db-sel-group">Carros</div>
         {% for emp in empresas_carros %}
-        <a href="{{ url_for('portal.carros') }}"
-           class="db-sel-item">
+        <a href="{{ url_for('portal.home', ativo_id=emp.slug) }}"
+           class="db-sel-item {{ 'db-sel-item--ativo' if filtrado and ativo_id == emp.slug }}">
           <span class="db-sel-dot db-sel-dot--carros"></span>
           <span class="db-sel-item-nome">{{ emp.nome }}</span>
+          {% if filtrado and ativo_id == emp.slug %}<span class="db-sel-check">✓</span>{% endif %}
         </a>
         {% endfor %}
         {% endif %}
@@ -75,7 +76,7 @@
 {% if filtrado %}
 <div class="db-filtro-banner">
   <span>Exibindo dados de <strong>{{ ativo_selecionado.nome }}</strong>
-    <span class="badge badge-verde" style="font-size:10px;margin-left:4px;">Usina</span>
+    <span class="badge badge-verde" style="font-size:10px;margin-left:4px;">{{ 'Carros' if ativo_tipo == 'carros' else 'Usina' }}</span>
   </span>
   <a href="{{ url_for('portal.home') }}" class="db-filtro-limpar">
     Limpar filtro
@@ -112,8 +113,42 @@
 
   <div class="db-metrics">
 
-    {# Card: Ativos em Usinas #}
-    {% if not filtrado %}
+    {# Card: Ativos (Usinas ou Carros) #}
+    {% if ativo_tipo == 'carros' and empresa_carros_sel %}
+      {% set _veics = empresa_carros_sel.veiculos %}
+      <div class="db-metric-card db-metric-card--usina-big">
+        <div class="db-mc-top">
+          <span class="db-mc-label">Veículos ativos</span>
+          <span class="db-mc-icon">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+          </span>
+        </div>
+        <div class="db-mc-value-row">
+          <span class="db-mc-value">{{ _veics|length }}</span>
+          <span class="db-mc-unit">veículo{{ 's' if _veics|length != 1 }}</span>
+        </div>
+        <div class="db-mc-sub" style="color:#F59E0B;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></svg>
+          Em locação
+        </div>
+        {% if _veics %}
+        <div style="margin-top:16px; border-top:0.5px solid rgba(23,33,28,.07); padding-top:14px; display:flex; flex-direction:column; gap:10px;">
+          {% for v in _veics %}
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="width:32px; height:32px; flex:none; border-radius:8px; background:#FEF3C7; display:flex; align-items:center; justify-content:center;">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
+            </span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ v.modelo or '—' }}</div>
+              <div style="font-size:11px; color:var(--muted); font-family:'Geist Mono',monospace;">{{ v.placa }}</div>
+            </div>
+            <span class="badge badge-verde">Ativo</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    {% elif not filtrado %}
     <div class="db-metric-card">
       <div class="db-mc-top">
         <span class="db-mc-label">Ativos em usinas</span>
@@ -1350,6 +1385,7 @@ function toggleAcordI(btn){
 .db-selector-wrap.aberto .db-selector-caret { transform:rotate(180deg); }
 .db-selector-tipo-dot { width:7px; height:7px; flex:none; border-radius:50%; }
 .db-selector-tipo-dot--usina { background:var(--accent); }
+.db-selector-tipo-dot--carros { background:#F59E0B; }
 
 .db-selector-dropdown {
   display:none; position:absolute; top:calc(100% + 6px); right:0;
