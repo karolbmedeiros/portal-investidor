@@ -120,6 +120,7 @@ def dashboard():
     lancamentos_data = []
     retorno_mensal_data = []
     rentabilidade_data = {}
+    benchmarks_data = {}
     leituras_det_data = []
     saldo_creditos_data = []
 
@@ -162,11 +163,17 @@ def dashboard():
         datas_lanc = [l["data_transacao"][:7] for l in lancamentos_data if l.get("data_transacao")]
         kpi_mes = request.args.get("kpi_mes") or (max(datas_lanc) if datas_lanc else _date2.today().strftime("%Y-%m"))
         kpis            = calcular_kpis(ativo_id, kpi_mes, lancamentos_data, leituras_data, pnl_data, num_ativos)
+        from services.benchmark_service import comparativo_benchmarks
         retorno_mensal_data = retorno_mensal_investidor(ativo_id)
         rentabilidade_data  = rentabilidade_investidor(ativo_id)
+        benchmarks_data = comparativo_benchmarks(
+            float(rentabilidade_data.get("capital") or 0),
+            str(rentabilidade_data.get("data_desembolso") or ""),
+            retorno_mensal_data,
+        )
         leituras_det_data   = leituras_detalhadas(ativo_id)
         saldo_creditos_data = saldo_creditos_da_usina(ativo_id)
-        _valid_tabs = ("visao_geral","socios","clientes","extrato","dre","retorno_mensal","energia","pnl","saldo_creditos")
+        _valid_tabs = ("visao_geral","socios","clientes","extrato","dre","retorno_mensal","benchmarks","energia","pnl","saldo_creditos")
         tab = request.args.get("tab", "visao_geral")
         if tab not in _valid_tabs:
             tab = "visao_geral"
@@ -229,6 +236,7 @@ def dashboard():
         kpi_mes=kpi_mes or "",
         retorno_mensal=retorno_mensal_data,
         rentabilidade=rentabilidade_data,
+        benchmarks=benchmarks_data,
         leituras_det=leituras_det_data,
         saldo_creditos=saldo_creditos_data,
         participacoes=_parts if (ativo_id and ativo_tipo == "usina") else [],
@@ -249,13 +257,14 @@ def usina_detalhe(usina_id):
         retorno_mensal_investidor, leituras_detalhadas, saldo_creditos_da_usina,
         rentabilidade_investidor,
     )
+    from services.benchmark_service import comparativo_benchmarks
     usina = buscar_usina(usina_id)
     if not usina:
         abort(404)
 
     tab = request.args.get("tab", "socios")
     _valid_tabs = ("socios", "clientes", "extrato", "dre",
-                   "retorno_mensal", "energia", "pnl", "saldo_creditos")
+                   "retorno_mensal", "benchmarks", "energia", "pnl", "saldo_creditos")
     if tab not in _valid_tabs:
         tab = "socios"
 
@@ -306,8 +315,15 @@ def usina_detalhe(usina_id):
     categorias  = listar_categorias()
     num_ativos  = sum(1 for c in clientes if c.get("status") == "Ativo")
 
-    retorno_mensal = retorno_mensal_investidor(usina_id) if tab == "retorno_mensal" else []
-    rentabilidade  = rentabilidade_investidor(usina_id)  if tab == "retorno_mensal" else {}
+    retorno_mensal = retorno_mensal_investidor(usina_id) if tab in ("retorno_mensal", "benchmarks") else []
+    rentabilidade  = rentabilidade_investidor(usina_id)  if tab in ("retorno_mensal", "benchmarks") else {}
+    _bm_rm = retorno_mensal or retorno_mensal_investidor(usina_id)
+    _bm_rb = rentabilidade  or rentabilidade_investidor(usina_id)
+    benchmarks = comparativo_benchmarks(
+        float(_bm_rb.get("capital") or 0),
+        str(_bm_rb.get("data_desembolso") or ""),
+        _bm_rm,
+    ) if tab == "benchmarks" else {}
     leituras_det   = leituras_detalhadas(usina_id)       if tab == "energia"        else []
     saldo_creditos = saldo_creditos_da_usina(usina_id)   if tab == "saldo_creditos" else []
 
@@ -331,6 +347,7 @@ def usina_detalhe(usina_id):
         chart_fluxo_pts=chart_fluxo_pts,
         retorno_mensal=retorno_mensal,
         rentabilidade=rentabilidade,
+        benchmarks=benchmarks,
         leituras_det=leituras_det,
         saldo_creditos=saldo_creditos,
     )

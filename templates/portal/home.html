@@ -76,13 +76,14 @@
 
 {% set _tab_labels = {
   'visao_geral': 'Visão Geral',
+  'extrato': 'Fluxo de Caixa',
+  'benchmarks': 'Benchmarks',
   'retorno_mensal': 'Retorno Mensal',
   'energia': 'Energia',
   'pnl': 'P&L',
   'saldo_creditos': 'Créditos kWh',
   'socios': 'Sócios',
   'clientes': 'Clientes',
-  'extrato': 'Fluxo de Caixa',
   'dre': 'DRE'
 } %}
 {% set _perms = usuario.permissions if usuario else [] %}
@@ -282,6 +283,81 @@
 </section>
 
 </div>{# /tab-visao_geral pt1 #}
+
+<div id="tab-benchmarks" data-tab="benchmarks" class="dtab-content {{ 'ativo' if tab == 'benchmarks' }}">
+<div style="padding-top:4px;">
+  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+  {% set bm = benchmarks %}
+  {% if bm and bm.series %}
+    {% set cap = bm.capital %}
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+        <div class="db-mc-label">Capital investido</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ cap|brl }}</span></div>
+        <div class="db-mc-sub">base de comparação</div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#E8621A;"></span>Seu investimento</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if bm.ganho.investimento >= 0 else '#DC2626' }};">{{ bm.ganho.investimento|brl }}</span></div>
+        <div class="db-mc-sub">{{ bm.pct.investimento|round(1) }}% no período</div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2563EB;"></span>CDI</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ bm.ganho.cdi|brl }}</span></div>
+        <div class="db-mc-sub">{{ bm.pct.cdi|round(1) }}% no período</div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#9333EA;"></span>Poupança</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ bm.ganho.poupanca|brl }}</span></div>
+        <div class="db-mc-sub">{{ bm.pct.poupanca|round(1) }}% no período</div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#16A34A;"></span>IPCA (inflação)</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ bm.ganho.ipca|brl }}</span></div>
+        <div class="db-mc-sub">{{ bm.pct.ipca|round(1) }}% no período</div>
+      </div>
+      {% if bm.ganho.ibov is defined %}
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#F59E0B;"></span>IBOV</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if bm.ganho.ibov >= 0 else '#DC2626' }};">{{ bm.ganho.ibov|brl }}</span></div>
+        <div class="db-mc-sub">{{ bm.pct.ibov|round(1) }}% no período</div>
+      </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#0EA5E9;"></span>IVVB11 (S&P 500)</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if bm.ganho.ivvb11 >= 0 else '#DC2626' }};">{{ bm.ganho.ivvb11|brl }}</span></div>
+        <div class="db-mc-sub">{{ bm.pct.ivvb11|round(1) }}% no período</div>
+      </div>
+      {% endif %}
+    </div>
+    <section class="card" style="margin-bottom:16px;">
+      <div class="db-chart-title" style="margin-bottom:4px;">Evolução do patrimônio</div>
+      <div class="db-mc-sub" style="margin-bottom:14px;padding-left:0;">Quanto valeria {{ cap|brl }} investido em cada opção desde o desembolso</div>
+      <div style="position:relative;height:280px;"><canvas id="chart-benchmarks-home"></canvas></div>
+    </section>
+    <section class="card">
+      <table class="db-fat-table">
+        <thead><tr><th>Mês</th><th style="color:#E8621A;">Seu investimento</th><th style="color:#2563EB;">CDI</th><th style="color:#9333EA;">Poupança</th><th style="color:#16A34A;">IPCA</th><th style="color:#F59E0B;">IBOV</th><th style="color:#0EA5E9;">IVVB11</th></tr></thead>
+        <tbody>
+          {% for row in bm.series | reverse %}
+          {% set _ms = row.mes %}
+          <tr>
+            <td style="font-weight:500;">{{ _ma[_ms[5:7]|int] }}/{{ _ms[:4] }}</td>
+            <td style="font-weight:600;color:{{ '#16A34A' if row.investimento >= cap else '#DC2626' }};">{{ row.investimento|brl }}</td>
+            <td>{{ row.cdi|brl }}</td>
+            <td>{{ row.poupanca|brl }}</td>
+            <td>{{ row.ipca|brl }}</td>
+            <td>{{ row.ibov|brl if row.ibov is defined else '—' }}</td>
+            <td>{{ row.ivvb11|brl if row.ivvb11 is defined else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% else %}
+    <div class="vazio">Sem dados suficientes para comparativo.</div>
+  {% endif %}
+</div>
+</div>{# /tab-benchmarks #}
 
 <div id="tab-retorno_mensal" data-tab="retorno_mensal" class="dtab-content {{ 'ativo' if tab == 'retorno_mensal' }}">
 <div style="padding-top:4px;">
@@ -1193,6 +1269,29 @@ document.addEventListener('click', function (e) {
   var _inited = {};
 
   function tryInitCharts() {
+    // Benchmarks
+    var ctxBM = document.getElementById('chart-benchmarks-home');
+    if (ctxBM && !_inited['BM'] && visible(ctxBM)) {
+      _inited['BM'] = true;
+      var bmData = {{ benchmarks.series | tojson if benchmarks and benchmarks.series else '[]' }};
+      var bmLabels = bmData.map(function(r) { return MA[parseInt(r.mes.slice(5))]+'/'+r.mes.slice(0,4); });
+      new Chart(ctxBM, { type: 'line',
+        data: { labels: bmLabels, datasets: [
+          { label: 'Seu investimento', data: bmData.map(function(r){return r.investimento;}), borderColor: '#E8621A', backgroundColor: 'rgba(232,98,26,0.08)', tension: 0.3, pointRadius: 2, borderWidth: 2, fill: true },
+          { label: 'CDI',             data: bmData.map(function(r){return r.cdi;}),          borderColor: '#2563EB', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3] },
+          { label: 'Poupança',        data: bmData.map(function(r){return r.poupanca;}),     borderColor: '#9333EA', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3] },
+          { label: 'IPCA',   data: bmData.map(function(r){return r.ipca;}),         borderColor: '#16A34A', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 1.5, borderDash: [2,4] },
+          { label: 'IBOV',   data: bmData.map(function(r){return r.ibov||null;}),   borderColor: '#F59E0B', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3] },
+          { label: 'IVVB11', data: bmData.map(function(r){return r.ivvb11||null;}), borderColor: '#0EA5E9', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3] }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+            tooltip: { callbacks: { label: function(c) { return c.dataset.label+': '+fmtBrl(c.parsed.y); } } } },
+          scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
+      });
+    }
     // Retorno Mensal
     var ctxR = document.getElementById('chart-retorno-home');
     if (ctxR && !_inited['R'] && visible(ctxR)) {

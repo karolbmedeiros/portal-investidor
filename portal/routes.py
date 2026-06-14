@@ -131,12 +131,14 @@ def home():
         listar_lancamentos, listar_contas_da_usina,
         calcular_kpis, leituras_da_usina, rentabilidade_investidor,
     )
+    from services.benchmark_service import comparativo_benchmarks
     perms     = u.get("permissions", [])
     all_perms = "all" in perms
 
     home_tabs = ["visao_geral"]
     if ativo_id:
         if all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms: home_tabs.append("extrato")
+        if all_perms or "benchmarks"       in perms:                               home_tabs.append("benchmarks")
         if all_perms or "retorno_mensal"   in perms:                               home_tabs.append("retorno_mensal")
         if all_perms or "energia"          in perms:                               home_tabs.append("energia")
         if all_perms or "pnl"              in perms:                               home_tabs.append("pnl")
@@ -151,6 +153,15 @@ def home():
 
     retorno_mensal  = retorno_mensal_investidor(ativo_id) if ativo_id and "retorno_mensal" in home_tabs else []
     rentabilidade   = rentabilidade_investidor(ativo_id)  if ativo_id and "retorno_mensal" in home_tabs else {}
+    benchmarks_data = {}
+    if ativo_id and "benchmarks" in home_tabs:
+        _rb = rentabilidade if rentabilidade else rentabilidade_investidor(ativo_id)
+        _rm = retorno_mensal if retorno_mensal else retorno_mensal_investidor(ativo_id)
+        benchmarks_data = comparativo_benchmarks(
+            float(_rb.get("capital") or 0),
+            str(_rb.get("data_desembolso") or ""),
+            _rm,
+        )
     leituras_det   = leituras_detalhadas(ativo_id)       if ativo_id and "energia"        in home_tabs else []
     pnl            = pnl_da_usina(ativo_id)              if ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
     saldo_creditos = saldo_creditos_da_usina(ativo_id)   if ativo_id and "saldo_creditos" in home_tabs else []
@@ -211,6 +222,7 @@ def home():
         home_tabs=home_tabs,
         retorno_mensal=retorno_mensal,
         rentabilidade=rentabilidade,
+        benchmarks=benchmarks_data,
         leituras_det=leituras_det,
         pnl=pnl,
         saldo_creditos=saldo_creditos,
