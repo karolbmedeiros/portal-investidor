@@ -1330,7 +1330,7 @@ function toggleAcordI(btn){
   background:var(--bg); color:#5C655F;
   font-size:13px; font-weight:400; font-family:inherit;
   cursor:pointer; transition:border-color .15s, color .15s, background .15s;
-  max-width:240px; white-space:nowrap; overflow:hidden;
+  max-width:320px; white-space:nowrap; overflow:hidden;
 }
 .db-selector-btn:hover { border-color:rgba(23,33,28,0.28); color:var(--text); }
 .db-selector-btn.db-selector-ativo { border-color:var(--accent); background:#EAF6F1; color:var(--accent2); font-weight:500; }
@@ -1426,7 +1426,19 @@ function toggleSeletor(e) {
 
 document.addEventListener('click', function (e) {
   var wrap = document.getElementById('seletor-wrap');
-  if (wrap && !wrap.contains(e.target)) wrap.classList.remove('aberto');
+  if (!wrap) return;
+  var item = e.target.closest('.db-sel-item');
+  if (item && wrap.contains(item)) {
+    e.preventDefault();
+    var params = new URLSearchParams(window.location.search);
+    var activeTab = params.get('tab') || 'visao_geral';
+    var href = item.getAttribute('href');
+    var url = new URL(href, window.location.origin);
+    if (activeTab && activeTab !== 'visao_geral') url.searchParams.set('tab', activeTab);
+    window.location.href = url.toString();
+    return;
+  }
+  if (!wrap.contains(e.target)) wrap.classList.remove('aberto');
 });
 
 (function () {

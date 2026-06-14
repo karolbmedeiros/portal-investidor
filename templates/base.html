@@ -313,6 +313,9 @@ document.addEventListener("click", function(e) {
     document.querySelectorAll('.dtab-content').forEach(function(c) { c.classList.remove('ativo'); });
     alvo.classList.add('ativo');
     document.querySelectorAll('.dtab-content[data-tab="' + tabParam + '"]').forEach(function(c) { c.classList.add('ativo'); });
+    var sp = new URLSearchParams(window.location.search);
+    sp.set('tab', tabParam);
+    history.pushState(null, '', window.location.pathname + '?' + sp.toString());
     setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 20);
   });
 })();

@@ -101,8 +101,13 @@ def usinas_do_usuario(usina_ids: list) -> list:
     """Busca usinas por IDs de acesso (user_metadata.usina_ids)."""
     if not usina_ids:
         return []
+    import re
+    _uuid_re = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+    ids_validos = [i for i in usina_ids if _uuid_re.match(str(i))]
+    if not ids_validos:
+        return []
     sb = get_service_client()
-    res = sb.table("usinas").select("*").in_("id", usina_ids).order("razao_social").execute()
+    res = sb.table("usinas").select("*").in_("id", ids_validos).order("razao_social").execute()
     usinas = res.data or []
     for u in usinas:
         u["nome"] = _nome(u)
