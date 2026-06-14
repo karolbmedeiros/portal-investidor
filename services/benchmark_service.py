@@ -202,7 +202,7 @@ def comparativo_benchmarks(capital: float, data_desembolso: str, retorno_mensal:
 
     meses     = sorted(r["ref_mes_ano"][:7] for r in retorno_mensal if r.get("ref_mes_ano"))
     lucro_mes = {
-        r["ref_mes_ano"][:7]: float(r.get("valor_distribuido") or r.get("participacao_lucro") or 0)
+        r["ref_mes_ano"][:7]: float(r.get("valor_distribuido") or 0)
         for r in retorno_mensal
     }
 
