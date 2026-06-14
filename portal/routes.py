@@ -90,13 +90,77 @@ def home():
     rendimento_meses = []
     empresa_carros_sel = None
 
+    valor_liquido_recebido = None
+    motoristas_recebimentos = []
+
     if ativo_tipo == "carros" and ativo_id in carros_por_slug:
-        # Receita de táxis: somar taxa_valor por mês (últimos 6 meses)
         try:
             from services.veiculos_service import recebimentos_da_empresa
+            from services.supabase_client import get_financeiro_client
+            from datetime import timedelta
             empresa_carros_sel = carros_por_slug[ativo_id]
-            por_placa = recebimentos_da_empresa(empresa_carros_sel)
             hoje = date.today()
+
+            # Contratos da empresa para calcular valor líquido recebido
+            _VALOR_SEMANA = {"TSW": 1200, "SSW": 800, "STX": 800}
+            try:
+                _sb2 = get_financeiro_client()
+                _contratos = _sb2.table("contratos_frota") \
+                    .select("cliente,placa,inicio,valor_locacao") \
+                    .execute().data or []
+            except Exception:
+                _contratos = []
+
+            # Última segunda-feira (pagamentos já devidos)
+            _ultima_seg = hoje - timedelta(days=hoje.weekday())
+
+            def _contar_segundas(inicio_dt, ate):
+                dias = (7 - inicio_dt.weekday()) % 7
+                primeira = inicio_dt + timedelta(days=dias)
+                if primeira > ate:
+                    return 0
+                ultima = ate - timedelta(days=ate.weekday())
+                return (ultima - primeira).days // 7 + 1
+
+            _prefixos_empresa = set()
+            for ev in empresa_carros_sel.get("veiculos", []):
+                _prefixos_empresa.add((ev.get("placa") or "").replace("-","")[:3].upper())
+
+            total_liq = 0.0
+            for c in _contratos:
+                placa = str(c.get("placa") or "").replace("-","").upper()
+                pref = placa[:3]
+                if pref not in _prefixos_empresa:
+                    continue
+                valor_sem = _VALOR_SEMANA.get(pref, 0)
+                inicio_raw = c.get("inicio") or ""
+                inicio_dt = None
+                for fmt in ["%d/%m/%Y", "%Y-%m-%d"]:
+                    try:
+                        from datetime import datetime as _dt
+                        inicio_dt = _dt.strptime(inicio_raw, fmt).date()
+                        break
+                    except Exception:
+                        pass
+                if not inicio_dt:
+                    continue
+                n_seg = _contar_segundas(inicio_dt, _ultima_seg)
+                pago = n_seg * valor_sem
+                total_liq += pago
+                motoristas_recebimentos.append({
+                    "cliente": c.get("cliente") or "—",
+                    "placa": c.get("placa") or "—",
+                    "n_semanas": n_seg,
+                    "valor_semana": valor_sem,
+                    "valor_pago": pago,
+                })
+
+            motoristas_recebimentos.sort(key=lambda x: -x["valor_pago"])
+            if total_liq > 0:
+                valor_liquido_recebido = round(total_liq, 2)
+
+            # Rendimento mensal (taxa 15%) para gráfico de referência interno
+            por_placa = recebimentos_da_empresa(empresa_carros_sel)
             m6 = hoje.month - 6
             inicio_ym = (
                 f"{hoje.year if m6 > 0 else hoje.year - 1}-"
@@ -279,6 +343,8 @@ def home():
         ativos=ativos,
         empresas_carros=empresas_carros,
         empresa_carros_sel=empresa_carros_sel,
+        valor_liquido_recebido=valor_liquido_recebido,
+        motoristas_recebimentos=motoristas_recebimentos,
         ativo_tipo=ativo_tipo,
         faturas_carros=faturas_carros,
         cotas=cotas,

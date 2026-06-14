@@ -230,7 +230,32 @@
       </div>
     </div>
 
-    {# Card: Rendimento Acumulado #}
+    {# Card: Rendimento Acumulado (usinas) / Valor Líquido Recebido (carros) #}
+    {% if ativo_tipo == 'carros' %}
+    <div class="db-metric-card" id="card-vlr" style="cursor:pointer;" onclick="document.getElementById('modal-motoristas').style.display='flex'">
+      <div class="db-mc-top">
+        <span class="db-mc-label">Valor líquido recebido</span>
+        <span class="db-mc-icon" style="background:#FEF3C7;">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v12"/><path d="M8 10h8"/><path d="M8 14h8"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>
+        </span>
+      </div>
+      <div class="db-mc-value-row">
+        {% if valor_liquido_recebido %}
+        <span class="db-mc-value db-mc-value--lg" style="color:#D97706;">{{ valor_liquido_recebido|brl }}</span>
+        {% else %}
+        <span class="db-mc-value db-mc-value--lg text-muted">—</span>
+        {% endif %}
+      </div>
+      <div class="db-mc-sub" style="color:#D97706;">
+        {% if valor_liquido_recebido %}
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l9 -9"/></svg>
+        Desde o início · ver por motorista
+        {% else %}
+        Sem dados
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
     <div class="db-metric-card">
       <div class="db-mc-top">
         <span class="db-mc-label">Rendimento acumulado</span>
@@ -249,6 +274,7 @@
         {% if rendimento_total is not none %}Últ. 6 meses · proporcional à cota{% else %}Sem movimentações{% endif %}
       </div>
     </div>
+    {% endif %}
 
   </div>
 
@@ -259,9 +285,35 @@
         <div class="db-chart-title">
           {% if filtrado %}{{ ativo_selecionado.nome }}{% else %}Evolução do portfólio{% endif %}
         </div>
-        <div class="db-chart-sub">Últimos 6 meses</div>
+        <div class="db-chart-sub">{% if ativo_tipo == 'carros' %}Recebido por motorista · desde o início{% else %}Últimos 6 meses{% endif %}</div>
       </div>
     </div>
+
+    {% if ativo_tipo == 'carros' and motoristas_recebimentos %}
+    {# Barras horizontais por motorista #}
+    {% set _max_val = motoristas_recebimentos|map(attribute='valor_pago')|max %}
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:14px; padding-top:8px;">
+      {% for m in motoristas_recebimentos %}
+      {% set _pct = ((m.valor_pago / _max_val) * 100)|round(1) if _max_val > 0 else 0 %}
+      {% set _first = m.cliente.split()[0] %}
+      {% set _last  = m.cliente.split()[-1] if m.cliente.split()|length > 1 else '' %}
+      <div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="font-size:12px; font-weight:500; color:var(--text);">{{ _first }} {{ _last }}</span>
+            <span style="font-size:10px; color:var(--muted); font-family:'Geist Mono',monospace;">{{ m.placa }}</span>
+          </div>
+          <span style="font-size:12px; font-weight:600; color:#D97706;">{{ m.valor_pago|brl }}</span>
+        </div>
+        <div style="height:7px; border-radius:4px; background:rgba(245,158,11,.12); overflow:hidden;">
+          <div style="height:100%; width:{{ _pct }}%; background:#F59E0B; border-radius:4px; transition:width .4s ease;"></div>
+        </div>
+        <div style="font-size:10px; color:var(--muted); margin-top:3px;">{{ m.n_semanas }} semana{{ 's' if m.n_semanas != 1 }} · R$ {{ m.valor_semana|int }}/sem</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
     <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
       {% if rendimento_meses and rendimento_meses|length > 1 %}
         {% set _vals = rendimento_meses|map(attribute='valor')|list %}
@@ -322,9 +374,53 @@
         </div>
       {% endif %}
     </div>
+    {% endif %}{# /carros else #}
   </div>
 
 </section>
+
+{# Modal: recebido por motorista (carros) #}
+{% if ativo_tipo == 'carros' and motoristas_recebimentos %}
+<div id="modal-motoristas" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,.45); backdrop-filter:blur(3px);" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--bg); border-radius:18px; padding:28px 28px 24px; width:min(480px,92vw); max-height:80vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.18);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <div>
+        <div style="font-size:15px; font-weight:600;">Valor recebido por motorista</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:2px;">{{ empresa_carros_sel.nome if empresa_carros_sel }} · desde o início do contrato</div>
+      </div>
+      <button onclick="document.getElementById('modal-motoristas').style.display='none'" style="background:none; border:none; cursor:pointer; color:var(--muted); padding:4px;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    {% set _total = motoristas_recebimentos|sum(attribute='valor_pago') %}
+    {% set _max   = motoristas_recebimentos|map(attribute='valor_pago')|max %}
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      {% for m in motoristas_recebimentos %}
+      {% set _pct = ((m.valor_pago / _max) * 100)|round(1) if _max > 0 else 0 %}
+      <div style="border:0.5px solid rgba(23,33,28,.1); border-radius:12px; padding:14px 16px;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px;">
+          <div>
+            <div style="font-size:13px; font-weight:600;">{{ m.cliente }}</div>
+            <div style="font-size:11px; color:var(--muted); font-family:'Geist Mono',monospace; margin-top:2px;">{{ m.placa }}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:15px; font-weight:700; color:#D97706;">{{ m.valor_pago|brl }}</div>
+            <div style="font-size:10px; color:var(--muted);">{{ m.n_semanas }} sem. × R$ {{ m.valor_semana|int }}</div>
+          </div>
+        </div>
+        <div style="height:6px; border-radius:3px; background:rgba(245,158,11,.12);">
+          <div style="height:100%; width:{{ _pct }}%; background:#F59E0B; border-radius:3px;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:18px; padding-top:14px; border-top:0.5px solid rgba(23,33,28,.08); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; color:var(--muted);">Total recebido</span>
+      <span style="font-size:16px; font-weight:700; color:#D97706;">{{ _total|brl }}</span>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 </div>{# /tab-visao_geral pt1 #}
 
