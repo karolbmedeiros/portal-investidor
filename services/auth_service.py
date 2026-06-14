@@ -80,13 +80,16 @@ def is_admin() -> bool:
 
 
 def refresh_session_permissions():
-    """Re-fetches user metadata from Supabase and updates session permissions/usina_ids."""
+    """Re-fetches user metadata from Supabase at most once every 5 minutes."""
     uid = session.get("user_id")
     if not uid:
         return
-    # Admin sempre tem acesso total — não re-busca do banco
     if session.get("role") == "admin":
         session["permissions"] = ["all"]
+        return
+    from time import time
+    last = session.get("_perms_refreshed_at", 0)
+    if time() - last < 300:
         return
     try:
         sb = get_service_client()
@@ -95,6 +98,7 @@ def refresh_session_permissions():
             meta = user.user_metadata or {}
             session["permissions"] = meta.get("permissions", [])
             session["usina_ids"]   = meta.get("usina_ids", [])
+            session["_perms_refreshed_at"] = time()
     except Exception:
         pass
 

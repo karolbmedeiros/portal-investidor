@@ -10,6 +10,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   {% block head %}{% endblock %}
   <style>
+    #pg-bar { position:fixed; top:0; left:0; height:3px; width:0; background:var(--accent,#1D9E75); z-index:9999; transition:width .2s ease, opacity .3s ease; pointer-events:none; }
+    #pg-bar.ativo { width:70%; }
+    #pg-bar.done  { width:100%; opacity:0; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg:      #FFFFFF;
@@ -243,6 +246,7 @@
   </style>
 </head>
 <body>
+<div id="pg-bar"></div>
 <div class="admin-shell">
 
   <!-- ── Topnav ── -->
@@ -321,5 +325,36 @@ document.addEventListener("click", function(e) {
 })();
 </script>
 {% block scripts %}{% endblock %}
+<script>
+(function(){
+  var bar = document.getElementById('pg-bar');
+  var t;
+  function start() {
+    clearTimeout(t);
+    bar.className = '';
+    bar.style.width = '0';
+    bar.offsetWidth; // reflow
+    bar.classList.add('ativo');
+  }
+  function done() {
+    bar.classList.remove('ativo');
+    bar.classList.add('done');
+    t = setTimeout(function(){ bar.className = ''; bar.style.width = '0'; }, 400);
+  }
+  document.addEventListener('click', function(e) {
+    var a = e.target.closest('a');
+    if (!a || !a.href) return;
+    // só para links de mesma origem que não são âncoras nem JS
+    var href = a.getAttribute('href') || '';
+    if (href.startsWith('#') || href.startsWith('javascript') || a.target === '_blank') return;
+    try {
+      var u = new URL(a.href, location.origin);
+      if (u.origin !== location.origin) return;
+    } catch(e) { return; }
+    start();
+  });
+  window.addEventListener('pageshow', done);
+})();
+</script>
 </body>
 </html>
