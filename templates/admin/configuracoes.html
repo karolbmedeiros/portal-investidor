@@ -194,6 +194,14 @@
                   </label>
                   <div class="toggle-subgrupo">Dados Visuais</div>
                   <label class="toggle-item">
+                    <span class="toggle-item-label">Benchmarks</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="benchmarks"
+                        {{ 'checked' if all_checked or 'benchmarks' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
+                  </label>
+                  <label class="toggle-item">
                     <span class="toggle-item-label">Retorno Mensal</span>
                     <span class="toggle">
                       <input type="checkbox" name="permissions" value="retorno_mensal"
@@ -361,6 +369,10 @@
                     <span class="toggle"><input type="checkbox" name="permissions" value="dre" /><span class="toggle-slider"></span></span>
                   </label>
                   <div class="toggle-subgrupo">Dados Visuais</div>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Benchmarks</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="benchmarks" /><span class="toggle-slider"></span></span>
+                  </label>
                   <label class="toggle-item">
                     <span class="toggle-item-label">Retorno Mensal</span>
                     <span class="toggle"><input type="checkbox" name="permissions" value="retorno_mensal" /><span class="toggle-slider"></span></span>
