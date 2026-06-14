@@ -419,11 +419,14 @@ def leituras_detalhadas(usina_id: str) -> list:
     sb = get_service_client()
     contratos_res = (
         sb.table("contratos")
-        .select("id,numero_contrato,percentual_desconto,ucs(apelido,clientes(razao_social,nome_fantasia))")
+        .select("id,numero_contrato,percentual_desconto,status,ucs(apelido,clientes(razao_social,nome_fantasia))")
         .eq("usina_id", usina_id)
         .execute()
     )
-    contrato_ids = [c["id"] for c in (contratos_res.data or [])]
+    contrato_ids = [
+        c["id"] for c in (contratos_res.data or [])
+        if (c.get("status") or "").lower() not in ("encerrado", "cancelado", "inativo")
+    ]
     if not contrato_ids:
         return []
     res = (
