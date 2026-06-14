@@ -297,19 +297,21 @@
     {% set _H = 120 %}
     {% set _W = 340 %}
     {% set _bw = ((_W - 20) / _n - 6)|round(1) %}
-    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
-      <svg viewBox="0 0 {{ _W }} {{ _H + 24 }}" style="width:100%; height:auto; display:block; overflow:visible;">
-        {# grade #}
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; position:relative;">
+      <div id="carros-bar-tip" style="display:none; position:absolute; background:#17211C; color:#fff; font-size:12px; font-weight:500; padding:6px 10px; border-radius:8px; pointer-events:none; white-space:nowrap; transform:translate(-50%,-100%); margin-top:-8px; z-index:10;"></div>
+      <svg id="carros-bar-svg" viewBox="0 0 {{ _W }} {{ _H + 24 }}" style="width:100%; height:auto; display:block; overflow:visible;">
         <line x1="0" y1="{{ (_H * 0.25)|round(1) }}" x2="{{ _W }}" y2="{{ (_H * 0.25)|round(1) }}" stroke="#EEF1EF" stroke-width="1"/>
         <line x1="0" y1="{{ (_H * 0.5)|round(1) }}"  x2="{{ _W }}" y2="{{ (_H * 0.5)|round(1) }}"  stroke="#EEF1EF" stroke-width="1"/>
         <line x1="0" y1="{{ (_H * 0.75)|round(1) }}" x2="{{ _W }}" y2="{{ (_H * 0.75)|round(1) }}" stroke="#EEF1EF" stroke-width="1"/>
         {% for item in recebimentos_por_mes_carros %}
-          {% set _bh   = (item.valor / _mmax * _H)|round(1) if _mmax > 0 else 0 %}
-          {% set _bx   = (10 + loop.index0 * ((_W - 20) / _n) + 3)|round(1) %}
-          {% set _by   = (_H - _bh)|round(1) %}
-          {% set _cx   = (_bx + _bw / 2)|round(1) %}
-          <rect x="{{ _bx }}" y="{{ _by }}" width="{{ _bw }}" height="{{ _bh }}" rx="4"
-                fill="#F59E0B" fill-opacity="{{ '1' if loop.last else '0.55' }}"/>
+          {% set _bh = (item.valor / _mmax * _H)|round(1) if _mmax > 0 else 0 %}
+          {% set _bx = (10 + loop.index0 * ((_W - 20) / _n) + 3)|round(1) %}
+          {% set _by = (_H - _bh)|round(1) %}
+          {% set _cx = (_bx + _bw / 2)|round(1) %}
+          <rect class="carros-bar" x="{{ _bx }}" y="{{ _by }}" width="{{ _bw }}" height="{{ _bh }}" rx="4"
+                fill="#F59E0B" fill-opacity="{{ '1' if loop.last else '0.55' }}"
+                data-mes="{{ item.mes }}" data-val="{{ item.valor }}"
+                style="cursor:crosshair; transition:fill-opacity .15s;"/>
           <text x="{{ _cx }}" y="{{ _H + 16 }}" text-anchor="middle"
                 font-size="10" fill="#9BA39E" font-family="inherit">{{ item.mes }}</text>
         {% endfor %}
@@ -1672,6 +1674,32 @@ document.addEventListener('click', function (e) {
       pt.setAttribute('r', '5');
     });
   });
+})();
+
+(function () {
+  var tip = document.getElementById('carros-bar-tip');
+  var svg = document.getElementById('carros-bar-svg');
+  if (!tip || !svg) return;
+  function fmtBRL(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  svg.querySelectorAll('.carros-bar').forEach(function (bar) {
+    bar.addEventListener('mouseenter', function () {
+      var sr = svg.getBoundingClientRect(), br = bar.getBoundingClientRect();
+      tip.textContent = bar.dataset.mes.charAt(0).toUpperCase() + bar.dataset.mes.slice(1) + ' · ' + fmtBRL(bar.dataset.val);
+      tip.style.left = (br.left - sr.left + br.width / 2) + 'px';
+      tip.style.top  = (br.top  - sr.top) + 'px';
+      tip.style.display = 'block';
+      bar.setAttribute('fill-opacity', '1');
+    });
+    bar.addEventListener('mouseleave', function () {
+      tip.style.display = 'none';
+      bar.setAttribute('fill-opacity', bar.dataset.last === '1' ? '1' : '0.55');
+    });
+  });
+  // marca a última barra para restaurar opacidade correta
+  var bars = svg.querySelectorAll('.carros-bar');
+  if (bars.length) bars[bars.length - 1].dataset.last = '1';
 })();
 
 // ── Dados Visuais charts (lazy init — só quando canvas está visível) ──
