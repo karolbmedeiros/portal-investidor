@@ -157,6 +157,15 @@ def home():
         except Exception:
             pass
 
+    # Faturas pendentes de carros (contas_receber_frota)
+    faturas_carros = []
+    if ativo_tipo == "carros" and empresa_carros_sel:
+        try:
+            from services.veiculos_service import contas_receber_empresa
+            faturas_carros = contas_receber_empresa(empresa_carros_sel["nome"])
+        except Exception:
+            pass
+
     # Faturas pendentes das usinas visíveis
     faturas_pendentes = []
     try:
@@ -271,6 +280,7 @@ def home():
         empresas_carros=empresas_carros,
         empresa_carros_sel=empresa_carros_sel,
         ativo_tipo=ativo_tipo,
+        faturas_carros=faturas_carros,
         cotas=cotas,
         kwp=kwp,
         total_investido=total_investido,

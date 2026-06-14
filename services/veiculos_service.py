@@ -4,12 +4,14 @@ from services.supabase_client import get_financeiro_client
 
 _EMPRESA_INFO = {
     "LUZ DIVINA EMPREENDIMENTOS LTDA": {
-        "cnpj": "48.284.349/0001-29",
-        "pix":  None,
+        "cnpj":    "48.284.349/0001-29",
+        "pix":     None,
+        "unidade": "LUZ DIVINA LTDA",
     },
     "JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA": {
-        "cnpj": "24.954.506/0001-06",
-        "pix":  "4d9e79bf-e7f3-4298-86b2-66613980b90b",
+        "cnpj":    "24.954.506/0001-06",
+        "pix":     "4d9e79bf-e7f3-4298-86b2-66613980b90b",
+        "unidade": "JOÃO PAULO CONSÓRCIOS",
     },
 }
 
@@ -152,3 +154,24 @@ def recebimentos_da_empresa(empresa):
         por_placa[p].append(row)
 
     return por_placa
+
+
+def contas_receber_empresa(empresa_nome: str) -> list:
+    """Faturas em aberto da empresa na tabela contas_receber_frota."""
+    info = _EMPRESA_INFO.get(empresa_nome, {})
+    unidade = info.get("unidade")
+    if not unidade:
+        return []
+    try:
+        sb = get_financeiro_client()
+        res = (
+            sb.table("contas_receber_frota")
+            .select("numero_documento,cliente,data_vencimento,valor,situacao,tipo_fatura,dias_vencimento,faixa_vencimento")
+            .eq("unidade", unidade)
+            .order("data_vencimento")
+            .execute()
+        )
+        return res.data or []
+    except Exception as e:
+        print(f"[contas_receber_empresa] erro: {e}")
+        return []

@@ -1191,67 +1191,131 @@ function toggleAcordI(btn){
 <div id="tab-visao_geral-2" data-tab="visao_geral" class="dtab-content {{ 'ativo' if tab == 'visao_geral' }}">
 <!-- ── Contas a Receber ── -->
 <section class="card mt-16">
-  <div class="db-list-header" style="margin-bottom:16px;">
-    <div>
-      <div class="db-list-title">Contas a Receber</div>
-      <div class="text-muted text-sm">Faturas pendentes · em aberto</div>
+  {% if ativo_tipo == 'carros' %}
+    {# ── Faturas de carros ── #}
+    {% set _fats = faturas_carros %}
+    <div class="db-list-header" style="margin-bottom:16px;">
+      <div>
+        <div class="db-list-title">Contas a Receber</div>
+        <div class="text-muted text-sm">Faturas pendentes · em aberto</div>
+      </div>
+      {% if _fats %}
+      <span class="db-badge-ativa" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">
+        {{ _fats|length }} fatura{{ 's' if _fats|length != 1 }}
+      </span>
+      {% endif %}
     </div>
-    {% if faturas_pendentes %}
-    <span class="db-badge-ativa" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">
-      {{ faturas_pendentes|length }} fatura{{ 's' if faturas_pendentes|length != 1 }}
-    </span>
+    {% if not _fats %}
+    <div class="vazio text-sm" style="padding:24px 0;">Nenhuma fatura pendente.</div>
+    {% else %}
+    <div style="overflow-x:auto;">
+      <table class="db-fat-table">
+        <thead>
+          <tr>
+            <th>Nº Documento</th>
+            <th>Locatário</th>
+            <th>Vencimento</th>
+            <th>Situação</th>
+            <th style="text-align:right;">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in _fats %}
+          {% set dias = f.dias_vencimento %}
+          <tr>
+            <td class="text-mono text-sm">{{ f.numero_documento or '—' }}</td>
+            <td class="text-sm">{{ f.cliente or '—' }}</td>
+            <td>
+              <span class="text-sm">{{ f.data_vencimento[:10]|fmtdata }}</span>
+              {% if dias is not none %}
+                {% if dias < 0 %}
+                <span class="db-fat-tag db-fat-tag--vencida">{{ dias|abs }}d atraso</span>
+                {% elif dias == 0 %}
+                <span class="db-fat-tag db-fat-tag--hoje">hoje</span>
+                {% elif dias <= 7 %}
+                <span class="db-fat-tag db-fat-tag--urgente">{{ dias }}d</span>
+                {% endif %}
+              {% endif %}
+            </td>
+            <td><span class="db-fat-status db-fat-status--{{ (f.situacao or '')|lower|replace(' ','_') }}">{{ f.situacao or '—' }}</span></td>
+            <td style="text-align:right;" class="text-sm font-500">{{ f.valor|brl }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="text-align:right;font-size:12px;color:var(--muted);padding-top:10px;">Total em aberto</td>
+            <td style="text-align:right;font-weight:500;padding-top:10px;">
+              {{ _fats|sum(attribute='valor')|brl }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
     {% endif %}
-  </div>
-
-  {% if not faturas_pendentes %}
-  <div class="vazio text-sm" style="padding:24px 0;">Nenhuma fatura pendente.</div>
   {% else %}
-  <div style="overflow-x:auto;">
-    <table class="db-fat-table">
-      <thead>
-        <tr>
-          <th>Nº Fatura</th>
-          <th>UC</th>
-          <th>Usina</th>
-          <th>Vencimento</th>
-          <th>Status</th>
-          <th style="text-align:right;">Valor</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for f in faturas_pendentes %}
-        {% set dias = f.dias_vencimento %}
-        <tr>
-          <td class="text-mono text-sm">{{ f.numero_fatura or '—' }}</td>
-          <td><span class="text-sm">{{ f.uc_apelido or f.codigo_uc }}</span></td>
-          <td class="text-muted text-sm">{{ (f.usina_razao_social or '—')|truncate(28, True, '…') }}</td>
-          <td>
-            <span class="text-sm">{{ f.data_vencimento[:10]|fmtdata }}</span>
-            {% if dias < 0 %}
-            <span class="db-fat-tag db-fat-tag--vencida">{{ dias|abs }}d atraso</span>
-            {% elif dias == 0 %}
-            <span class="db-fat-tag db-fat-tag--hoje">hoje</span>
-            {% elif dias <= 7 %}
-            <span class="db-fat-tag db-fat-tag--urgente">{{ dias }}d</span>
-            {% endif %}
-          </td>
-          <td><span class="db-fat-status db-fat-status--{{ f.status|lower }}">{{ f.status }}</span></td>
-          <td style="text-align:right;" class="text-sm font-500">
-            {{ (f.valor_final_cobrado or f.valor_total_cobrado or f.valor_liquido)|brl }}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="5" style="text-align:right;font-size:12px;color:var(--muted);padding-top:10px;">Total em aberto</td>
-          <td style="text-align:right;font-weight:500;padding-top:10px;">
-            {{ faturas_pendentes|sum(attribute='valor_final_cobrado')|default(0)|brl }}
-          </td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
+    {# ── Faturas de usinas ── #}
+    <div class="db-list-header" style="margin-bottom:16px;">
+      <div>
+        <div class="db-list-title">Contas a Receber</div>
+        <div class="text-muted text-sm">Faturas pendentes · em aberto</div>
+      </div>
+      {% if faturas_pendentes %}
+      <span class="db-badge-ativa" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">
+        {{ faturas_pendentes|length }} fatura{{ 's' if faturas_pendentes|length != 1 }}
+      </span>
+      {% endif %}
+    </div>
+    {% if not faturas_pendentes %}
+    <div class="vazio text-sm" style="padding:24px 0;">Nenhuma fatura pendente.</div>
+    {% else %}
+    <div style="overflow-x:auto;">
+      <table class="db-fat-table">
+        <thead>
+          <tr>
+            <th>Nº Fatura</th>
+            <th>UC</th>
+            <th>Usina</th>
+            <th>Vencimento</th>
+            <th>Status</th>
+            <th style="text-align:right;">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in faturas_pendentes %}
+          {% set dias = f.dias_vencimento %}
+          <tr>
+            <td class="text-mono text-sm">{{ f.numero_fatura or '—' }}</td>
+            <td><span class="text-sm">{{ f.uc_apelido or f.codigo_uc }}</span></td>
+            <td class="text-muted text-sm">{{ (f.usina_razao_social or '—')|truncate(28, True, '…') }}</td>
+            <td>
+              <span class="text-sm">{{ f.data_vencimento[:10]|fmtdata }}</span>
+              {% if dias < 0 %}
+              <span class="db-fat-tag db-fat-tag--vencida">{{ dias|abs }}d atraso</span>
+              {% elif dias == 0 %}
+              <span class="db-fat-tag db-fat-tag--hoje">hoje</span>
+              {% elif dias <= 7 %}
+              <span class="db-fat-tag db-fat-tag--urgente">{{ dias }}d</span>
+              {% endif %}
+            </td>
+            <td><span class="db-fat-status db-fat-status--{{ f.status|lower }}">{{ f.status }}</span></td>
+            <td style="text-align:right;" class="text-sm font-500">
+              {{ (f.valor_final_cobrado or f.valor_total_cobrado or f.valor_liquido)|brl }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" style="text-align:right;font-size:12px;color:var(--muted);padding-top:10px;">Total em aberto</td>
+            <td style="text-align:right;font-weight:500;padding-top:10px;">
+              {{ faturas_pendentes|sum(attribute='valor_final_cobrado')|default(0)|brl }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% endif %}
   {% endif %}
 </section>
 </div>{# /tab-visao_geral pt2 #}
