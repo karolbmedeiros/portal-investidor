@@ -140,7 +140,7 @@ def home():
         if all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms: home_tabs.append("extrato")
         if all_perms or "benchmarks"       in perms:                               home_tabs.append("benchmarks")
         if all_perms or "retorno_mensal"   in perms:                               home_tabs.append("retorno_mensal")
-        if all_perms or "energia"          in perms:                               home_tabs.append("energia")
+        if all_perms or "energia"          in perms:                               home_tabs.append("saldo_creditos")
         if all_perms or "pnl"              in perms:                               home_tabs.append("pnl")
         if all_perms or "saldo_creditos"   in perms:                               home_tabs.append("saldo_creditos")
         if all_perms or "dre"              in perms:                               home_tabs.append("dre")
@@ -162,7 +162,7 @@ def home():
             str(_rb.get("data_desembolso") or ""),
             _rm,
         )
-    leituras_det   = leituras_detalhadas(ativo_id)       if ativo_id and ("energia" in home_tabs or "saldo_creditos" in home_tabs) else []
+    leituras_det   = leituras_detalhadas(ativo_id)       if ativo_id and "saldo_creditos" in home_tabs else []
     pnl            = pnl_da_usina(ativo_id)              if ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
     saldo_creditos = saldo_creditos_da_usina(ativo_id)   if ativo_id and "saldo_creditos" in home_tabs else []
     participacoes  = participacoes_da_usina(ativo_id)    if ativo_id and "socios"         in home_tabs else []

@@ -109,7 +109,6 @@
   <a href="#" data-tab="extrato"        class="dtab-link {{ 'ativo' if tab == 'extrato' }}">Fluxo de Caixa</a>
   <a href="#" data-tab="benchmarks"     class="dtab-link {{ 'ativo' if tab == 'benchmarks' }}">Benchmarks</a>
   <a href="#" data-tab="retorno_mensal" class="dtab-link {{ 'ativo' if tab == 'retorno_mensal' }}">Retorno Mensal</a>
-  <a href="#" data-tab="energia"        class="dtab-link {{ 'ativo' if tab == 'energia' }}">Energia</a>
   <a href="#" data-tab="pnl"            class="dtab-link {{ 'ativo' if tab == 'pnl' }}">P&L</a>
   <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
   <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
@@ -813,25 +812,6 @@
 </div>
 
 {# ══════════════════════════════════════════════ ENERGIA ═══ #}
-<div id="tab-energia" class="dtab-content {{ 'ativo' if tab == 'energia' }}">
-  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
-  {% if leituras_det %}
-    {% set _tc = namespace(v=0) %}{% for l in leituras_det %}{% set _tc.v = _tc.v+(l.kwh_compensado or 0) %}{% endfor %}
-    {% set _ts = namespace(v=0) %}{% for l in leituras_det %}{% set _ts.v = _ts.v+(l.kwh_consumido or 0) %}{% endfor %}
-    {% set _tr = namespace(v=0) %}{% for l in leituras_det %}{% set _tr.v = _tr.v+(l.valor_fatura_cosern_real or 0) %}{% endfor %}
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;"><div class="db-mc-label">Total compensado</div><div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _tc.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div></div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;"><div class="db-mc-label">Total consumido</div><div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ts.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div></div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;"><div class="db-mc-label">Fatura COSERN total</div><div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _tr.v|brl }}</span></div></div>
-    </div>
-    <section class="card" style="margin-bottom:16px;"><div class="db-chart-title" style="margin-bottom:12px;">kWh compensado por mês</div><div style="position:relative;height:220px;"><canvas id="chart-energia-admin"></canvas></div></section>
-    <section class="card"><table class="db-fat-table"><thead><tr><th>Mês</th><th>Contrato</th><th>kWh compensado</th><th>kWh consumido</th><th>Saldo créditos</th><th>Fatura COSERN</th></tr></thead><tbody>
-      {% for l in leituras_det | reverse %}{% set _ms = l.ref_mes_ano[:7] if l.ref_mes_ano else '' %}
-      <tr><td style="font-weight:500;white-space:nowrap;">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td><td class="text-muted text-sm">{{ l.numero_contrato or '—' }}</td><td style="font-weight:600;color:var(--accent);">{{ (l.kwh_compensado or 0)|round(0)|int }} kWh</td><td class="text-muted">{{ (l.kwh_consumido or 0)|round(0)|int }} kWh</td><td>{{ (l.saldo_creditos_kwh or 0)|round(0)|int }} kWh</td><td>{{ (l.valor_fatura_cosern_real or 0)|brl }}</td></tr>
-      {% endfor %}
-    </tbody></table></section>
-  {% else %}<div class="vazio">Sem leituras cadastradas.</div>{% endif %}
-</div>
 
 {# ══════════════════════════════════════════════ P&L ═══ #}
 <div id="tab-pnl" class="dtab-content {{ 'ativo' if tab == 'pnl' }}">
@@ -859,44 +839,55 @@
 {# ══════════════════════════════════════════════ CRÉDITOS kWh ═══ #}
 <div id="tab-saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}">
   {% set _ma = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] %}
-  {# ── Agrega economia por mês a partir de leituras_det ── #}
-  {% set _ec = namespace(total_kwh=0, total_bruto=0, total_eco=0) %}
+  {# ── Agrega totais ── #}
+  {% set _ec = namespace(total_kwh=0, total_cons=0, total_bruto=0, total_eco=0, total_cosern=0) %}
   {% for l in leituras_det %}
-    {% set _ec.total_kwh  = _ec.total_kwh  + (l.kwh_compensado or 0) %}
+    {% set _ec.total_kwh   = _ec.total_kwh   + (l.kwh_compensado or 0) %}
+    {% set _ec.total_cons  = _ec.total_cons  + (l.kwh_consumido or 0) %}
     {% set _ec.total_bruto = _ec.total_bruto + (l.valor_bruto or 0) %}
-    {% set _ec.total_eco  = _ec.total_eco  + (l.economia_cliente or 0) %}
+    {% set _ec.total_eco   = _ec.total_eco   + (l.economia_cliente or 0) %}
+    {% set _ec.total_cosern = _ec.total_cosern + (l.valor_fatura_cosern_real or 0) %}
   {% endfor %}
-  {# saldo de créditos atual #}
   {% set _ts2 = namespace(v=0) %}{% for s in saldo_creditos %}{% set _ts2.v = _ts2.v+(s.saldo_atual_kwh or 0) %}{% endfor %}
 
   {% if leituras_det or saldo_creditos %}
   {# ── KPIs ── #}
   <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
-    <div class="db-metric-card" style="flex:0 0 auto;min-width:170px;padding:18px 20px;">
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:155px;padding:18px 20px;">
       <div class="db-mc-label">Total compensado</div>
       <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ec.total_kwh|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
     </div>
-    <div class="db-metric-card" style="flex:0 0 auto;min-width:200px;padding:18px 20px;">
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:155px;padding:18px 20px;">
+      <div class="db-mc-label">Total consumido</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ec.total_cons|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+    </div>
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:190px;padding:18px 20px;">
       <div class="db-mc-label">Economia gerada para clientes</div>
       <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:var(--accent);">{{ _ec.total_eco|brl }}</span></div>
       {% if _ec.total_bruto > 0 %}<div style="font-size:11px;color:var(--muted);margin-top:4px;">{{ ((_ec.total_eco/_ec.total_bruto)*100)|round(1) }}% do que pagariam à COSERN</div>{% endif %}
     </div>
-    <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
-      <div class="db-mc-label">Sem desconto (COSERN)</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ec.total_bruto|brl }}</span></div>
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:155px;padding:18px 20px;">
+      <div class="db-mc-label">Fatura COSERN total</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ec.total_cosern|brl }}</span></div>
     </div>
-    <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:155px;padding:18px 20px;">
       <div class="db-mc-label">Saldo de créditos</div>
       <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ 'var(--accent)' if _ts2.v>0 else 'var(--text)' }};">{{ _ts2.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
     </div>
   </div>
 
-  {# ── Gráfico economia mensal ── #}
+  {# ── Gráficos ── #}
   {% if leituras_det %}
-  <section class="card" style="margin-bottom:16px;">
-    <div class="db-chart-title" style="margin-bottom:12px;">Economia mensal gerada (R$)</div>
-    <div style="position:relative;height:200px;"><canvas id="chart-eco-admin"></canvas></div>
-  </section>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <section class="card">
+      <div class="db-chart-title" style="margin-bottom:12px;">kWh compensado por mês</div>
+      <div style="position:relative;height:200px;"><canvas id="chart-energia-admin"></canvas></div>
+    </section>
+    <section class="card">
+      <div class="db-chart-title" style="margin-bottom:12px;">Economia mensal gerada (R$)</div>
+      <div style="position:relative;height:200px;"><canvas id="chart-eco-admin"></canvas></div>
+    </section>
+  </div>
   {% endif %}
 
   {# ── Accordion por cliente ── #}
@@ -973,13 +964,16 @@
       </button>
       <div class="eco-acord-body">
         <table>
-          <thead><tr><th>Mês</th><th>kWh compensado</th><th>Sem desconto</th><th>Economia</th></tr></thead>
+          <thead><tr><th>Mês</th><th>kWh comp.</th><th>kWh cons.</th><th>Saldo créditos</th><th>Fatura COSERN</th><th>Sem desconto</th><th>Economia</th></tr></thead>
           <tbody>
           {% for l in _lc.rows|sort(attribute='ref_mes_ano', reverse=True) %}
             {% set _ms = (l.ref_mes_ano or '')[:7] %}
             <tr>
               <td style="font-weight:600;color:var(--text);">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td>
-              <td style="color:var(--accent);font-weight:600;">{{ (l.kwh_compensado or 0)|round(0)|int }} kWh</td>
+              <td style="color:var(--accent);font-weight:600;">{{ (l.kwh_compensado or 0)|round(0)|int }}</td>
+              <td style="color:var(--muted);">{{ (l.kwh_consumido or 0)|round(0)|int }}</td>
+              <td>{{ (l.saldo_creditos_kwh or 0)|round(0)|int }} kWh</td>
+              <td style="color:var(--muted);">{{ (l.valor_fatura_cosern_real or 0)|brl }}</td>
               <td style="color:var(--muted);">{{ (l.valor_bruto or 0)|brl }}</td>
               <td style="color:#16A34A;font-weight:700;">{{ (l.economia_cliente or 0)|brl }}</td>
             </tr>
@@ -1002,16 +996,31 @@
   leituras.forEach(function(l){
     var m = (l.ref_mes_ano||'').slice(0,7);
     if(!m) return;
-    if(!mesMap[m]) mesMap[m]={eco:0,bruto:0};
+    if(!mesMap[m]) mesMap[m]={eco:0,bruto:0,comp:0,cons:0};
     mesMap[m].eco   += l.economia_cliente||0;
     mesMap[m].bruto += l.valor_bruto||0;
+    mesMap[m].comp  += l.kwh_compensado||0;
+    mesMap[m].cons  += l.kwh_consumido||0;
   });
   var meses = Object.keys(mesMap).sort();
   var MA = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   var labels = meses.map(function(m){ return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); });
+  // gráfico kWh
+  var ctxK = document.getElementById('chart-energia-admin');
+  if(ctxK) new Chart(ctxK,{
+    type:'bar',
+    data:{
+      labels:labels,
+      datasets:[
+        {label:'Compensado (kWh)', data:meses.map(function(m){return mesMap[m].comp||0;}), backgroundColor:'rgba(29,158,117,0.8)', borderRadius:4},
+        {label:'Consumido (kWh)',  data:meses.map(function(m){return mesMap[m].cons||0;}), backgroundColor:'rgba(148,163,184,0.4)', borderRadius:4}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#EEF0EF'},ticks:{font:{size:10}}}}}
+  });
+  // gráfico economia
   var ctxE = document.getElementById('chart-eco-admin');
-  if(!ctxE) return;
-  new Chart(ctxE,{
+  if(ctxE) new Chart(ctxE,{
     type:'bar',
     data:{
       labels:labels,
@@ -1020,14 +1029,7 @@
         {label:'Sem desconto (R$)', data:meses.map(function(m){return mesMap[m].bruto;}), backgroundColor:'rgba(148,163,184,0.35)', borderRadius:4}
       ]
     },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},
-      scales:{
-        x:{grid:{display:false},ticks:{font:{size:11}}},
-        y:{grid:{color:'#EEF0EF'},ticks:{font:{size:10},callback:function(v){return 'R$'+Math.round(v);}}}
-      }
-    }
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#EEF0EF'},ticks:{font:{size:10},callback:function(v){return 'R$'+Math.round(v);}}}}}
   });
 })();
 </script>
