@@ -1008,34 +1008,8 @@
 </div>
 </div>{# /tab-saldo_creditos #}
 <script>
-(function(){
-  var leiI = {{ leituras_det | tojson }};
-  var cota = {{ _cota_dec }};
-  if(!leiI.length) return;
-  var mesMap = {};
-  leiI.forEach(function(l){
-    var m = (l.ref_mes_ano||'').slice(0,7);
-    if(!m) return;
-    if(!mesMap[m]) mesMap[m]={eco:0,comp:0,cons:0};
-    mesMap[m].eco  += l.economia_cliente||0;
-    mesMap[m].comp += l.kwh_compensado||0;
-    mesMap[m].cons += l.kwh_consumido||0;
-  });
-  var meses = Object.keys(mesMap).sort();
-  var MA = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  var labels = meses.map(function(m){ return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); });
-  var opts = {responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#EEF0EF'},ticks:{font:{size:10}}}}};
-  var ctxK = document.getElementById('simI-chart-kwh');
-  if(ctxK) new Chart(ctxK,{type:'bar',data:{labels:labels,datasets:[
-    {label:'Compensado (kWh)',data:meses.map(function(m){return mesMap[m].comp;}),backgroundColor:'rgba(29,158,117,0.8)',borderRadius:4},
-    {label:'Consumido (kWh)', data:meses.map(function(m){return mesMap[m].cons;}),backgroundColor:'rgba(148,163,184,0.4)',borderRadius:4}
-  ]},options:opts});
-  var ctxI = document.getElementById('simI-chart-eco');
-  if(ctxI) new Chart(ctxI,{type:'bar',data:{labels:labels,datasets:[
-    {label:'Economia total (R$)',data:meses.map(function(m){return mesMap[m].eco;}),backgroundColor:'rgba(29,158,117,0.75)',borderRadius:4},
-    {label:'Sua parte (R$)',    data:meses.map(function(m){return mesMap[m].eco*cota;}),backgroundColor:'rgba(29,158,117,0.3)',borderRadius:4}
-  ]},options:Object.assign({},opts,{scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#EEF0EF'},ticks:{font:{size:10},callback:function(v){return 'R$'+Math.round(v);}}}}}});
-})();
+window._leiI = {{ leituras_det | tojson }};
+window._leiICota = {{ _cota_dec }};
 </script>
 <script>
 function toggleAcordI(btn){
@@ -2040,6 +2014,41 @@ document.addEventListener('click', function (e) {
             plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
               tooltip: { callbacks: { label: function(c) { return c.label+': '+fmtBrl(c.parsed); } } } } }
         });
+      }
+    }
+
+    // Créditos kWh — kWh compensado por mês + Economia mensal
+    var ctxK = document.getElementById('simI-chart-kwh');
+    var ctxI = document.getElementById('simI-chart-eco');
+    if ((ctxK || ctxI) && !_inited['KWH'] && (visible(ctxK) || visible(ctxI))) {
+      _inited['KWH'] = true;
+      var leiI = window._leiI || [];
+      var cotaKwh = window._leiICota || 0;
+      if (leiI.length) {
+        var mesMap = {};
+        leiI.forEach(function(l) {
+          var m = (l.ref_mes_ano||'').slice(0,7);
+          if (!m) return;
+          if (!mesMap[m]) mesMap[m] = {eco:0, comp:0, cons:0};
+          mesMap[m].eco  += l.economia_cliente || 0;
+          mesMap[m].comp += l.kwh_compensado   || 0;
+          mesMap[m].cons += l.kwh_consumido    || 0;
+        });
+        var meses = Object.keys(mesMap).sort();
+        var labels = meses.map(function(m) { return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); });
+        var opts = {responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom', labels:{font:{size:11}, boxWidth:12}}},
+          scales:{x:{grid:{display:false}, ticks:{font:{size:11}}}, y:{grid:{color:'#EEF0EF'}, ticks:{font:{size:10}}}}};
+        if (ctxK) new Chart(ctxK, {type:'bar', data:{labels:labels, datasets:[
+          {label:'Compensado (kWh)', data:meses.map(function(m){return mesMap[m].comp;}), backgroundColor:'rgba(29,158,117,0.8)', borderRadius:4},
+          {label:'Consumido (kWh)',  data:meses.map(function(m){return mesMap[m].cons;}), backgroundColor:'rgba(148,163,184,0.4)', borderRadius:4}
+        ]}, options:opts});
+        if (ctxI) new Chart(ctxI, {type:'bar', data:{labels:labels, datasets:[
+          {label:'Economia total (R$)', data:meses.map(function(m){return mesMap[m].eco;}), backgroundColor:'rgba(29,158,117,0.75)', borderRadius:4},
+          {label:'Sua parte (R$)',      data:meses.map(function(m){return mesMap[m].eco*cotaKwh;}), backgroundColor:'rgba(29,158,117,0.3)', borderRadius:4}
+        ]}, options:Object.assign({}, opts, {scales:{x:{grid:{display:false}, ticks:{font:{size:11}}},
+          y:{grid:{color:'#EEF0EF'}, ticks:{font:{size:10}, callback:function(v){return 'R$'+Math.round(v);}}}
+        }})});
       }
     }
   }
