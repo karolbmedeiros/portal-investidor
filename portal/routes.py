@@ -153,6 +153,8 @@ def home():
                 motoristas_recebimentos.append({
                     "cliente": c.get("cliente") or "—",
                     "placa": c.get("placa") or "—",
+                    "inicio": inicio_dt.strftime("%d/%m/%Y") if inicio_dt else "—",
+                    "valor_locacao": float(c.get("valor_locacao") or 0),
                     "n_semanas": n_seg,
                     "valor_semana": valor_sem,
                     "valor_pago": pago,
@@ -232,27 +234,39 @@ def home():
             _payback    = round(_b["investimento"] / _liq_mes, 1)
             _oc_eq_pct  = round((_seg_mes + _man_mes + _dep_mes) / _bruta_mes * 100, 1)
             _oc_eq_sem  = round(_oc_eq_pct / 100 * 52, 1)  # semanas/ano para cobrir custos fixos
+            # Yield sem depreciação (retorno bruto sobre o investimento)
+            _yield_aa   = round((_bruta_mes - _seg_mes - _man_mes) * 12 / _b["investimento"] * 100, 1)
+            # Rentabilidade real considerando vacância atual
+            _n_ativos   = sum(1 for v in carros_veiculos_status if v["ativo"])
+            _n_total    = len(carros_veiculos_status)
+            _n_inat     = _n_total - _n_ativos
+            _liq_real_mes = _n_ativos * _liq_mes - _n_inat * (_seg_mes + _man_mes)
+            _liq_real_aa  = round(_liq_real_mes * 12 / (_n_total * _b["investimento"]) * 100, 1) if _n_total else 0
             carros_rentabilidade = {
-                "nome":            _b["nome"],
-                "aluguel_semanal": _b["aluguel_semanal"],
-                "pct_investidor":  int(_b["pct_investidor"] * 100),
-                "bruta_semanal":   _bruta_sem,
-                "bruta_mensal":    _bruta_mes,
-                "seguro_anual":    _b["seguro_anual"],
-                "seguro_mensal":   _seg_mes,
-                "manutencao":      _man_mes,
-                "depreciacao_pct": int(_b["depreciacao_aa_pct"] * 100 * 10) / 10,
-                "depreciacao_mes": _dep_mes,
-                "liquida_mensal":  _liq_mes,
-                "margem":          _margem,
-                "retorno_aa":      _ret_aa,
-                "payback":         _payback,
-                "oc_eq_pct":       _oc_eq_pct,
-                "oc_eq_sem":       _oc_eq_sem,
-                "vs_cdi":          round(_ret_aa - _b["cdi_aa"] * 100, 1),
-                "vs_poupanca":     round(_ret_aa - _b["poupanca_aa"] * 100, 1),
-                "cdi_aa_pct":      round(_b["cdi_aa"] * 100, 1),
-                "poupanca_aa_pct": round(_b["poupanca_aa"] * 100, 2),
+                "nome":             _b["nome"],
+                "aluguel_semanal":  _b["aluguel_semanal"],
+                "pct_investidor":   int(_b["pct_investidor"] * 100),
+                "bruta_semanal":    _bruta_sem,
+                "bruta_mensal":     _bruta_mes,
+                "seguro_anual":     _b["seguro_anual"],
+                "seguro_mensal":    _seg_mes,
+                "manutencao":       _man_mes,
+                "depreciacao_pct":  int(_b["depreciacao_aa_pct"] * 100 * 10) / 10,
+                "depreciacao_mes":  _dep_mes,
+                "liquida_mensal":   _liq_mes,
+                "margem":           _margem,
+                "retorno_aa":       _ret_aa,
+                "yield_aa":         _yield_aa,
+                "liquida_real_aa":  _liq_real_aa,
+                "n_ativos":         _n_ativos,
+                "n_total":          _n_total,
+                "payback":          _payback,
+                "oc_eq_pct":        _oc_eq_pct,
+                "oc_eq_sem":        _oc_eq_sem,
+                "vs_cdi":           round(_ret_aa - _b["cdi_aa"] * 100, 1),
+                "vs_poupanca":      round(_ret_aa - _b["poupanca_aa"] * 100, 1),
+                "cdi_aa_pct":       round(_b["cdi_aa"] * 100, 1),
+                "poupanca_aa_pct":  round(_b["poupanca_aa"] * 100, 2),
             }
         except Exception:
             pass
