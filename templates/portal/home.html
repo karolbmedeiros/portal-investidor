@@ -360,72 +360,168 @@
 </div>{# /tab-benchmarks #}
 
 <div id="tab-retorno_mensal" data-tab="retorno_mensal" class="dtab-content {{ 'ativo' if tab == 'retorno_mensal' }}">
+<style>
+.simI-label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+.simI-cn-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+.simI-cn-header{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--border);}
+.simI-cn-titulo{font-size:15px;font-weight:700;color:var(--text);}
+.simI-cn-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.simI-cn-badge{font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;transition:background .2s,color .2s;}
+.simI-cn-badge--verde{background:#D1FAE5;color:#065F46;}
+.simI-cn-badge--amarelo{background:#FEF3C7;color:#92400E;}
+.simI-cn-badge--critico{background:#FEE2E2;color:#991B1B;}
+.simI-cn-body{padding:16px 18px;flex:1;}
+.simI-cn-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;}
+.simI-cn-label{color:var(--muted);}
+.simI-cn-val{font-weight:600;}
+.simI-cn-val.pos{color:#16A34A;}
+.simI-cn-val.neg{color:#DC2626;}
+.simI-cn-sep{border-top:1px solid var(--border);margin:10px 0;}
+.simI-cn-resultado{font-size:17px;font-weight:800;transition:color .2s;}
+.simI-cn-resultado.pos{color:#16A34A;}
+.simI-cn-resultado.neg{color:#DC2626;}
+.simI-cn-cota{font-size:12px;color:var(--muted);margin-top:6px;}
+.simI-cn-health{padding:12px 18px 16px;background:#F9FAFB;border-top:1px solid var(--border);}
+.simI-health-bar{height:6px;background:#E5E7EB;border-radius:3px;overflow:hidden;margin-bottom:6px;}
+.simI-health-fill{height:100%;border-radius:3px;transition:width .35s,background .35s;}
+.simI-health-label{font-size:11px;font-weight:500;transition:color .2s;}
+</style>
+{% set _cota_dec = ((retorno_mensal[0].percentual if retorno_mensal else 0) or 0) %}
+{% set _cota_pct = (_cota_dec * 100)|round(1) %}
 <div style="padding-top:4px;">
-  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
-  {% if retorno_mensal %}
-    {% set rb = rentabilidade %}
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
-      {% if rb.capital %}
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
-        <div class="db-mc-label">Capital investido</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ rb.capital|brl }}</span></div>
-        {% if rb.data_desembolso %}<div class="db-mc-sub">desde {{ rb.data_desembolso[8:10] }}/{{ rb.data_desembolso[5:7] }}/{{ rb.data_desembolso[:4] }}</div>{% endif %}
-      </div>
-      {% endif %}
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
-        <div class="db-mc-label">Total distribuído</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ rb.tot_dist|brl }}</span></div>
-        {% if rb.roi %}<div class="db-mc-sub">ROI {{ rb.roi|round(1) }}%</div>{% endif %}
-      </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
-        <div class="db-mc-label">Resultado acumulado</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#DC2626' if (rb.tot_lucro or 0) < 0 else 'var(--text)' }};">{{ rb.tot_lucro|brl }}</span></div>
-        <div class="db-mc-sub">proporcional à sua cota</div>
-      </div>
-      {% if rb.retorno_aa %}
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:140px;padding:18px 20px;">
-        <div class="db-mc-label">Retorno a.a.</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#16A34A;">{{ rb.retorno_aa|round(1) }}%</span></div>
-        {% if rb.tir_aa %}<div class="db-mc-sub">TIR {{ rb.tir_aa|round(1) }}% a.a.</div>{% endif %}
-      </div>
-      {% endif %}
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:140px;padding:18px 20px;">
-        <div class="db-mc-label">Sua cota</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ ((retorno_mensal[0].percentual or 0)*100)|round(1) }}%</span></div>
-      </div>
-      {% if rb.payback_mes %}
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:140px;padding:18px 20px;">
-        <div class="db-mc-label">Payback</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value" style="font-size:15px;">{{ rb.payback_mes[5:7] }}/{{ rb.payback_mes[:4] }}</span></div>
-        <div class="db-mc-sub">retorno do capital</div>
-      </div>
-      {% endif %}
+
+  {# ─── Alerta situação atual ─── #}
+  <div style="display:flex;align-items:center;gap:10px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:20px;">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 9v4m0 4h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    <div>
+      <strong style="font-size:13px;color:#92400E;">Situação atual · maio/2026</strong>
+      <span style="font-size:12px;color:#92400E;margin-left:8px;">Apenas 2 clientes ativos · receita real R$ 2.004,69 · ~86% de capacidade ociosa</span>
     </div>
-    <section class="card" style="margin-bottom:16px;">
-      <div class="db-chart-title" style="margin-bottom:12px;">Resultado mensal (sua participação)</div>
-      <div style="position:relative;height:240px;"><canvas id="chart-retorno-home"></canvas></div>
-    </section>
-    <section class="card">
-      <table class="db-fat-table">
-        <thead><tr><th>Mês</th><th>Resultado usina</th><th>Sua participação</th><th>Distribuído</th><th>Status</th></tr></thead>
-        <tbody>
-          {% for r in retorno_mensal | reverse %}
-          {% set _ms = r.ref_mes_ano[:7] if r.ref_mes_ano else '' %}
-          <tr>
-            <td style="font-weight:500;">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td>
-            <td style="font-weight:600;color:{{ '#16A34A' if (r.resultado_usina or 0)>=0 else '#DC2626' }};">{{ (r.resultado_usina or 0)|brl }}</td>
-            <td style="font-weight:600;color:{{ '#16A34A' if (r.participacao_lucro or 0)>=0 else '#DC2626' }};">{{ (r.participacao_lucro or 0)|brl }}</td>
-            <td>{{ (r.valor_distribuido or 0)|brl }}</td>
-            <td>{% if (r.valor_distribuido or 0)>0 %}<span class="db-fat-status" style="background:#D1FAE5;color:#065F46;">Distribuído</span>
-            {% elif (r.participacao_lucro or 0)>0 %}<span class="db-fat-status db-fat-status--emitida">A distribuir</span>
-            {% else %}<span class="db-fat-status" style="background:#F3F4F6;color:#6B7280;">Negativo</span>{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-  {% else %}<div class="vazio">Sem dados de retorno para esta usina.</div>{% endif %}
+  </div>
+
+  {# ─── Sumário da usina ─── #}
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+      <div class="db-mc-label">Sua cota</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _cota_pct }}%</span></div>
+      <div class="db-mc-sub">participação na usina</div>
+    </div>
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+      <div class="db-mc-label">Geração média</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">14.000</span><span class="db-mc-unit">kWh/mês</span></div>
+      <div class="db-mc-sub">capacidade da usina</div>
+    </div>
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+      <div class="db-mc-label">Receita potencial</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">R$ 14.520,21</span></div>
+      <div class="db-mc-sub">100% de ocupação</div>
+    </div>
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+      <div class="db-mc-label">Custos mensais</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#DC2626;">R$ 9.549,94</span></div>
+      <div class="db-mc-sub">fixos da usina</div>
+    </div>
+  </div>
+
+  {# ─── Slider de inadimplência ─── #}
+  <section class="card" style="margin-bottom:20px;padding:18px 20px;">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:2px;">Simular cenário realista</div>
+        <div style="font-size:12px;color:var(--muted);">Ajuste a vacância/inadimplência para ver o impacto no resultado e na sua participação</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <label class="simI-label" style="white-space:nowrap;margin-bottom:0;">Vacância</label>
+        <input id="simI-inadim" type="range" min="0" max="100" value="10" step="1" oninput="calcSimI()" style="width:120px;accent-color:var(--accent);cursor:pointer;">
+        <span id="simI-inadim-pct" style="font-size:16px;font-weight:700;min-width:40px;">10%</span>
+      </div>
+    </div>
+  </section>
+
+  {# ─── 3 Cenários ─── #}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:8px;">
+
+    {# Atual #}
+    <div class="simI-cn-card">
+      <div class="simI-cn-header">
+        <div><div class="simI-cn-titulo">Atual</div><div class="simI-cn-sub">2 clientes · maio/2026</div></div>
+        <span class="simI-cn-badge simI-cn-badge--critico">Crítico</span>
+      </div>
+      <div class="simI-cn-body">
+        <div class="simI-cn-row"><span class="simI-cn-label">Receita da usina</span><span class="simI-cn-val">R$ 2.004,69</span></div>
+        <div class="simI-cn-row"><span class="simI-cn-label">Custos mensais</span><span class="simI-cn-val neg">− R$ 9.549,94</span></div>
+        <div class="simI-cn-sep"></div>
+        <div class="simI-cn-row"><span class="simI-cn-label" style="font-weight:700;color:var(--text);">Resultado usina</span><span class="simI-cn-resultado neg">− R$ 7.545,25</span></div>
+        <div class="simI-cn-cota">Sua parte ({{ _cota_pct }}%): <strong style="color:#DC2626;">− R$ {{ "%.2f"|format(7545.25 * _cota_dec)|replace('.', ',') }}</strong></div>
+      </div>
+      <div class="simI-cn-health">
+        <div class="simI-health-bar"><div class="simI-health-fill" style="width:14%;background:#EF4444;"></div></div>
+        <span class="simI-health-label" style="color:#EF4444;">14% da receita potencial</span>
+      </div>
+    </div>
+
+    {# Projetado #}
+    <div class="simI-cn-card">
+      <div class="simI-cn-header">
+        <div><div class="simI-cn-titulo">Projetado</div><div class="simI-cn-sub">100% · sem inadimplência</div></div>
+        <span class="simI-cn-badge simI-cn-badge--verde">Saudável</span>
+      </div>
+      <div class="simI-cn-body">
+        <div class="simI-cn-row"><span class="simI-cn-label">Receita da usina</span><span class="simI-cn-val pos">R$ 14.520,21</span></div>
+        <div class="simI-cn-row"><span class="simI-cn-label">Custos mensais</span><span class="simI-cn-val neg">− R$ 9.549,94</span></div>
+        <div class="simI-cn-sep"></div>
+        <div class="simI-cn-row"><span class="simI-cn-label" style="font-weight:700;color:var(--text);">Resultado usina</span><span class="simI-cn-resultado pos">+ R$ 4.970,27</span></div>
+        <div class="simI-cn-cota">Sua parte ({{ _cota_pct }}%): <strong style="color:#16A34A;">+ R$ {{ "%.2f"|format(4970.27 * _cota_dec)|replace('.', ',') }}</strong></div>
+      </div>
+      <div class="simI-cn-health">
+        <div class="simI-health-bar"><div class="simI-health-fill" style="width:100%;background:#16A34A;"></div></div>
+        <span class="simI-health-label" style="color:#16A34A;">100% da receita potencial</span>
+      </div>
+    </div>
+
+    {# Realista — dinâmico via JS #}
+    <div class="simI-cn-card">
+      <div class="simI-cn-header">
+        <div><div class="simI-cn-titulo">Realista</div><div class="simI-cn-sub" id="simI-real-sub">vacância de 10%</div></div>
+        <span class="simI-cn-badge simI-cn-badge--verde" id="simI-badge-real">Saudável</span>
+      </div>
+      <div class="simI-cn-body">
+        <div class="simI-cn-row"><span class="simI-cn-label">Receita da usina</span><span class="simI-cn-val pos" id="simI-real-receita">R$ 13.068,19</span></div>
+        <div class="simI-cn-row"><span class="simI-cn-label">Custos mensais</span><span class="simI-cn-val neg">− R$ 9.549,94</span></div>
+        <div class="simI-cn-sep"></div>
+        <div class="simI-cn-row"><span class="simI-cn-label" style="font-weight:700;color:var(--text);">Resultado usina</span><span class="simI-cn-resultado pos" id="simI-real-resultado">+ R$ 3.518,25</span></div>
+        <div class="simI-cn-cota" id="simI-real-cota">Sua parte ({{ _cota_pct }}%): <strong style="color:#16A34A;">+ R$ {{ "%.2f"|format(3518.25 * _cota_dec)|replace('.', ',') }}</strong></div>
+      </div>
+      <div class="simI-cn-health">
+        <div class="simI-health-bar"><div class="simI-health-fill" id="simI-hbar-real" style="width:90%;background:#16A34A;"></div></div>
+        <span class="simI-health-label" id="simI-hlabel-real" style="color:#16A34A;">90% da receita potencial</span>
+      </div>
+    </div>
+
+  </div>
 </div>
+<script>
+(function(){
+  var POT=14520.21,CUSTOS=9549.94,COTA={{ _cota_dec }},COTA_PCT={{ _cota_pct }};
+  function fmtV(v){return Math.abs(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+  window.calcSimI=function(){
+    var inadim=parseFloat(document.getElementById('simI-inadim').value)||0;
+    var pi=document.getElementById('simI-inadim-pct');if(pi)pi.textContent=inadim.toFixed(0)+'%';
+    var sub=document.getElementById('simI-real-sub');if(sub)sub.textContent='vacância de '+inadim.toFixed(0)+'%';
+    var rR=POT*(1-inadim/100),res=rR-CUSTOS;
+    var rr=document.getElementById('simI-real-receita');if(rr)rr.textContent='R$ '+fmtV(rR);
+    var rd=document.getElementById('simI-real-resultado');
+    if(rd){rd.textContent=(res>=0?'+ R$ ':'− R$ ')+fmtV(res);rd.className='simI-cn-resultado '+(res>=0?'pos':'neg');}
+    var co=document.getElementById('simI-real-cota');
+    if(co){var cotaR=Math.abs(res)*COTA;co.innerHTML='Sua parte ('+COTA_PCT+'%): <strong style="color:'+(res>=0?'#16A34A':'#DC2626')+';">'+(res>=0?'+ R$ ':'− R$ ')+fmtV(cotaR)+'</strong>';}
+    var badge=document.getElementById('simI-badge-real');
+    if(badge){if(res>=0){badge.textContent='Saudável';badge.className='simI-cn-badge simI-cn-badge--verde';}else if(res>-3000){badge.textContent='Atenção';badge.className='simI-cn-badge simI-cn-badge--amarelo';}else{badge.textContent='Crítico';badge.className='simI-cn-badge simI-cn-badge--critico';}}
+    var pct=POT>0?Math.min(100,rR/POT*100):0,cor=pct>=70?'#16A34A':pct>=40?'#D97706':'#EF4444';
+    var bar=document.getElementById('simI-hbar-real');if(bar){bar.style.width=pct.toFixed(1)+'%';bar.style.background=cor;}
+    var lbl=document.getElementById('simI-hlabel-real');if(lbl){lbl.textContent=pct.toFixed(0)+'% da receita potencial';lbl.style.color=cor;}
+  };
+})();
+</script>
 </div>{# /tab-retorno_mensal #}
 
 <div id="tab-energia" data-tab="energia" class="dtab-content {{ 'ativo' if tab == 'energia' }}">

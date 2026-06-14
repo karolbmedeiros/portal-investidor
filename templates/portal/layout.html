@@ -14,7 +14,7 @@
 
 {# 2 — Usinas (portfólio do investidor) #}
 <a href="{{ url_for('portal.home') }}"
-   class="{{ 'ativo' if request.endpoint == 'portal.usina_detalhe' }}">
+   class="{{ 'ativo' if request.endpoint in ('portal.usina_detalhe', 'portal.home') and request.args.get('ativo_id') }}">
   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2 -10h14l2 10z"/><path d="M3 17h18"/><path d="M4.5 12h15"/><path d="M12 7v10"/></svg>
   <span>Usinas</span>
 </a>
