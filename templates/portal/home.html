@@ -803,22 +803,29 @@
   {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
   {% if pnl %}
     {% set _ult = pnl[0] %}
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
-        <div class="db-mc-label">Receita bruta (último mês)</div>
+    {% set _ma_pnl = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+    {% set _ult_mes = _ult.ref_mes_ano[:7] if _ult.ref_mes_ano else '' %}
+    {% set _ult_label = _ma_pnl[_ult_mes[5:7]|int] ~ '/' ~ _ult_mes[:4] if _ult_mes else '—' %}
+    <div style="display:flex;gap:14px;flex-wrap:nowrap;margin-bottom:20px;">
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+        <div class="db-mc-label">Receita bruta</div>
         <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#16A34A;">{{ (_ult.receita_bruta or 0)|brl }}</span></div>
+        <div class="db-mc-sub">{{ _ult_label }}</div>
       </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
         <div class="db-mc-label">Total despesas</div>
         <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#DC2626;">{{ (_ult.total_despesas or 0)|brl }}</span></div>
+        <div class="db-mc-sub">{{ _ult_label }}</div>
       </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
         <div class="db-mc-label">Resultado líquido</div>
         <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if (_ult.resultado_liquido or 0)>=0 else '#DC2626' }};">{{ (_ult.resultado_liquido or 0)|brl }}</span></div>
+        <div class="db-mc-sub">{{ _ult_label }}</div>
       </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:130px;padding:18px 20px;">
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
         <div class="db-mc-label">Margem líquida</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ ((_ult.margem_liquida or 0)*100)|round(1) }}%</span></div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if (_ult.margem_liquida or 0)>=0 else '#DC2626' }};">{{ ((_ult.margem_liquida or 0)*100)|round(1) }}%</span></div>
+        <div class="db-mc-sub">{{ _ult_label }}</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
