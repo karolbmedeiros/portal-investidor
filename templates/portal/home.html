@@ -628,38 +628,177 @@
 
 <div id="tab-saldo_creditos" data-tab="saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}">
 <div style="padding-top:4px;">
-  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
-  {% if saldo_creditos %}
-    {% set _tk = namespace(v=0) %}{% for s in saldo_creditos %}{% set _tk.v = _tk.v+(s.kwh_total_compensado or 0) %}{% endfor %}
-    {% set _ts = namespace(v=0) %}{% for s in saldo_creditos %}{% set _ts.v = _ts.v+(s.saldo_atual_kwh or 0) %}{% endfor %}
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:180px;padding:18px 20px;">
-        <div class="db-mc-label">Total compensado (histórico)</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _tk.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
-      </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
-        <div class="db-mc-label">Saldo atual total</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ 'var(--accent)' if _ts.v>0 else 'var(--text)' }};">{{ _ts.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+  {% set _ma = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] %}
+  {# Agrega economia a partir de leituras_det #}
+  {% set _ei = namespace(total_kwh=0, total_bruto=0, total_eco=0) %}
+  {% for l in leituras_det %}
+    {% set _ei.total_kwh  = _ei.total_kwh  + (l.kwh_compensado or 0) %}
+    {% set _ei.total_bruto = _ei.total_bruto + (l.valor_bruto or 0) %}
+    {% set _ei.total_eco  = _ei.total_eco  + (l.economia_cliente or 0) %}
+  {% endfor %}
+  {% set _ts = namespace(v=0) %}{% for s in saldo_creditos %}{% set _ts.v = _ts.v+(s.saldo_atual_kwh or 0) %}{% endfor %}
+
+  {% if leituras_det or saldo_creditos %}
+  {# ── KPIs ── #}
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+      <div class="db-mc-label">Total compensado</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ei.total_kwh|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+      {% if _cota_dec > 0 %}<div style="font-size:11px;color:var(--muted);margin-top:4px;">Sua parte: {{ (_ei.total_kwh * _cota_dec)|round(0)|int }} kWh</div>{% endif %}
+    </div>
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:210px;padding:18px 20px;">
+      <div class="db-mc-label">Economia gerada para clientes</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:var(--accent);">{{ _ei.total_eco|brl }}</span></div>
+      {% if _ei.total_bruto > 0 %}<div style="font-size:11px;color:var(--muted);margin-top:4px;">{{ ((_ei.total_eco/_ei.total_bruto)*100)|round(1) }}% do que pagariam à COSERN</div>{% endif %}
+      {% if _cota_dec > 0 %}<div style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:600;">Sua contribuição: {{ (_ei.total_eco * _cota_dec)|brl }}</div>{% endif %}
+    </div>
+    <div class="db-metric-card" style="flex:0 0 auto;min-width:155px;padding:18px 20px;">
+      <div class="db-mc-label">Saldo de créditos</div>
+      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ 'var(--accent)' if _ts.v>0 else 'var(--text)' }};">{{ _ts.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+    </div>
+  </div>
+
+  {# ── Gráfico economia mensal ── #}
+  {% if leituras_det %}
+  <section class="card" style="margin-bottom:16px;">
+    <div class="db-chart-title" style="margin-bottom:12px;">Economia mensal gerada (R$)</div>
+    <div style="position:relative;height:200px;"><canvas id="simI-chart-eco"></canvas></div>
+  </section>
+
+  {# ── Accordion por cliente ── #}
+  <style>
+  .eco-acord{border-radius:14px;overflow:hidden;border:1px solid var(--border);background:#fff;transition:box-shadow .2s;}
+  .eco-acord:hover{box-shadow:0 4px 16px rgba(0,0,0,.07);}
+  .eco-acord-btn{width:100%;display:flex;align-items:center;gap:16px;padding:16px 20px;background:none;border:none;cursor:pointer;text-align:left;}
+  .eco-acord-btn:hover{background:#F8FAFB;}
+  .eco-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .eco-acord-info{flex:1;min-width:0;}
+  .eco-acord-nome{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .eco-acord-sub{font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .eco-badge{display:inline-flex;align-items:center;background:#ECFDF5;color:#065F46;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;}
+  .eco-acord-stats{display:flex;align-items:center;gap:24px;flex-shrink:0;}
+  .eco-stat{text-align:right;}
+  .eco-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:500;}
+  .eco-stat-val{font-size:15px;font-weight:700;margin-top:2px;}
+  .eco-stat-val.kwh{color:var(--accent);}
+  .eco-stat-val.eco{color:#16A34A;}
+  .eco-chevron{width:28px;height:28px;border-radius:8px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;transition:transform .25s,background .2s;flex-shrink:0;}
+  .eco-acord-body{display:none;border-top:1px solid #F1F5F9;}
+  .eco-acord-body table{width:100%;}
+  .eco-acord-body th{padding:10px 20px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;background:#FAFBFC;}
+  .eco-acord-body td{padding:11px 20px;font-size:13px;border-top:1px solid #F8F9FA;}
+  </style>
+  {% set _ci_seen = namespace(v=[]) %}
+  {% for l in leituras_det %}
+    {% if l.contrato_id not in _ci_seen.v %}
+      {% set _ci_seen.v = _ci_seen.v + [l.contrato_id] %}
+    {% endif %}
+  {% endfor %}
+
+  <div style="display:flex;flex-direction:column;gap:10px;">
+  {% for cid in _ci_seen.v %}
+    {% set _li = namespace(rows=[], kwh=0, eco=0, nome='', contrato='', desc=0) %}
+    {% for l in leituras_det %}
+      {% if l.contrato_id == cid %}
+        {% set _li.rows    = _li.rows + [l] %}
+        {% set _li.kwh     = _li.kwh   + (l.kwh_compensado or 0) %}
+        {% set _li.eco     = _li.eco   + (l.economia_cliente or 0) %}
+        {% set _li.nome    = l.cliente_nome or l.numero_contrato %}
+        {% set _li.contrato = l.numero_contrato %}
+        {% set _li.desc    = (l.percentual_desconto or 0) %}
+      {% endif %}
+    {% endfor %}
+    <div class="eco-acord">
+      <button class="eco-acord-btn" onclick="toggleAcordI(this)">
+        <div class="eco-avatar">☀️</div>
+        <div class="eco-acord-info">
+          <div class="eco-acord-nome">{{ _li.nome }}</div>
+          <div class="eco-acord-sub">
+            <span>{{ _li.contrato }}</span>
+            <span class="eco-badge">{{ (_li.desc*100)|round(0)|int }}% desconto</span>
+            <span>{{ _li.rows|length }} meses</span>
+          </div>
+        </div>
+        <div class="eco-acord-stats">
+          <div class="eco-stat">
+            <div class="eco-stat-label">Economia gerada</div>
+            <div class="eco-stat-val eco">{{ _li.eco|brl }}</div>
+          </div>
+        </div>
+        <div class="eco-chevron acord-arrow-i">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </button>
+      <div class="eco-acord-body">
+        <table>
+          <thead><tr><th>Mês</th><th>kWh compensado</th><th>Sem desconto</th><th>Economia</th></tr></thead>
+          <tbody>
+          {% for l in _li.rows|sort(attribute='ref_mes_ano', reverse=True) %}
+            {% set _ms = (l.ref_mes_ano or '')[:7] %}
+            <tr>
+              <td style="font-weight:600;color:var(--text);">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td>
+              <td style="color:var(--accent);font-weight:600;">{{ (l.kwh_compensado or 0)|round(0)|int }} kWh</td>
+              <td style="color:var(--muted);">{{ (l.valor_bruto or 0)|brl }}</td>
+              <td style="color:#16A34A;font-weight:700;">{{ (l.economia_cliente or 0)|brl }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
-    <section class="card">
-      <table class="db-fat-table">
-        <thead><tr><th>Contrato</th><th>Total compensado</th><th>Saldo atual</th><th>Último mês</th></tr></thead>
-        <tbody>
-          {% for s in saldo_creditos %}
-          <tr>
-            <td style="font-weight:500;">{{ s.numero_contrato or s.contrato_id[:8] + '…' }}</td>
-            <td>{{ (s.kwh_total_compensado or 0)|round(0)|int }} kWh</td>
-            <td style="font-weight:700;color:{{ 'var(--accent)' if (s.saldo_atual_kwh or 0)>0 else 'var(--text)' }};">{{ (s.saldo_atual_kwh or 0)|round(0)|int }} kWh</td>
-            <td class="text-muted">{% if s.ultimo_mes_lancado %}{% set _ms=s.ultimo_mes_lancado[:7] %}{{ _ma[_ms[5:7]|int] }}/{{ _ms[:4] }}{% else %}—{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-  {% else %}<div class="vazio">Sem dados de saldo de créditos.</div>{% endif %}
+  {% endfor %}
+  </div>
+  {% endif %}
+
+  {% else %}<div class="vazio">Sem dados de créditos kWh.</div>{% endif %}
 </div>
 </div>{# /tab-saldo_creditos #}
+<script>
+(function(){
+  var leiI = {{ leituras_det | tojson }};
+  var cota = {{ _cota_dec }};
+  if(!leiI.length) return;
+  var mesMap = {};
+  leiI.forEach(function(l){
+    var m = (l.ref_mes_ano||'').slice(0,7);
+    if(!m) return;
+    if(!mesMap[m]) mesMap[m]={eco:0};
+    mesMap[m].eco += l.economia_cliente||0;
+  });
+  var meses = Object.keys(mesMap).sort();
+  var MA = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var labels = meses.map(function(m){ return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); });
+  var ctxI = document.getElementById('simI-chart-eco');
+  if(!ctxI) return;
+  new Chart(ctxI,{
+    type:'bar',
+    data:{
+      labels:labels,
+      datasets:[
+        {label:'Economia total (R$)', data:meses.map(function(m){return mesMap[m].eco;}), backgroundColor:'rgba(29,158,117,0.75)', borderRadius:4},
+        {label:'Sua parte (R$)', data:meses.map(function(m){return mesMap[m].eco*cota;}), backgroundColor:'rgba(29,158,117,0.3)', borderRadius:4}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11}}},
+        y:{grid:{color:'#EEF0EF'},ticks:{font:{size:10},callback:function(v){return 'R$'+Math.round(v);}}}
+      }
+    }
+  });
+})();
+</script>
+<script>
+function toggleAcordI(btn){
+  var body=btn.nextElementSibling;
+  var chevron=btn.querySelector('.acord-arrow-i');
+  var open=body.style.display!=='none';
+  body.style.display=open?'none':'block';
+  if(chevron){chevron.style.transform=open?'':'rotate(180deg)';chevron.style.background=open?'':'#E8F5E9';}
+}
+</script>
 
 {# ══════════════════════════════════════════════ SÓCIOS ═══ #}
 {% if 'socios' in home_tabs %}

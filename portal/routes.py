@@ -162,7 +162,7 @@ def home():
             str(_rb.get("data_desembolso") or ""),
             _rm,
         )
-    leituras_det   = leituras_detalhadas(ativo_id)       if ativo_id and "energia"        in home_tabs else []
+    leituras_det   = leituras_detalhadas(ativo_id)       if ativo_id and ("energia" in home_tabs or "saldo_creditos" in home_tabs) else []
     pnl            = pnl_da_usina(ativo_id)              if ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
     saldo_creditos = saldo_creditos_da_usina(ativo_id)   if ativo_id and "saldo_creditos" in home_tabs else []
     participacoes  = participacoes_da_usina(ativo_id)    if ativo_id and "socios"         in home_tabs else []

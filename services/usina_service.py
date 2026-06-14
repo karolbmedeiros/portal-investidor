@@ -414,7 +414,7 @@ def leituras_detalhadas(usina_id: str) -> list:
     sb = get_service_client()
     contratos_res = (
         sb.table("contratos")
-        .select("id,numero_contrato")
+        .select("id,numero_contrato,percentual_desconto,ucs(apelido,clientes(razao_social,nome_fantasia))")
         .eq("usina_id", usina_id)
         .execute()
     )
@@ -432,9 +432,30 @@ def leituras_detalhadas(usina_id: str) -> list:
         .order("ref_mes_ano")
         .execute()
     )
-    contratos_map = {c["id"]: c.get("numero_contrato", "") for c in (contratos_res.data or [])}
+    contratos_map = {}
+    for c in (contratos_res.data or []):
+        uc      = c.get("ucs") or {}
+        cliente = uc.get("clientes") or {}
+        nome    = (uc.get("apelido")
+                   or cliente.get("nome_fantasia")
+                   or cliente.get("razao_social")
+                   or c.get("numero_contrato", ""))
+        contratos_map[c["id"]] = {
+            "numero_contrato":    c.get("numero_contrato", ""),
+            "percentual_desconto": float(c.get("percentual_desconto") or 0),
+            "cliente_nome":       nome,
+        }
     for l in (res.data or []):
-        l["numero_contrato"] = contratos_map.get(l["contrato_id"], "")
+        info = contratos_map.get(l["contrato_id"], {})
+        l["numero_contrato"]     = info.get("numero_contrato", "")
+        l["cliente_nome"]        = info.get("cliente_nome", "")
+        desconto                 = info.get("percentual_desconto", 0)
+        kwh                      = float(l.get("kwh_compensado") or 0)
+        tarifa                   = float(l.get("tarifa_cheia") or 0)
+        valor_bruto              = round(kwh * tarifa, 2)
+        l["valor_bruto"]         = valor_bruto
+        l["economia_cliente"]    = round(valor_bruto * desconto, 2)
+        l["percentual_desconto"] = desconto
     return res.data or []
 
 
