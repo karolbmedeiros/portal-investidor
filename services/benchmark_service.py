@@ -201,7 +201,10 @@ def comparativo_benchmarks(capital: float, data_desembolso: str, retorno_mensal:
     ivvb11_mes = _fetch_yahoo("ivvb11", SERIES_YAHOO["ivvb11"], d0, _cache_key("ivvb11", desde))
 
     meses     = sorted(r["ref_mes_ano"][:7] for r in retorno_mensal if r.get("ref_mes_ano"))
-    lucro_mes = {r["ref_mes_ano"][:7]: float(r.get("valor_distribuido") or 0) for r in retorno_mensal}
+    lucro_mes = {
+        r["ref_mes_ano"][:7]: float(r.get("valor_distribuido") or r.get("participacao_lucro") or 0)
+        for r in retorno_mensal
+    }
 
     series = []
     inv    = capital
