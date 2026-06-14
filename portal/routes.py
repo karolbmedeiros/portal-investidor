@@ -93,6 +93,8 @@ def home():
     valor_liquido_recebido = None
     motoristas_recebimentos = []
     recebimentos_por_mes_carros = []
+    carros_veiculos_status = []
+    carros_rentabilidade = None
 
     if ativo_tipo == "carros" and ativo_id in carros_por_slug:
         try:
@@ -179,6 +181,77 @@ def home():
                 {"mes": _MESES[int(ym.split("-")[1]) - 1], "valor": round(v, 2)}
                 for ym, v in sorted(por_mes.items())
             ]
+
+            # Status dos veículos (ativo vs vago/manutenção)
+            _semana_ref = max(
+                (r["data_semana"] for rows in por_placa.values() for r in rows if r.get("data_semana")),
+                default=None,
+            )
+            def _norm_placa(p):
+                return (p or "").upper().replace("-", "")
+            carros_veiculos_status = []
+            for v in empresa_carros_sel.get("veiculos", []):
+                recs = por_placa.get(_norm_placa(v["placa"]), [])
+                ultima = max((r["data_semana"] for r in recs if r.get("data_semana")), default=None)
+                # buscar locatário no contrato
+                locatario = next(
+                    (c.get("cliente") for c in _contratos if _norm_placa(c.get("placa", "")) == _norm_placa(v["placa"])),
+                    None,
+                )
+                carros_veiculos_status.append({
+                    "placa":     v["placa"],
+                    "modelo":    v.get("modelo") or "—",
+                    "ativo":     bool(ultima and _semana_ref and ultima == _semana_ref),
+                    "locatario": locatario,
+                    "ultima_semana": ultima,
+                })
+
+            # Rentabilidade estimada BYD
+            _BYD = {
+                "nome":               "BYD Dolphin Mini (Elétrico)",
+                "aluguel_semanal":    1_200.0,
+                "pct_investidor":     0.85,
+                "seguro_anual":       5_109.94,
+                "manutencao_mensal":  258.0,
+                "depreciacao_aa_pct": 0.078,
+                "investimento":       102_000.0,
+                "cdi_aa":             0.144,
+                "poupanca_aa":        0.0617,
+            }
+            _b = _BYD
+            _bruta_sem  = round(_b["aluguel_semanal"] * _b["pct_investidor"], 2)
+            _bruta_mes  = round(_bruta_sem * 52 / 12, 2)
+            _seg_mes    = round(_b["seguro_anual"] / 12, 2)
+            _man_mes    = _b["manutencao_mensal"]
+            _dep_mes    = round(_b["investimento"] * _b["depreciacao_aa_pct"] / 12, 2)
+            _liq_mes    = round(_bruta_mes - _seg_mes - _man_mes - _dep_mes, 2)
+            _margem     = round(_liq_mes / _bruta_mes * 100, 1)
+            _ret_aa     = round(_liq_mes * 12 / _b["investimento"] * 100, 1)
+            _payback    = round(_b["investimento"] / _liq_mes, 1)
+            _oc_eq_pct  = round((_seg_mes + _man_mes + _dep_mes) / _bruta_mes * 100, 1)
+            _oc_eq_sem  = round(_oc_eq_pct / 100 * 52 / 12, 1)
+            carros_rentabilidade = {
+                "nome":            _b["nome"],
+                "aluguel_semanal": _b["aluguel_semanal"],
+                "pct_investidor":  int(_b["pct_investidor"] * 100),
+                "bruta_semanal":   _bruta_sem,
+                "bruta_mensal":    _bruta_mes,
+                "seguro_anual":    _b["seguro_anual"],
+                "seguro_mensal":   _seg_mes,
+                "manutencao":      _man_mes,
+                "depreciacao_pct": int(_b["depreciacao_aa_pct"] * 100 * 10) / 10,
+                "depreciacao_mes": _dep_mes,
+                "liquida_mensal":  _liq_mes,
+                "margem":          _margem,
+                "retorno_aa":      _ret_aa,
+                "payback":         _payback,
+                "oc_eq_pct":       _oc_eq_pct,
+                "oc_eq_sem":       _oc_eq_sem,
+                "vs_cdi":          round(_ret_aa - _b["cdi_aa"] * 100, 1),
+                "vs_poupanca":     round(_ret_aa - _b["poupanca_aa"] * 100, 1),
+                "cdi_aa_pct":      round(_b["cdi_aa"] * 100, 1),
+                "poupanca_aa_pct": round(_b["poupanca_aa"] * 100, 2),
+            }
         except Exception:
             pass
     else:
@@ -344,6 +417,8 @@ def home():
         valor_liquido_recebido=valor_liquido_recebido,
         motoristas_recebimentos=motoristas_recebimentos,
         recebimentos_por_mes_carros=recebimentos_por_mes_carros,
+        carros_veiculos_status=carros_veiculos_status,
+        carros_rentabilidade=carros_rentabilidade,
         ativo_tipo=ativo_tipo,
         faturas_carros=faturas_carros,
         cotas=cotas,
