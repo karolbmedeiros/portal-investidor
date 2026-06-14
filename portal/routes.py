@@ -30,6 +30,19 @@ def home():
 
     ativos = [{"id": us["id"], "nome": us["nome"], "tipo": "usina"} for us in all_usinas]
 
+    # Empresas de carros acessíveis (slugs não-UUID em usina_ids)
+    import re as _re
+    _uuid_re = _re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', _re.I)
+    carros_slugs = [i for i in usina_ids if not _uuid_re.match(str(i))]
+    empresas_carros = []
+    if carros_slugs:
+        try:
+            from services.veiculos_service import listar_empresas_veiculos
+            todas_emp = listar_empresas_veiculos()
+            empresas_carros = [e for e in todas_emp if e.get("slug") in carros_slugs]
+        except Exception:
+            pass
+
     # Filtro por ativo selecionado
     # Atualiza sessão apenas quando há seleção explícita no dropdown
     if "ativo_id" in request.args:
@@ -209,6 +222,7 @@ def home():
         usinas=usinas,
         all_usinas=all_usinas,
         ativos=ativos,
+        empresas_carros=empresas_carros,
         cotas=cotas,
         kwp=kwp,
         total_investido=total_investido,

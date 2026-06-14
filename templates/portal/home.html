@@ -48,6 +48,16 @@
         </a>
         {% endfor %}
         {% endif %}
+        {% if empresas_carros %}
+        <div class="db-sel-group">Carros</div>
+        {% for emp in empresas_carros %}
+        <a href="{{ url_for('portal.carros') }}"
+           class="db-sel-item">
+          <span class="db-sel-dot db-sel-dot--carros"></span>
+          <span class="db-sel-item-nome">{{ emp.nome }}</span>
+        </a>
+        {% endfor %}
+        {% endif %}
       </div>
     </div>
 
@@ -1356,6 +1366,7 @@ function toggleAcordI(btn){
 .db-sel-item-nome { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .db-sel-dot { width:8px; height:8px; flex:none; border-radius:50%; }
 .db-sel-dot--usina { background:var(--accent); }
+.db-sel-dot--carros { background:#F59E0B; }
 .db-sel-check { flex:none; font-size:12px; color:var(--accent); }
 
 .db-filtro-banner {
