@@ -883,25 +883,44 @@
 
   {% if leituras_det or saldo_creditos %}
   {# ── KPIs ── #}
+  {% macro fmt_kwh(v) %}{{ "{:,.0f}".format(v|round(0))|replace(",",".") }}{% endmacro %}
   <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
-    <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+
+    <div class="db-metric-card" style="flex:1 1 160px;padding:18px 20px;">
       <div class="db-mc-label">Total compensado</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ei.total_kwh|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
-      {% if _cota_dec > 0 %}<div style="font-size:11px;color:var(--muted);margin-top:4px;">Sua parte: {{ (_ei.total_kwh * _cota_dec)|round(0)|int }} kWh</div>{% endif %}
+      <div class="db-mc-value-row" style="margin-top:8px;">
+        <span class="db-mc-value db-mc-value--lg">{{ fmt_kwh(_ei.total_kwh) }}</span>
+        <span class="db-mc-unit">kWh</span>
+      </div>
+      {% if _cota_dec > 0 %}<div class="db-mc-sub">Sua parte: {{ fmt_kwh(_ei.total_kwh * _cota_dec) }} kWh</div>{% endif %}
     </div>
-    <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+
+    <div class="db-metric-card" style="flex:1 1 160px;padding:18px 20px;">
       <div class="db-mc-label">Total consumido</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _ei.total_cons|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+      <div class="db-mc-value-row" style="margin-top:8px;">
+        <span class="db-mc-value db-mc-value--lg">{{ fmt_kwh(_ei.total_cons) }}</span>
+        <span class="db-mc-unit">kWh</span>
+      </div>
+      <div class="db-mc-sub">&nbsp;</div>
     </div>
-    <div class="db-metric-card" style="flex:0 0 auto;min-width:200px;padding:18px 20px;">
+
+    <div class="db-metric-card" style="flex:1 1 200px;padding:18px 20px;">
       <div class="db-mc-label">Economia gerada para clientes</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:var(--accent);">{{ _ei.total_eco|brl }}</span></div>
-      {% if _ei.total_bruto > 0 %}<div style="font-size:11px;color:var(--muted);margin-top:4px;">{{ ((_ei.total_eco/_ei.total_bruto)*100)|round(1) }}% do que pagariam à COSERN</div>{% endif %}
+      <div class="db-mc-value-row" style="margin-top:8px;">
+        <span class="db-mc-value db-mc-value--lg" style="color:var(--accent);">{{ _ei.total_eco|brl }}</span>
+      </div>
+      {% if _ei.total_bruto > 0 %}<div class="db-mc-sub">{{ ((_ei.total_eco/_ei.total_bruto)*100)|round(1) }}% do que pagariam à COSERN</div>{% else %}<div class="db-mc-sub">&nbsp;</div>{% endif %}
     </div>
-    <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+
+    <div class="db-metric-card" style="flex:1 1 160px;padding:18px 20px;">
       <div class="db-mc-label">Saldo de créditos</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ 'var(--accent)' if _ts.v>0 else 'var(--text)' }};">{{ _ts.v|round(0)|int }}</span><span class="db-mc-unit">kWh</span></div>
+      <div class="db-mc-value-row" style="margin-top:8px;">
+        <span class="db-mc-value db-mc-value--lg" style="color:{{ 'var(--accent)' if _ts.v > 0 else 'var(--text)' }};">{{ fmt_kwh(_ts.v) }}</span>
+        <span class="db-mc-unit">kWh</span>
+      </div>
+      <div class="db-mc-sub">&nbsp;</div>
     </div>
+
   </div>
 
   {# ── Gráficos ── #}
