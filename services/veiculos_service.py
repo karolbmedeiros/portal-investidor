@@ -4,14 +4,16 @@ from services.supabase_client import get_financeiro_client
 
 _EMPRESA_INFO = {
     "LUZ DIVINA EMPREENDIMENTOS LTDA": {
-        "cnpj":    "48.284.349/0001-29",
-        "pix":     None,
-        "unidade": "LUZ DIVINA LTDA",
+        "cnpj":            "48.284.349/0001-29",
+        "pix":             None,
+        "unidade":         "LUZ DIVINA LTDA",
+        "total_investido": 408_000.00,
     },
     "JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA": {
-        "cnpj":    "24.954.506/0001-06",
-        "pix":     "4d9e79bf-e7f3-4298-86b2-66613980b90b",
-        "unidade": "JOÃO PAULO CONSÓRCIOS",
+        "cnpj":            "24.954.506/0001-06",
+        "pix":             "4d9e79bf-e7f3-4298-86b2-66613980b90b",
+        "unidade":         "JOÃO PAULO CONSÓRCIOS",
+        "total_investido": None,
     },
 }
 
@@ -99,10 +101,11 @@ def listar_empresas_veiculos():
         if empresa not in empresas:
             info_emp = _EMPRESA_INFO.get(empresa, {})
             empresas[empresa] = {
-                "nome":  empresa,
-                "slug":  _slugify(empresa),
-                "cnpj":  info_emp.get("cnpj"),
-                "pix":   info_emp.get("pix"),
+                "nome":            empresa,
+                "slug":            _slugify(empresa),
+                "cnpj":            info_emp.get("cnpj"),
+                "pix":             info_emp.get("pix"),
+                "total_investido": info_emp.get("total_investido"),
                 "veiculos": {},
                 "receita_semanal": 0.0,
             }

@@ -160,6 +160,11 @@ def home():
             if total_liq > 0:
                 valor_liquido_recebido = round(total_liq, 2)
 
+            # Total investido da empresa de carros
+            _ti = empresa_carros_sel.get("total_investido")
+            if _ti:
+                total_investido = _ti
+
             # Recebido bruto por mês (agrupa taxa_valor / 0.15)
             por_placa = recebimentos_da_empresa(empresa_carros_sel)
             por_mes: dict = {}
