@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import date, datetime
 from services.supabase_client import get_service_client
 
 _CORES = ["#E8621A", "#2563EB", "#16A34A", "#9333EA", "#EAB308", "#EC4899"]
@@ -322,6 +323,91 @@ def retorno_mensal_investidor(usina_id: str, investidor_id: str = None) -> list:
     if investidor_id:
         q = q.eq("investidor_id", investidor_id)
     return q.execute().data or []
+
+
+def _irr_mensal(fluxos: list[float]) -> Optional[float]:
+    """Newton-Raphson para TIR mensal. Retorna None se não convergir."""
+    if not fluxos or all(f == 0 for f in fluxos):
+        return None
+    r = 0.01
+    for _ in range(200):
+        npv  = sum(f / (1 + r) ** i for i, f in enumerate(fluxos))
+        dnpv = sum(-i * f / (1 + r) ** (i + 1) for i, f in enumerate(fluxos))
+        if dnpv == 0:
+            break
+        r_new = r - npv / dnpv
+        if abs(r_new - r) < 1e-8:
+            return r_new if -1 < r_new < 10 else None
+        r = r_new
+    return None
+
+
+def rentabilidade_investidor(usina_id: str, investidor_id: str = None) -> dict:
+    """
+    Retorna métricas de rentabilidade consolidadas para o bloco de retorno mensal.
+    Requer coluna data_desembolso e valor_investido_total em participacoes.
+    """
+    sb = get_service_client()
+
+    # Busca participação com capital e data de desembolso
+    q = (
+        sb.table("participacoes")
+        .select("valor_investido_total, data_desembolso")
+        .eq("usina_id", usina_id)
+    )
+    if investidor_id:
+        q = q.eq("investidor_id", investidor_id)
+    partic = (q.limit(1).execute().data or [{}])[0]
+
+    capital = float(partic.get("valor_investido_total") or 0)
+    data_desembolso_raw = partic.get("data_desembolso")
+
+    # Busca histórico mensal ordenado
+    retorno = retorno_mensal_investidor(usina_id, investidor_id)
+
+    tot_lucro  = sum(float(r.get("participacao_lucro") or 0) for r in retorno)
+    tot_dist   = sum(float(r.get("valor_distribuido")  or 0) for r in retorno)
+    n_meses    = len(retorno)
+
+    roi        = (tot_dist / capital * 100) if capital else None
+    media_mes  = (tot_dist / n_meses) if n_meses else None
+    retorno_aa = ((1 + tot_dist / capital) ** (12 / n_meses) - 1) * 100 if (capital and n_meses) else None
+
+    # Payback: mês em que a soma distribuída atinge o capital
+    payback_mes = None
+    acum = 0.0
+    for r in retorno:
+        acum += float(r.get("valor_distribuido") or 0)
+        if capital and acum >= capital:
+            payback_mes = r.get("ref_mes_ano", "")[:7]
+            break
+
+    # TIR mensal com fluxos reais a partir do desembolso
+    tir = None
+    if capital and data_desembolso_raw and retorno:
+        try:
+            d0 = datetime.strptime(str(data_desembolso_raw)[:10], "%Y-%m-%d").date()
+            primeiro_mes = datetime.strptime(retorno[0]["ref_mes_ano"][:7], "%Y-%m").date().replace(day=1)
+            # meses de defasagem entre desembolso e primeiro retorno
+            gap = (primeiro_mes.year - d0.year) * 12 + (primeiro_mes.month - d0.month)
+            fluxos = [-capital] + [0.0] * gap + [float(r.get("valor_distribuido") or 0) for r in retorno]
+            tir = _irr_mensal(fluxos)
+        except Exception:
+            tir = None
+
+    return {
+        "capital":        capital,
+        "data_desembolso": data_desembolso_raw,
+        "tot_lucro":      tot_lucro,
+        "tot_dist":       tot_dist,
+        "n_meses":        n_meses,
+        "roi":            roi,
+        "media_mensal":   media_mes,
+        "retorno_aa":     retorno_aa,
+        "payback_mes":    payback_mes,
+        "tir_mensal":     tir,
+        "tir_aa":         ((1 + tir) ** 12 - 1) * 100 if tir is not None else None,
+    }
 
 
 def leituras_detalhadas(usina_id: str) -> list:

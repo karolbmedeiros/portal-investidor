@@ -108,6 +108,69 @@ def dashboard():
                         _mn = int(_ym.split("-")[1]) - 1
                         rendimento_meses.append({"mes": _meses_nomes[_mn], "valor": round(_v, 2)})
 
+    # ── Dados analíticos da usina (tabs inline) ──────────────────────────────
+    usina_obj = None
+    tab = "visao_geral"
+    contas = conta_id = conta_atual = kpis = kpi_mes = pnl_data = clientes_data = categorias = None
+    saldo_inicial = 0.0
+    chart_meses = []
+    chart_fluxo_dates = []
+    chart_fluxo_pts = []
+    leituras_data = []
+    lancamentos_data = []
+    retorno_mensal_data = []
+    rentabilidade_data = {}
+    leituras_det_data = []
+    saldo_creditos_data = []
+
+    if ativo_id and ativo_tipo == "usina":
+        from datetime import date as _date2
+        from services.usina_service import (
+            clientes_da_usina, listar_contas_da_usina, listar_lancamentos,
+            leituras_da_usina, pnl_da_usina, calcular_kpis, listar_categorias,
+            retorno_mensal_investidor, leituras_detalhadas, saldo_creditos_da_usina,
+            auto_conciliar_neutros, rentabilidade_investidor,
+        )
+        usina_obj = next((u for u in all_usinas if u["id"] == ativo_id), None)
+        auto_conciliar_neutros(ativo_id)
+        contas = listar_contas_da_usina(ativo_id)
+        conta_id = request.args.get("conta_id") or (contas[0]["id"] if contas else None)
+        conta_atual = next((c for c in contas if c["id"] == conta_id), contas[0] if contas else None)
+        saldo_inicial = float(conta_atual["saldo_inicial"] or 0) if conta_atual else 0.0
+        lancamentos_data = listar_lancamentos(ativo_id, conta_id=conta_id)
+        _lanc_op = sorted(
+            [l for l in lancamentos_data if l.get("data_transacao") and not l.get("_neutro")],
+            key=lambda l: (l["data_transacao"], 0 if l.get("tipo") == "credito" else 1)
+        )
+        _acc, _dia_acc = saldo_inicial, {}
+        for _lx in _lanc_op:
+            _v = abs(_lx.get("valor") or 0)
+            _acc += _v if _lx.get("tipo") == "credito" else -_v
+            _dia_acc[_lx["data_transacao"][:10]] = round(_acc, 2)
+        if _dia_acc:
+            chart_fluxo_dates = ["Saldo ini."] + list(_dia_acc.keys())
+            chart_fluxo_pts   = [round(saldo_inicial, 2)] + list(_dia_acc.values())
+        chart_meses = sorted({
+            l["data_transacao"][:7] for l in lancamentos_data
+            if l.get("data_transacao") and not l.get("_neutro")
+        })
+        leituras_data   = leituras_da_usina(ativo_id)
+        pnl_data        = pnl_da_usina(ativo_id)
+        clientes_data   = clientes_da_usina(ativo_id)
+        categorias      = listar_categorias()
+        num_ativos      = sum(1 for c in clientes_data if c.get("status") == "Ativo")
+        datas_lanc = [l["data_transacao"][:7] for l in lancamentos_data if l.get("data_transacao")]
+        kpi_mes = request.args.get("kpi_mes") or (max(datas_lanc) if datas_lanc else _date2.today().strftime("%Y-%m"))
+        kpis            = calcular_kpis(ativo_id, kpi_mes, lancamentos_data, leituras_data, pnl_data, num_ativos)
+        retorno_mensal_data = retorno_mensal_investidor(ativo_id)
+        rentabilidade_data  = rentabilidade_investidor(ativo_id)
+        leituras_det_data   = leituras_detalhadas(ativo_id)
+        saldo_creditos_data = saldo_creditos_da_usina(ativo_id)
+        _valid_tabs = ("visao_geral","socios","clientes","extrato","dre","retorno_mensal","energia","pnl","saldo_creditos")
+        tab = request.args.get("tab", "visao_geral")
+        if tab not in _valid_tabs:
+            tab = "visao_geral"
+
     # Contas a receber pendentes para "Próximos eventos"
     from services.supabase_client import get_service_client
     try:
@@ -149,6 +212,26 @@ def dashboard():
         faturas_pendentes=faturas_pendentes,
         rendimento_total=rendimento_total,
         rendimento_meses=rendimento_meses,
+        usina=usina_obj,
+        tab=tab,
+        contas=contas or [],
+        conta_id=conta_id,
+        saldo_inicial=saldo_inicial,
+        chart_meses=chart_meses,
+        chart_fluxo_dates=chart_fluxo_dates,
+        chart_fluxo_pts=chart_fluxo_pts,
+        lancamentos=lancamentos_data,
+        leituras=leituras_data,
+        pnl=pnl_data or [],
+        clientes=clientes_data or [],
+        categorias=categorias or [],
+        kpis=kpis or {},
+        kpi_mes=kpi_mes or "",
+        retorno_mensal=retorno_mensal_data,
+        rentabilidade=rentabilidade_data,
+        leituras_det=leituras_det_data,
+        saldo_creditos=saldo_creditos_data,
+        participacoes=_parts if (ativo_id and ativo_tipo == "usina") else [],
     )
 
 
@@ -164,6 +247,7 @@ def usina_detalhe(usina_id):
         listar_lancamentos, listar_categorias, calcular_kpis,
         clientes_da_usina, auto_conciliar_neutros, listar_contas_da_usina,
         retorno_mensal_investidor, leituras_detalhadas, saldo_creditos_da_usina,
+        rentabilidade_investidor,
     )
     usina = buscar_usina(usina_id)
     if not usina:
@@ -223,6 +307,7 @@ def usina_detalhe(usina_id):
     num_ativos  = sum(1 for c in clientes if c.get("status") == "Ativo")
 
     retorno_mensal = retorno_mensal_investidor(usina_id) if tab == "retorno_mensal" else []
+    rentabilidade  = rentabilidade_investidor(usina_id)  if tab == "retorno_mensal" else {}
     leituras_det   = leituras_detalhadas(usina_id)       if tab == "energia"        else []
     saldo_creditos = saldo_creditos_da_usina(usina_id)   if tab == "saldo_creditos" else []
 
@@ -245,6 +330,7 @@ def usina_detalhe(usina_id):
         chart_fluxo_dates=chart_fluxo_dates,
         chart_fluxo_pts=chart_fluxo_pts,
         retorno_mensal=retorno_mensal,
+        rentabilidade=rentabilidade,
         leituras_det=leituras_det,
         saldo_creditos=saldo_creditos,
     )

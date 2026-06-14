@@ -365,29 +365,16 @@ document.addEventListener("click", function(e) {
     if (!link || link.classList.contains('desabilitado')) return;
     var bar = link.closest('.dtab-bar');
     if (!bar) return;
-    var href = link.getAttribute('href');
-    if (!href || href === '#') return;
-    try {
-      var url = new URL(href, location.href);
-      if (url.pathname !== location.pathname) return;
-      var tabParam = url.searchParams.get('tab') || 'visao_geral';
-      var targets = document.querySelectorAll('[data-tab="' + tabParam + '"]');
-      if (!targets.length) {
-        var single = document.getElementById('tab-' + tabParam);
-        if (!single) return;
-        targets = [single];
-      }
-      e.preventDefault();
-      bar.querySelectorAll('.dtab-link').forEach(function(l) { l.classList.remove('ativo'); });
-      link.classList.add('ativo');
-      document.querySelectorAll('.dtab-content').forEach(function(c) { c.classList.remove('ativo'); });
-      targets.forEach(function(t) { t.classList.add('ativo'); });
-      history.pushState(null, '', href);
-      var barTop = bar.getBoundingClientRect().top + window.scrollY;
-      var navH = (document.querySelector('.topnav') || {offsetHeight: 60}).offsetHeight;
-      window.scrollTo({ top: Math.max(0, barTop - navH - 8), behavior: 'smooth' });
-      setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 20);
-    } catch(_) {}
+    var tabParam = link.dataset.tab;
+    if (!tabParam) return;
+    var alvo = document.getElementById('tab-' + tabParam);
+    if (!alvo) return;
+    e.preventDefault();
+    bar.querySelectorAll('.dtab-link').forEach(function(l) { l.classList.remove('ativo'); });
+    link.classList.add('ativo');
+    document.querySelectorAll('.dtab-content').forEach(function(c) { c.classList.remove('ativo'); });
+    alvo.classList.add('ativo');
+    setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 20);
   });
 })();
 </script>

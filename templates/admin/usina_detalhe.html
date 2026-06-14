@@ -526,19 +526,39 @@
 <div id="tab-retorno_mensal" class="dtab-content {{ 'ativo' if tab == 'retorno_mensal' }}">
   {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
   {% if retorno_mensal %}
-    {% set _tot_lucro = namespace(v=0) %}
-    {% for r in retorno_mensal %}{% set _tot_lucro.v = _tot_lucro.v + (r.participacao_lucro or 0) %}{% endfor %}
-    {% set _tot_dist = namespace(v=0) %}
-    {% for r in retorno_mensal %}{% set _tot_dist.v = _tot_dist.v + (r.valor_distribuido or 0) %}{% endfor %}
+    {% set rb = rentabilidade %}
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+      {% if rb.capital %}
       <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
-        <div class="db-mc-label">Resultado acumulado</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#DC2626' if _tot_lucro.v < 0 else 'var(--text)' }};">{{ _tot_lucro.v|brl }}</span></div>
+        <div class="db-mc-label">Capital investido</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ rb.capital|brl }}</span></div>
+        {% if rb.data_desembolso %}<div class="db-mc-sub">desde {{ rb.data_desembolso[8:10] }}/{{ rb.data_desembolso[5:7] }}/{{ rb.data_desembolso[:4] }}</div>{% endif %}
       </div>
+      {% endif %}
       <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
         <div class="db-mc-label">Total distribuído</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ _tot_dist.v|brl }}</span></div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ rb.tot_dist|brl }}</span></div>
+        {% if rb.roi %}<div class="db-mc-sub">ROI {{ rb.roi|round(1) }}%</div>{% endif %}
       </div>
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:160px;padding:18px 20px;">
+        <div class="db-mc-label">Resultado acumulado</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#DC2626' if (rb.tot_lucro or 0) < 0 else 'var(--text)' }};">{{ rb.tot_lucro|brl }}</span></div>
+        <div class="db-mc-sub">proporcional à cota</div>
+      </div>
+      {% if rb.retorno_aa %}
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:140px;padding:18px 20px;">
+        <div class="db-mc-label">Retorno a.a.</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#16A34A;">{{ rb.retorno_aa|round(1) }}%</span></div>
+        {% if rb.tir_aa %}<div class="db-mc-sub">TIR {{ rb.tir_aa|round(1) }}% a.a.</div>{% endif %}
+      </div>
+      {% endif %}
+      {% if rb.payback_mes %}
+      <div class="db-metric-card" style="flex:0 0 auto;min-width:140px;padding:18px 20px;">
+        <div class="db-mc-label">Payback</div>
+        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value" style="font-size:15px;">{{ rb.payback_mes[5:7] }}/{{ rb.payback_mes[:4] }}</span></div>
+        <div class="db-mc-sub">retorno do capital</div>
+      </div>
+      {% endif %}
     </div>
     <section class="card" style="margin-bottom:16px;">
       <div class="db-chart-title" style="margin-bottom:12px;">Resultado mensal (participação no lucro)</div>

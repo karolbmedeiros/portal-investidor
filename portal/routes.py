@@ -127,25 +127,71 @@ def home():
     from services.usina_service import (
         retorno_mensal_investidor, leituras_detalhadas,
         saldo_creditos_da_usina, pnl_da_usina,
+        participacoes_da_usina, clientes_da_usina,
+        listar_lancamentos, listar_contas_da_usina,
+        calcular_kpis, leituras_da_usina, rentabilidade_investidor,
     )
     perms     = u.get("permissions", [])
     all_perms = "all" in perms
 
     home_tabs = ["visao_geral"]
     if ativo_id:
-        if all_perms or "retorno_mensal" in perms: home_tabs.append("retorno_mensal")
-        if all_perms or "energia"        in perms: home_tabs.append("energia")
-        if all_perms or "pnl"            in perms: home_tabs.append("pnl")
-        if all_perms or "saldo_creditos" in perms: home_tabs.append("saldo_creditos")
+        if all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms: home_tabs.append("extrato")
+        if all_perms or "retorno_mensal"   in perms:                               home_tabs.append("retorno_mensal")
+        if all_perms or "energia"          in perms:                               home_tabs.append("energia")
+        if all_perms or "pnl"              in perms:                               home_tabs.append("pnl")
+        if all_perms or "saldo_creditos"   in perms:                               home_tabs.append("saldo_creditos")
+        if all_perms or "dre"              in perms:                               home_tabs.append("dre")
+        if all_perms or "socios"           in perms:                               home_tabs.append("socios")
+        if all_perms or "clientes"         in perms:                               home_tabs.append("clientes")
 
     tab = request.args.get("tab", "visao_geral")
     if tab not in home_tabs:
         tab = "visao_geral"
 
-    retorno_mensal = retorno_mensal_investidor(ativo_id) if ativo_id and "retorno_mensal" in home_tabs else []
+    retorno_mensal  = retorno_mensal_investidor(ativo_id) if ativo_id and "retorno_mensal" in home_tabs else []
+    rentabilidade   = rentabilidade_investidor(ativo_id)  if ativo_id and "retorno_mensal" in home_tabs else {}
     leituras_det   = leituras_detalhadas(ativo_id)       if ativo_id and "energia"        in home_tabs else []
-    pnl            = pnl_da_usina(ativo_id)              if ativo_id and "pnl"            in home_tabs else []
+    pnl            = pnl_da_usina(ativo_id)              if ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
     saldo_creditos = saldo_creditos_da_usina(ativo_id)   if ativo_id and "saldo_creditos" in home_tabs else []
+    participacoes  = participacoes_da_usina(ativo_id)    if ativo_id and "socios"         in home_tabs else []
+    clientes       = clientes_da_usina(ativo_id)         if ativo_id and "clientes"       in home_tabs else []
+
+    tem_extrato = bool(ativo_id and "extrato" in home_tabs)
+    tem_dre     = bool(ativo_id and "dre"     in home_tabs)
+    contas        = listar_contas_da_usina(ativo_id) if (tem_extrato or tem_dre) else []
+    conta_id      = request.args.get("conta_id") or (contas[0]["id"] if contas else None)
+    conta_atual   = next((c for c in contas if c["id"] == conta_id), contas[0] if contas else None)
+    saldo_inicial = float(conta_atual["saldo_inicial"] or 0) if conta_atual else 0.0
+    lancamentos   = listar_lancamentos(ativo_id, conta_id=conta_id) if tem_extrato else []
+
+    _lanc_op = sorted(
+        [l for l in lancamentos if l.get("data_transacao") and not l.get("_neutro")],
+        key=lambda l: (l["data_transacao"], 0 if l.get("tipo") == "credito" else 1)
+    )
+    _acc, _dia_acc = saldo_inicial, {}
+    for _l in _lanc_op:
+        _v = abs(_l.get("valor") or 0)
+        _acc += _v if _l.get("tipo") == "credito" else -_v
+        _dia_acc[_l["data_transacao"][:10]] = round(_acc, 2)
+    if _dia_acc:
+        chart_fluxo_dates = ["Saldo ini."] + list(_dia_acc.keys())
+        chart_fluxo_pts   = [round(saldo_inicial, 2)] + list(_dia_acc.values())
+    else:
+        chart_fluxo_dates, chart_fluxo_pts = [], []
+    chart_meses = sorted({
+        l["data_transacao"][:7] for l in lancamentos
+        if l.get("data_transacao") and not l.get("_neutro")
+    })
+
+    if request.args.get("kpi_mes"):
+        kpi_mes = request.args.get("kpi_mes")
+    else:
+        _datas = [l["data_transacao"][:7] for l in lancamentos if l.get("data_transacao")]
+        kpi_mes = max(_datas) if _datas else date.today().strftime("%Y-%m")
+    leituras_raw   = leituras_da_usina(ativo_id) if tem_dre else []
+    _num_ativos    = sum(1 for c in clientes if c.get("status") == "Ativo")
+    kpis = calcular_kpis(ativo_id, kpi_mes, lancamentos, leituras_raw, pnl, _num_ativos) if tem_dre else {}
 
     return render_template(
         "portal/home.html",
@@ -164,9 +210,21 @@ def home():
         tab=tab,
         home_tabs=home_tabs,
         retorno_mensal=retorno_mensal,
+        rentabilidade=rentabilidade,
         leituras_det=leituras_det,
         pnl=pnl,
         saldo_creditos=saldo_creditos,
+        participacoes=participacoes,
+        clientes=clientes,
+        lancamentos=lancamentos,
+        contas=contas,
+        conta_id=conta_id,
+        saldo_inicial=saldo_inicial,
+        chart_fluxo_dates=chart_fluxo_dates,
+        chart_fluxo_pts=chart_fluxo_pts,
+        chart_meses=chart_meses,
+        kpis=kpis,
+        kpi_mes=kpi_mes,
     )
 
 
