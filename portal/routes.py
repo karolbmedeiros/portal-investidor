@@ -189,9 +189,11 @@ def home():
             )
             def _norm_placa(p):
                 return (p or "").upper().replace("-", "")
+            # Índice normalizado para lookup independente de hífen
+            _por_placa_norm = {_norm_placa(k): v for k, v in por_placa.items()}
             carros_veiculos_status = []
             for v in empresa_carros_sel.get("veiculos", []):
-                recs = por_placa.get(_norm_placa(v["placa"]), [])
+                recs = _por_placa_norm.get(_norm_placa(v["placa"]), [])
                 ultima = max((r["data_semana"] for r in recs if r.get("data_semana")), default=None)
                 # buscar locatário no contrato
                 locatario = next(
