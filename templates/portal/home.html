@@ -435,44 +435,32 @@
   {% set bm = benchmarks %}
   {% if bm and bm.series %}
     {% set cap = bm.capital %}
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
+    <div style="display:flex;gap:14px;flex-wrap:nowrap;margin-bottom:20px;">
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
         <div class="db-mc-label">Capital investido</div>
         <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ cap|brl }}</span></div>
         <div class="db-mc-sub">base de comparação</div>
       </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
-        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#E8621A;"></span>Seu investimento</div>
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#E8621A;flex-shrink:0;"></span>Seu investimento</div>
         <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if bm.ganho.investimento >= 0 else '#DC2626' }};">{{ bm.ganho.investimento|brl }}</span></div>
         <div class="db-mc-sub">{{ bm.pct.investimento|round(1) }}% no período</div>
       </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
-        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2563EB;"></span>CDI</div>
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2563EB;flex-shrink:0;"></span>CDI</div>
         <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ bm.ganho.cdi|brl }}</span></div>
         <div class="db-mc-sub">{{ bm.pct.cdi|round(1) }}% no período</div>
       </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
-        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#9333EA;"></span>Poupança</div>
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#9333EA;flex-shrink:0;"></span>Poupança</div>
         <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ bm.ganho.poupanca|brl }}</span></div>
         <div class="db-mc-sub">{{ bm.pct.poupanca|round(1) }}% no período</div>
       </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
-        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#16A34A;"></span>IPCA (inflação)</div>
+      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#16A34A;flex-shrink:0;"></span>IPCA (inflação)</div>
         <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ bm.ganho.ipca|brl }}</span></div>
         <div class="db-mc-sub">{{ bm.pct.ipca|round(1) }}% no período</div>
       </div>
-      {% if bm.ganho.ibov is defined %}
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
-        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#F59E0B;"></span>IBOV</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if bm.ganho.ibov >= 0 else '#DC2626' }};">{{ bm.ganho.ibov|brl }}</span></div>
-        <div class="db-mc-sub">{{ bm.pct.ibov|round(1) }}% no período</div>
-      </div>
-      <div class="db-metric-card" style="flex:0 0 auto;min-width:150px;padding:18px 20px;">
-        <div class="db-mc-label" style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#0EA5E9;"></span>IVVB11 (S&P 500)</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if bm.ganho.ivvb11 >= 0 else '#DC2626' }};">{{ bm.ganho.ivvb11|brl }}</span></div>
-        <div class="db-mc-sub">{{ bm.pct.ivvb11|round(1) }}% no período</div>
-      </div>
-      {% endif %}
     </div>
     <section class="card" style="margin-bottom:16px;">
       <div class="db-chart-title" style="margin-bottom:4px;">Evolução do patrimônio</div>
@@ -481,7 +469,7 @@
     </section>
     <section class="card">
       <table class="db-fat-table">
-        <thead><tr><th>Mês</th><th style="color:#E8621A;">Seu investimento</th><th style="color:#2563EB;">CDI</th><th style="color:#9333EA;">Poupança</th><th style="color:#16A34A;">IPCA</th><th style="color:#F59E0B;">IBOV</th><th style="color:#0EA5E9;">IVVB11</th></tr></thead>
+        <thead><tr><th>Mês</th><th style="color:#E8621A;">Seu investimento</th><th style="color:#2563EB;">CDI</th><th style="color:#9333EA;">Poupança</th><th style="color:#16A34A;">IPCA</th></tr></thead>
         <tbody>
           {% for row in bm.series | reverse %}
           {% set _ms = row.mes %}
@@ -491,8 +479,6 @@
             <td>{{ row.cdi|brl }}</td>
             <td>{{ row.poupanca|brl }}</td>
             <td>{{ row.ipca|brl }}</td>
-            <td>{{ row.ibov|brl if row.ibov is defined else '—' }}</td>
-            <td>{{ row.ivvb11|brl if row.ivvb11 is defined else '—' }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -1932,9 +1918,7 @@ document.addEventListener('click', function (e) {
           { label: 'Seu investimento', data: bmData.map(function(r){return r.investimento;}), borderColor: '#E8621A', backgroundColor: 'rgba(232,98,26,0.08)', tension: 0.3, pointRadius: 2, borderWidth: 2, fill: true },
           { label: 'CDI',             data: bmData.map(function(r){return r.cdi;}),          borderColor: '#2563EB', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3] },
           { label: 'Poupança',        data: bmData.map(function(r){return r.poupanca;}),     borderColor: '#9333EA', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3] },
-          { label: 'IPCA',   data: bmData.map(function(r){return r.ipca;}),         borderColor: '#16A34A', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 1.5, borderDash: [2,4] },
-          { label: 'IBOV',   data: bmData.map(function(r){return r.ibov||null;}),   borderColor: '#F59E0B', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3] },
-          { label: 'IVVB11', data: bmData.map(function(r){return r.ivvb11||null;}), borderColor: '#0EA5E9', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3] }
+          { label: 'IPCA', data: bmData.map(function(r){return r.ipca;}), borderColor: '#16A34A', backgroundColor: 'transparent', tension: 0.3, pointRadius: 2, borderWidth: 1.5, borderDash: [2,4] }
         ]},
         options: { responsive: true, maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
