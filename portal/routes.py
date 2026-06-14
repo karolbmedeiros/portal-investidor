@@ -229,7 +229,7 @@ def home():
             _ret_aa     = round(_liq_mes * 12 / _b["investimento"] * 100, 1)
             _payback    = round(_b["investimento"] / _liq_mes, 1)
             _oc_eq_pct  = round((_seg_mes + _man_mes + _dep_mes) / _bruta_mes * 100, 1)
-            _oc_eq_sem  = round(_oc_eq_pct / 100 * 52 / 12, 1)
+            _oc_eq_sem  = round(_oc_eq_pct / 100 * 52, 1)  # semanas/ano para cobrir custos fixos
             carros_rentabilidade = {
                 "nome":            _b["nome"],
                 "aluguel_semanal": _b["aluguel_semanal"],
