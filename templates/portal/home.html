@@ -285,32 +285,35 @@
         <div class="db-chart-title">
           {% if filtrado %}{{ ativo_selecionado.nome }}{% else %}Evolução do portfólio{% endif %}
         </div>
-        <div class="db-chart-sub">{% if ativo_tipo == 'carros' %}Recebido por motorista · desde o início{% else %}Últimos 6 meses{% endif %}</div>
+        <div class="db-chart-sub">{% if ativo_tipo == 'carros' %}Total recebido por mês{% else %}Últimos 6 meses{% endif %}</div>
       </div>
     </div>
 
-    {% if ativo_tipo == 'carros' and motoristas_recebimentos %}
-    {# Barras horizontais por motorista #}
-    {% set _max_val = motoristas_recebimentos|map(attribute='valor_pago')|max %}
-    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:14px; padding-top:8px;">
-      {% for m in motoristas_recebimentos %}
-      {% set _pct = ((m.valor_pago / _max_val) * 100)|round(1) if _max_val > 0 else 0 %}
-      {% set _first = m.cliente.split()[0] %}
-      {% set _last  = m.cliente.split()[-1] if m.cliente.split()|length > 1 else '' %}
-      <div>
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
-          <div style="display:flex; align-items:center; gap:7px;">
-            <span style="font-size:12px; font-weight:500; color:var(--text);">{{ _first }} {{ _last }}</span>
-            <span style="font-size:10px; color:var(--muted); font-family:'Geist Mono',monospace;">{{ m.placa }}</span>
-          </div>
-          <span style="font-size:12px; font-weight:600; color:#D97706;">{{ m.valor_pago|brl }}</span>
-        </div>
-        <div style="height:7px; border-radius:4px; background:rgba(245,158,11,.12); overflow:hidden;">
-          <div style="height:100%; width:{{ _pct }}%; background:#F59E0B; border-radius:4px; transition:width .4s ease;"></div>
-        </div>
-        <div style="font-size:10px; color:var(--muted); margin-top:3px;">{{ m.n_semanas }} semana{{ 's' if m.n_semanas != 1 }} · R$ {{ m.valor_semana|int }}/sem</div>
-      </div>
-      {% endfor %}
+    {% if ativo_tipo == 'carros' and recebimentos_por_mes_carros %}
+    {# Barras verticais: total recebido por mês #}
+    {% set _mvals = recebimentos_por_mes_carros|map(attribute='valor')|list %}
+    {% set _mmax  = _mvals|max %}
+    {% set _n     = _mvals|length %}
+    {% set _H = 120 %}
+    {% set _W = 340 %}
+    {% set _bw = ((_W - 20) / _n - 6)|round(1) %}
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
+      <svg viewBox="0 0 {{ _W }} {{ _H + 24 }}" style="width:100%; height:auto; display:block; overflow:visible;">
+        {# grade #}
+        <line x1="0" y1="{{ (_H * 0.25)|round(1) }}" x2="{{ _W }}" y2="{{ (_H * 0.25)|round(1) }}" stroke="#EEF1EF" stroke-width="1"/>
+        <line x1="0" y1="{{ (_H * 0.5)|round(1) }}"  x2="{{ _W }}" y2="{{ (_H * 0.5)|round(1) }}"  stroke="#EEF1EF" stroke-width="1"/>
+        <line x1="0" y1="{{ (_H * 0.75)|round(1) }}" x2="{{ _W }}" y2="{{ (_H * 0.75)|round(1) }}" stroke="#EEF1EF" stroke-width="1"/>
+        {% for item in recebimentos_por_mes_carros %}
+          {% set _bh   = (item.valor / _mmax * _H)|round(1) if _mmax > 0 else 0 %}
+          {% set _bx   = (10 + loop.index0 * ((_W - 20) / _n) + 3)|round(1) %}
+          {% set _by   = (_H - _bh)|round(1) %}
+          {% set _cx   = (_bx + _bw / 2)|round(1) %}
+          <rect x="{{ _bx }}" y="{{ _by }}" width="{{ _bw }}" height="{{ _bh }}" rx="4"
+                fill="#F59E0B" fill-opacity="{{ '1' if loop.last else '0.55' }}"/>
+          <text x="{{ _cx }}" y="{{ _H + 16 }}" text-anchor="middle"
+                font-size="10" fill="#9BA39E" font-family="inherit">{{ item.mes }}</text>
+        {% endfor %}
+      </svg>
     </div>
 
     {% else %}

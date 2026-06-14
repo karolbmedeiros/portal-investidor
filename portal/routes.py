@@ -92,6 +92,7 @@ def home():
 
     valor_liquido_recebido = None
     motoristas_recebimentos = []
+    recebimentos_por_mes_carros = []
 
     if ativo_tipo == "carros" and ativo_id in carros_por_slug:
         try:
@@ -159,28 +160,20 @@ def home():
             if total_liq > 0:
                 valor_liquido_recebido = round(total_liq, 2)
 
-            # Rendimento mensal (taxa 15%) para gráfico de referência interno
+            # Recebido bruto por mês (agrupa taxa_valor / 0.15)
             por_placa = recebimentos_da_empresa(empresa_carros_sel)
-            m6 = hoje.month - 6
-            inicio_ym = (
-                f"{hoje.year if m6 > 0 else hoje.year - 1}-"
-                f"{m6 if m6 > 0 else m6 + 12:02d}"
-            )
             por_mes: dict = {}
-            total_rend = 0.0
             for rows in por_placa.values():
                 for row in rows:
                     ym = str(row.get("data_semana") or "")[:7]
-                    if ym < inicio_ym:
+                    if not ym:
                         continue
-                    v = float(row.get("taxa_valor") or 0)
-                    total_rend += v
+                    v = float(row.get("taxa_valor") or 0) / 0.15
                     por_mes[ym] = por_mes.get(ym, 0.0) + v
-            if total_rend > 0:
-                rendimento_total = round(total_rend, 2)
-            for ym, v in sorted(por_mes.items()):
-                mn = int(ym.split("-")[1]) - 1
-                rendimento_meses.append({"mes": _MESES[mn], "valor": round(v, 2)})
+            recebimentos_por_mes_carros = [
+                {"mes": _MESES[int(ym.split("-")[1]) - 1], "valor": round(v, 2)}
+                for ym, v in sorted(por_mes.items())
+            ]
         except Exception:
             pass
     else:
@@ -345,6 +338,7 @@ def home():
         empresa_carros_sel=empresa_carros_sel,
         valor_liquido_recebido=valor_liquido_recebido,
         motoristas_recebimentos=motoristas_recebimentos,
+        recebimentos_por_mes_carros=recebimentos_por_mes_carros,
         ativo_tipo=ativo_tipo,
         faturas_carros=faturas_carros,
         cotas=cotas,
