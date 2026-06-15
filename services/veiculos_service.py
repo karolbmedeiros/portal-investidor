@@ -110,6 +110,60 @@ def upload_pdf_cliente(ref_id: str, nome_arquivo: str, conteudo: bytes,
     except Exception as e:
         return {"ok": False, "erro": str(e)}
 
+_CONTAS_RECEBER_PATH = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/CONTAS-A-RECEBER.xlsx"
+
+_UNIDADE_EMPRESA = {
+    "JOÃO PAULO CONSÓRCIOS": "JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA",
+    "LUZ DIVINA LTDA":       "LUZ DIVINA EMPREENDIMENTOS LTDA",
+    "ATIVUZ VEÍCULOS":       "ATIVUZ VEÍCULOS",
+    "AZ EMPREENDIMENTOS":    "AZ EMPREENDIMENTOS",
+}
+
+
+def contas_receber_carros_excel(empresa_nome: str) -> list:
+    """Lê CONTAS-A-RECEBER.xlsx diretamente, filtrando pela empresa."""
+    import openpyxl
+    from datetime import date
+
+    unidades = [u for u, e in _UNIDADE_EMPRESA.items() if e == empresa_nome]
+    if not unidades:
+        return []
+
+    try:
+        wb = openpyxl.load_workbook(_CONTAS_RECEBER_PATH, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+    except Exception as e:
+        print(f"[contas_receber_carros_excel] erro ao abrir arquivo: {e}")
+        return []
+
+    resultado = []
+    hoje = date.today()
+    for r in rows[5:]:
+        if not r[0]:
+            continue
+        unidade = str(r[17] or "").strip()
+        if unidade not in unidades:
+            continue
+        venc = r[3]
+        if hasattr(venc, "date"):
+            venc = venc.date()
+        venc_str = venc.isoformat() if venc else None
+        dias = (venc - hoje).days if venc else None
+        resultado.append({
+            "numero_documento": str(r[9] or ""),
+            "cliente":          str(r[11] or r[12] or ""),
+            "data_vencimento":  venc_str,
+            "valor":            float(r[18] or 0),
+            "situacao":         str(r[13] or ""),
+            "tipo_fatura":      str(r[16] or ""),
+            "dias_vencimento":  dias,
+            "faixa_vencimento": str(r[7] or ""),
+            "unidade":          unidade,
+        })
+    return resultado
+
+
 _EMPRESA_INFO = {
     "LUZ DIVINA EMPREENDIMENTOS LTDA": {
         "cnpj":            "48.284.349/0001-29",

@@ -196,7 +196,8 @@ def dashboard():
                     "cdi_aa_pct": round(_b["cdi_aa"]*100,1),
                     "poupanca_aa_pct": round(_b["poupanca_aa"]*100,2),
                 }
-                faturas_carros = contas_receber_empresa(_emp_c["nome"])
+                from services.veiculos_service import contas_receber_carros_excel
+                faturas_carros = contas_receber_carros_excel(_emp_c["nome"])
             except Exception:
                 pass
 
