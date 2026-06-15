@@ -1416,6 +1416,14 @@ function toggleAcordDb(btn){
 </div>
 </div>{# /tab-clientes carros #}
 
+{# Placeholders para tabs ainda não conectados em carros #}
+<div id="tab-extrato"        class="dtab-content {{ 'ativo' if tab == 'extrato' }}"><div class="vazio" style="padding:48px 0;">Em breve — Fluxo de Caixa de carros</div></div>
+<div id="tab-benchmarks"     class="dtab-content {{ 'ativo' if tab == 'benchmarks' }}"><div class="vazio" style="padding:48px 0;">Em breve — Benchmarks de carros</div></div>
+<div id="tab-pnl"            class="dtab-content {{ 'ativo' if tab == 'pnl' }}"><div class="vazio" style="padding:48px 0;">Em breve — P&L de carros</div></div>
+<div id="tab-saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}"><div class="vazio" style="padding:48px 0;">Em breve — Créditos kWh de carros</div></div>
+<div id="tab-dre"            class="dtab-content {{ 'ativo' if tab == 'dre' }}"><div class="vazio" style="padding:48px 0;">Em breve — DRE de carros</div></div>
+<div id="tab-socios"         class="dtab-content {{ 'ativo' if tab == 'socios' }}"><div class="vazio" style="padding:48px 0;">Em breve — Sócios de carros</div></div>
+
 {% endif %}{# /filtrado carro #}
 
 {% endblock %}
