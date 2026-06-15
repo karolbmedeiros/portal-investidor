@@ -425,7 +425,8 @@
 </section>
 
 
-<!-- ── Contas a Receber Pendentes ── -->
+<!-- ── Contas a Receber Pendentes (usinas) ── -->
+{% if ativo_tipo != 'carro' %}
 <section class="card mt-16">
   <div class="db-list-header" style="margin-bottom:16px;">
     <div>
@@ -492,6 +493,7 @@
   </div>
   {% endif %}
 </section>
+{% endif %}
 
 {# ── Contas a Receber (carros) ── #}
 {% if ativo_tipo == 'carro' and faturas_carros %}
