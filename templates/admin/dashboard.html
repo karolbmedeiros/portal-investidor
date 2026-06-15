@@ -1260,7 +1260,7 @@ function toggleAcordDb(btn){
 
   {% if carros_rentabilidade %}
   {% set r = carros_rentabilidade %}
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px;">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
     <div class="db-metric-card" style="padding:18px 20px;">
       <div class="db-mc-label">Yield líquido a.a.</div>
       <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#D97706;">{{ r.yield_aa }}%</span></div>
