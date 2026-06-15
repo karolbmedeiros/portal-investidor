@@ -65,8 +65,8 @@ def upload_pdf_cliente(ref_id: str, nome_arquivo: str, conteudo: bytes,
     fid = str(uuid.uuid4())
     caminho = f"clientes/{ref_id}/{fid}_{nome_arquivo}"
     try:
-        sb.storage.from_("documentos").upload(caminho, conteudo, {"content-type": mime_type})
-        url = sb.storage.from_("documentos").get_public_url(caminho)
+        sb.storage.from_("documentos-contratos").upload(caminho, conteudo, {"content-type": mime_type})
+        url = sb.storage.from_("documentos-contratos").get_public_url(caminho)
         return {"ok": True, "url": url, "caminho": caminho}
     except Exception as e:
         return {"ok": False, "erro": str(e)}
