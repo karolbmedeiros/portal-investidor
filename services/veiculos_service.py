@@ -2,9 +2,10 @@ import unicodedata
 import re
 import json
 import os
+from typing import Optional
 from services.supabase_client import get_financeiro_client
 
-_CLIENTES_CACHE: dict | None = None
+_CLIENTES_CACHE: Optional[dict] = None
 
 def dados_clientes_cons() -> dict:
     """Dict keyed by normalized plate (no dash/space, uppercase)."""
