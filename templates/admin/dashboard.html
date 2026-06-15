@@ -1422,7 +1422,86 @@ function toggleAcordDb(btn){
 </div>{# /tab-clientes carros #}
 
 {# Placeholders para tabs ainda não conectados em carros #}
-<div id="tab-extrato"        class="dtab-content {{ 'ativo' if tab == 'extrato' }}"><div class="vazio" style="padding:48px 0;">Em breve — Fluxo de Caixa de carros</div></div>
+<div id="tab-extrato" class="dtab-content {{ 'ativo' if tab == 'extrato' }}">
+{% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+{% set _meses_c = namespace(lista=[]) %}
+{% for l in lancamentos_carros %}{% if l.data_transacao and l.data_transacao[:7] not in _meses_c.lista %}{% set _meses_c.lista = _meses_c.lista + [l.data_transacao[:7]] %}{% endif %}{% endfor %}
+{% set _meses_c_sorted = _meses_c.lista | sort %}
+{% set _ents_c  = lancamentos_carros | selectattr('tipo','equalto','credito') | list %}
+{% set _sais_c  = lancamentos_carros | selectattr('tipo','equalto','debito')  | list %}
+{% set _tot_e = namespace(v=0) %}{% set _tot_s = namespace(v=0) %}
+{% for l in _ents_c %}{% set _tot_e.v = _tot_e.v + (l.valor|abs) %}{% endfor %}
+{% for l in _sais_c %}{% set _tot_s.v = _tot_s.v + (l.valor|abs) %}{% endfor %}
+
+<div class="nb-resumo">
+  <div class="nb-card nb-saldo-card">
+    <div class="nb-mes-bar"><label class="nb-mes-label">Período</label><select class="input-sm" id="filtro-mes" onchange="filtrarExtrato()" style="width:110px;"><option value="">Todos</option>{% for m in _meses_c_sorted %}<option value="{{ m }}">{{ _ma[m[5:7]|int] }}/{{ m[:4] }}</option>{% endfor %}</select></div>
+    <div class="nb-card-header"><span class="nb-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"></path><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4"></path></svg></span><span class="nb-card-title">Resultado</span><span class="nb-card-total {{ 'nb-positivo' if (_tot_e.v - _tot_s.v) >= 0 else 'nb-negativo' }}">{{ (_tot_e.v - _tot_s.v)|brl }}</span></div>
+    <div style="padding:12px 0 4px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--green);">↑ Entradas</span><span style="font-weight:600;color:var(--green);">{{ _tot_e.v|brl }}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:#EF4444;">↓ Saídas</span><span style="font-weight:600;color:#EF4444;">{{ _tot_s.v|brl }}</span></div>
+    </div>
+  </div>
+  <div class="nb-card nb-fluxo-card">
+    <div class="nb-card-header"><span class="nb-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"></path><path d="M14 7l7 0l0 7"></path></svg></span><span class="nb-card-title">Fluxo de caixa</span><div class="fluxo-nav"><button class="fluxo-nav-btn" id="fluxo-prev" onclick="navFluxo(-1)">&#8249;</button><span class="fluxo-nav-label" id="fluxo-mes-label">—</span><button class="fluxo-nav-btn" id="fluxo-next" onclick="navFluxo(1)">&#8250;</button></div></div>
+    <div style="position:relative;height:200px;"><canvas id="chart-fluxo"></canvas></div>
+    <div class="nb-fluxo-resumo">
+      <div class="nb-fr-item"><span class="nb-fr-label" style="color:#166534;">+ Entradas</span><span class="nb-fr-val nb-positivo" id="fluxo-ent">R$ 0,00</span></div>
+      <div class="nb-fr-item"><span class="nb-fr-label" style="color:#991B1B;">- Saídas</span><span class="nb-fr-val nb-negativo" id="fluxo-sai">R$ 0,00</span></div>
+      <div class="nb-fr-sep"></div>
+      <div class="nb-fr-item nb-fr-total"><span class="nb-fr-label">Resultado</span><span class="nb-fr-val" id="fluxo-resultado">—</span></div>
+    </div>
+  </div>
+</div>
+
+{% if lancamentos_carros %}
+<div class="nb-lancamentos">
+  <div class="nb-card nb-panel">
+    <div class="nb-panel-header nb-ent-header"><span class="nb-panel-arrow">↑</span><span class="nb-panel-title">Recebimentos</span><span class="nb-panel-total nb-positivo" id="tot-entradas">{{ _tot_e.v|brl }}</span></div>
+    <div class="nb-panel-body">
+      {% if _ents_c %}{% for l in _ents_c %}
+      <div class="nb-item nb-rec-item ext-row ext-row-ent" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}">
+        <div class="nb-item-data">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
+        <div class="nb-item-centro"><div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div></div>
+        <div class="nb-item-dir"><div class="nb-item-val nb-positivo">{{ (l.valor or 0)|abs|brl }}</div></div>
+      </div>
+      {% endfor %}{% else %}<div class="nb-vazio">Nenhuma entrada.</div>{% endif %}
+    </div>
+  </div>
+  <div class="nb-card nb-panel">
+    <div class="nb-panel-header nb-sai-header"><span class="nb-panel-arrow">↓</span><span class="nb-panel-title">Pagamentos</span><span class="nb-panel-total nb-negativo" id="tot-saidas">{{ _tot_s.v|brl }}</span></div>
+    <div class="nb-panel-body">
+      {% if _sais_c %}{% for l in _sais_c %}
+      <div class="nb-item nb-pag-item ext-row ext-row-sai" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}">
+        <div class="nb-item-data">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
+        <div class="nb-item-centro"><div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div></div>
+        <div class="nb-item-dir"><div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div></div>
+      </div>
+      {% endfor %}{% else %}<div class="nb-vazio">Nenhuma saída.</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="nb-card nb-panel" style="margin-top:16px;margin-bottom:24px;">
+  <div class="nb-panel-header" style="background:var(--bg2);cursor:pointer;" onclick="toggleConsolidado()">
+    <span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">Extrato Consolidado</span>
+    <svg id="consolidado-caret" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);transition:transform .15s;"><path d="M6 9l6 6l6 -6"></path></svg>
+  </div>
+  <div id="consolidado-body" style="display:none;">
+    <div class="tabela-wrap" style="border-radius:0;border:none;"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Tipo</th></tr></thead><tbody>
+      {% for l in lancamentos_carros %}
+      <tr class="ext-row ext-row-cons" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}">
+        <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
+        <td><div style="font-size:13px;font-weight:500;line-height:1.3;">{{ l.descricao or l.descricao_original or '—' }}</div></td>
+        <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">{{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}</td>
+        <td style="font-size:12px;color:var(--muted);">{{ 'Entrada' if l.tipo=='credito' else 'Saída' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody></table></div>
+  </div>
+</div>
+{% else %}<div class="vazio">Nenhum lancamento encontrado.</div>{% endif %}
+</div>{# /tab-extrato carros #}
 <div id="tab-benchmarks"     class="dtab-content {{ 'ativo' if tab == 'benchmarks' }}"><div class="vazio" style="padding:48px 0;">Em breve — Benchmarks de carros</div></div>
 <div id="tab-pnl"            class="dtab-content {{ 'ativo' if tab == 'pnl' }}"><div class="vazio" style="padding:48px 0;">Em breve — P&L de carros</div></div>
 <div id="tab-saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}"><div class="vazio" style="padding:48px 0;">Em breve — Créditos kWh de carros</div></div>

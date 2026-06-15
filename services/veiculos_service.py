@@ -21,6 +21,31 @@ def dados_clientes_cons() -> dict:
     return _CLIENTES_CACHE
 
 
+_EMPRESA_CONTA = {
+    "LUZ DIVINA EMPREENDIMENTOS LTDA":            "f02a7e50-de24-4db0-913a-cc4309b21b1a",
+    "JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA":    "bcc0fb80-4960-44c8-aa68-2b3c9e2d6a06",
+}
+
+def listar_lancamentos_carros(empresa_nome: str) -> list:
+    conta_id = _EMPRESA_CONTA.get(empresa_nome)
+    if not conta_id:
+        return []
+    try:
+        sb = get_financeiro_client()
+        rows = (
+            sb.table("lancamentos_bancarios")
+            .select("id,data_transacao,mes_competencia,descricao,descricao_original,valor,tipo,conciliado")
+            .eq("conta_bancaria_id", conta_id)
+            .order("data_transacao", desc=True)
+            .execute()
+            .data or []
+        )
+        return rows
+    except Exception as e:
+        print(f"[listar_lancamentos_carros] erro: {e}")
+        return []
+
+
 def salvar_dados_cliente(dados: dict) -> dict:
     """Persiste as alterações de um cliente no JSON local e invalida o cache."""
     global _CLIENTES_CACHE

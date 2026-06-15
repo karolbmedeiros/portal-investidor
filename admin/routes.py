@@ -74,6 +74,7 @@ def dashboard():
     carros_veiculos_status   = []
     carros_rentabilidade     = None
     faturas_carros           = []
+    lancamentos_carros       = []
 
     if ativo_id and ativo_tipo == "carro":
         _emp_c = next((e for e in all_carros if e["slug"] == ativo_id), None)
@@ -198,8 +199,23 @@ def dashboard():
                 faturas_carros = contas_receber_empresa(_emp_c["nome"])
             except Exception:
                 pass
+
+        # Lançamentos bancários da empresa de carros
+        try:
+            from services.veiculos_service import listar_lancamentos_carros
+            lancamentos_carros = listar_lancamentos_carros(_emp_c["nome"] if _emp_c else "")
+            # Gera séries para o gráfico de fluxo (saldo acumulado por dia)
+            _saldo_c = 0.0
+            for _l in sorted(lancamentos_carros, key=lambda x: x.get("data_transacao") or ""):
+                _v = float(_l.get("valor") or 0)
+                _saldo_c += _v
+                chart_fluxo_dates.append(_l["data_transacao"])
+                chart_fluxo_pts.append(round(_saldo_c, 2))
+        except Exception:
+            lancamentos_carros = []
+
         tab = request.args.get("tab", "visao_geral")
-        if tab not in ("visao_geral","retorno_mensal","clientes"):
+        if tab not in ("visao_geral","retorno_mensal","clientes","extrato"):
             tab = "visao_geral"
 
     # Rendimento acumulado — créditos na conta bancária da usina selecionada
@@ -384,6 +400,7 @@ def dashboard():
         carros_veiculos_status=carros_veiculos_status,
         carros_rentabilidade=carros_rentabilidade,
         faturas_carros=faturas_carros,
+        lancamentos_carros=lancamentos_carros,
         dados_clientes_carros=__import__('services.veiculos_service', fromlist=['dados_clientes_cons']).dados_clientes_cons(),
     )
 
