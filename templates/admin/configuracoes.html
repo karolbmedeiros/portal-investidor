@@ -464,6 +464,53 @@
           Adicionar
         </button>
       </form>
+
+      {# ── Naturezas de carros ── #}
+      <div id="naturezas-carros" style="margin-top:36px;padding-top:28px;border-top:0.5px solid var(--border);">
+        <div class="cfg-section-title" style="margin-bottom:4px;">Naturezas de carros</div>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 20px;">Usadas na classificação de lançamentos do módulo de frotas.</p>
+
+        <div class="tabela-wrap" style="margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr>
+                <th class="nat-th">Nome</th>
+                <th class="nat-th"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for nat in naturezas_carros %}
+              <tr style="border-bottom:0.5px solid rgba(23,33,28,0.07);">
+                <td class="nat-td" style="font-weight:500;color:#111827;">{{ nat }}</td>
+                <td class="nat-td" style="text-align:right;">
+                  <form method="POST" action="{{ url_for('admin.natureza_carros_excluir') }}"
+                        onsubmit="return confirm('Excluir a natureza \"{{ nat }}\"?');">
+                    <input type="hidden" name="nome" value="{{ nat }}">
+                    <button type="submit" class="btn btn-danger btn-sm" style="font-size:11px;padding:3px 10px;">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3h6v3"/></svg>
+                      Excluir
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="cfg-section-title" style="margin-bottom:12px;">Adicionar natureza de carros</div>
+        <form method="POST" action="{{ url_for('admin.natureza_carros_nova') }}"
+              style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;max-width:420px;">
+          <div class="form-group" style="margin:0;flex:1;min-width:200px;">
+            <label>Nome</label>
+            <input type="text" name="nome" placeholder="Ex: Limpeza, Documentação…" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" style="height:38px;white-space:nowrap;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Adicionar
+          </button>
+        </form>
+      </div>
     </div>
 
   </div>{# /cfg-body #}

@@ -7,6 +7,44 @@ from services.supabase_client import get_financeiro_client
 
 _CLIENTES_CACHE: Optional[dict] = None
 
+_NATUREZAS_CARROS_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "static", "data", "naturezas_carros.json")
+)
+
+def listar_naturezas_carros() -> list:
+    try:
+        with open(_NATUREZAS_CARROS_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+def adicionar_natureza_carros(nome: str) -> dict:
+    nome = nome.strip()
+    if not nome:
+        return {"ok": False, "erro": "Nome vazio"}
+    nats = listar_naturezas_carros()
+    if nome in nats:
+        return {"ok": False, "erro": "Já existe"}
+    nats.append(nome)
+    try:
+        with open(_NATUREZAS_CARROS_PATH, "w", encoding="utf-8") as f:
+            json.dump(nats, f, ensure_ascii=False, indent=2)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "erro": str(e)}
+
+def remover_natureza_carros(nome: str) -> dict:
+    nats = listar_naturezas_carros()
+    if nome not in nats:
+        return {"ok": False, "erro": "Não encontrada"}
+    nats.remove(nome)
+    try:
+        with open(_NATUREZAS_CARROS_PATH, "w", encoding="utf-8") as f:
+            json.dump(nats, f, ensure_ascii=False, indent=2)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "erro": str(e)}
+
 def dados_clientes_cons() -> dict:
     """Dict keyed by normalized plate (no dash/space, uppercase)."""
     global _CLIENTES_CACHE
@@ -26,6 +64,34 @@ _EMPRESA_CONTA = {
     "JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA":    "bcc0fb80-4960-44c8-aa68-2b3c9e2d6a06",
 }
 
+_CONVENIO_KEYWORDS = [
+    "GELO E GELA",
+    "JUAN E IVAN",
+]
+
+def calcular_saldo_em(empresa_nome: str, data_ate: str) -> float:
+    """Soma todos os lançamentos da conta (sem filtros) até data_ate inclusive.
+    Usado para obter o saldo real antes das transações carros começarem.
+    """
+    conta_id = _EMPRESA_CONTA.get(empresa_nome)
+    if not conta_id:
+        return 0.0
+    try:
+        sb = get_financeiro_client()
+        rows = (
+            sb.table("lancamentos_bancarios")
+            .select("valor")
+            .eq("conta_bancaria_id", conta_id)
+            .lte("data_transacao", data_ate)
+            .execute()
+            .data or []
+        )
+        return round(sum(float(r.get("valor") or 0) for r in rows), 2)
+    except Exception as e:
+        print(f"[calcular_saldo_em] erro: {e}")
+        return 0.0
+
+
 def listar_lancamentos_carros(empresa_nome: str) -> list:
     conta_id = _EMPRESA_CONTA.get(empresa_nome)
     if not conta_id:
@@ -40,19 +106,23 @@ def listar_lancamentos_carros(empresa_nome: str) -> list:
             .execute()
             .data or []
         )
+        for r in rows:
+            texto = ((r.get("descricao") or "") + (r.get("descricao_original") or "")).upper()
+            r["_convenio"] = any(k in texto for k in _CONVENIO_KEYWORDS)
         return rows
     except Exception as e:
         print(f"[listar_lancamentos_carros] erro: {e}")
         return []
 
 
-def classificar_lancamento_carros(lancamento_id: str, natureza: str) -> dict:
-    if not lancamento_id or not natureza:
-        return {"ok": False, "erro": "id e natureza obrigatorios"}
+def classificar_lancamento_carros(lancamento_id: str, natureza: str = None, splits: list = None) -> dict:
+    if not lancamento_id or (not natureza and not splits):
+        return {"ok": False, "erro": "id e natureza/splits obrigatorios"}
     try:
         sb = get_financeiro_client()
+        obs = json.dumps(splits, ensure_ascii=False) if splits else natureza
         sb.table("lancamentos_bancarios") \
-          .update({"observacoes": natureza, "conciliado": True}) \
+          .update({"observacoes": obs, "conciliado": True}) \
           .eq("id", lancamento_id) \
           .execute()
         return {"ok": True}
@@ -110,7 +180,8 @@ def upload_pdf_cliente(ref_id: str, nome_arquivo: str, conteudo: bytes,
     except Exception as e:
         return {"ok": False, "erro": str(e)}
 
-_CONTAS_RECEBER_PATH = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/CONTAS-A-RECEBER.xlsx"
+_CONTAS_RECEBER_PATH  = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/CONTAS-A-RECEBER.xlsx"
+_CONTRATOS_LOCACAO_PATH = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/Contratos de Locação.xlsx"
 
 _UNIDADE_EMPRESA = {
     "JOÃO PAULO CONSÓRCIOS": "JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA",
@@ -118,6 +189,50 @@ _UNIDADE_EMPRESA = {
     "ATIVUZ VEÍCULOS":       "ATIVUZ VEÍCULOS",
     "AZ EMPREENDIMENTOS":    "AZ EMPREENDIMENTOS",
 }
+
+
+def listar_contratos_excel(unidades: list) -> list:
+    """Lê Contratos de Locação.xlsx e retorna contratos ativos das unidades informadas."""
+    import openpyxl
+    try:
+        wb = openpyxl.load_workbook(_CONTRATOS_LOCACAO_PATH, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+    except Exception as e:
+        print(f"[listar_contratos_excel] erro: {e}")
+        return []
+
+    resultado = []
+    for r in rows[5:]:
+        if not r[6]:  # Cliente
+            continue
+        cliente = str(r[6]).strip()
+        if "SEGCOMP" in cliente.upper():
+            continue
+        unidade = str(r[54] or "").strip()
+        if unidades and unidade not in unidades:
+            continue
+        placa_raw = r[59] or r[61] or ""
+        placa = str(placa_raw).strip().upper().replace("-", "")
+        inicio = r[30]
+        if hasattr(inicio, "date"):
+            inicio = inicio.date()
+        resultado.append({
+            "cliente":       cliente,
+            "placa":         placa,
+            "placa_fmt":     str(placa_raw).strip().upper(),
+            "modelo":        str(r[36] or "").strip(),
+            "inicio":        inicio.strftime("%d/%m/%Y") if inicio else "",
+            "unidade":       unidade,
+            "situacao":      str(r[46] or "").strip(),
+            "valor_locacao": float(r[57] or r[58] or 0),
+        })
+    return resultado
+
+
+def contratos_por_empresa(empresa_nome: str) -> list:
+    unidades = [u for u, e in _UNIDADE_EMPRESA.items() if e == empresa_nome]
+    return listar_contratos_excel(unidades)
 
 
 def contas_receber_carros_excel(empresa_nome: str) -> list:

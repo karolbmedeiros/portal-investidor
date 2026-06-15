@@ -1331,11 +1331,14 @@ function toggleAcordDb(btn){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);">{{ v.placa }}</span>
         {% if v.ativo %}<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#D1FAE5;color:#065F46;">Ativo</span>
+        {% elif v.em_manutencao %}<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280;">Manutenção</span>
         {% else %}<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#FEE2E2;color:#991B1B;">Vago</span>{% endif %}
       </div>
       <div style="font-size:12px;color:var(--muted);">{{ v.modelo }}</div>
       {% if v.locatario %}
       <div style="font-size:11px;margin-top:6px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ v.locatario|title }}</div>
+      {% elif v.em_manutencao %}
+      <div style="font-size:11px;margin-top:6px;color:var(--muted);font-style:italic;">Manutenção</div>
       {% else %}
       <div style="font-size:11px;margin-top:6px;color:var(--muted);">Sem locatário</div>
       {% endif %}
@@ -1460,15 +1463,15 @@ function toggleAcordDb(btn){
     <div class="nb-panel-header nb-ent-header"><span class="nb-panel-arrow">↑</span><span class="nb-panel-title">Recebimentos</span><span class="nb-panel-total nb-positivo" id="tot-entradas">{{ _tot_e.v|brl }}</span></div>
     <div class="nb-panel-body">
       {% if _ents_c %}{% for l in _ents_c %}
-      <div class="nb-item nb-rec-item ext-row ext-row-ent" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-conciliado="{{ 'true' if l.observacoes else 'false' }}">
-        <div class="nb-item-data {{ '' if l.observacoes else 'nb-pendente-data' }}">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
+      <div class="nb-item nb-rec-item ext-row ext-row-ent{% if l._convenio %} nb-convenio{% endif %}" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-conciliado="{{ 'true' if l.observacoes else 'false' }}">
+        <div class="nb-item-data">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
         <div class="nb-item-centro">
           <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
           {% if l.observacoes %}<div class="nb-item-cat">{{ l.observacoes }}</div>{% endif %}
         </div>
         <div class="nb-item-dir">
           <div class="nb-item-val nb-positivo">{{ (l.valor or 0)|abs|brl }}</div>
-          {% if l.observacoes %}<span class="nb-item-status">✓</span>{% else %}<button class="btn btn-secondary btn-sm nb-btn-conciliar" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','credito')">Natureza</button>{% endif %}
+          {% if l.observacoes %}<span class="nb-item-status">✓</span>{% endif %}
         </div>
       </div>
       {% endfor %}{% else %}<div class="nb-vazio">Nenhuma entrada.</div>{% endif %}
@@ -1478,15 +1481,15 @@ function toggleAcordDb(btn){
     <div class="nb-panel-header nb-sai-header"><span class="nb-panel-arrow">↓</span><span class="nb-panel-title">Pagamentos</span><span class="nb-panel-total nb-negativo" id="tot-saidas">{{ _tot_s.v|brl }}</span></div>
     <div class="nb-panel-body">
       {% if _sais_c %}{% for l in _sais_c %}
-      <div class="nb-item nb-pag-item ext-row ext-row-sai" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-conciliado="{{ 'true' if l.observacoes else 'false' }}">
-        <div class="nb-item-data {{ '' if l.observacoes else 'nb-pendente-data' }}">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
+      <div class="nb-item nb-pag-item ext-row ext-row-sai{% if l._convenio %} nb-convenio{% endif %}" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-conciliado="{{ 'true' if l.observacoes else 'false' }}">
+        <div class="nb-item-data">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
         <div class="nb-item-centro">
           <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
           {% if l.observacoes %}<div class="nb-item-cat">{{ l.observacoes }}</div>{% endif %}
         </div>
         <div class="nb-item-dir">
           <div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div>
-          {% if l.observacoes %}<span class="nb-item-status">✓</span>{% else %}<button class="btn btn-secondary btn-sm nb-btn-conciliar" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','debito')">Natureza</button>{% endif %}
+          {% if l.observacoes %}<span class="nb-item-status">✓</span>{% endif %}
         </div>
       </div>
       {% endfor %}{% else %}<div class="nb-vazio">Nenhuma saída.</div>{% endif %}
@@ -1497,12 +1500,12 @@ function toggleAcordDb(btn){
 <div class="nb-card nb-panel" style="margin-top:16px;margin-bottom:24px;">
   <div class="nb-panel-header" style="background:var(--bg2);cursor:pointer;" onclick="toggleConsolidado()">
     <span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">Extrato Consolidado</span>
-    <svg id="consolidado-caret" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);transition:transform .15s;"><path d="M6 9l6 6l6 -6"></path></svg>
+    <svg id="consolidado-caret" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);transition:transform .15s;transform:rotate(180deg);"><path d="M6 9l6 6l6 -6"></path></svg>
   </div>
-  <div id="consolidado-body" style="display:none;">
+  <div id="consolidado-body">
     <div class="tabela-wrap" style="border-radius:0;border:none;"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Natureza</th><th>Status</th></tr></thead><tbody>
       {% for l in lancamentos_carros %}
-      <tr class="ext-row ext-row-cons" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}">
+      <tr class="ext-row ext-row-cons{% if l._convenio %} nb-convenio{% endif %}" data-id="{{ l.id }}" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}">
         <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
         <td style="min-width:240px;">
           <div style="font-size:13px;font-weight:500;line-height:1.3;">{{ l.descricao or l.descricao_original or '—' }}</div>
@@ -1512,8 +1515,18 @@ function toggleAcordDb(btn){
         </td>
         <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">{{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}</td>
         <td style="font-size:12px;">
-          {% if l.observacoes %}<span style="color:var(--text);">{{ l.observacoes }}</span>
-          {% else %}<button class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}')">+ Natureza</button>{% endif %}
+          {% if l.splits %}
+            {% for sp in l.splits %}
+            <div style="display:flex;align-items:center;gap:6px;{% if not loop.first %}margin-top:4px;{% endif %}">
+              <span style="background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text);">{{ sp.natureza }}</span>
+              <span style="font-size:11px;color:var(--muted);">R$ {{ "%.2f"|format(sp.valor)|replace(".",",") }}</span>
+            </div>
+            {% endfor %}
+          {% elif l.observacoes %}
+            <span style="color:var(--text);">{{ l.observacoes }}</span>
+          {% else %}
+            <button class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}')">+ Natureza</button>
+          {% endif %}
         </td>
         <td>{% if l.observacoes %}<span class="badge badge-verde" style="font-size:10px;">Classificado</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
       </tr>
@@ -1522,26 +1535,26 @@ function toggleAcordDb(btn){
   </div>
 </div>
 
-{# Modal natureza/conciliação carros #}
+{# Modal natureza/conciliação carros — com suporte a rateio #}
+<datalist id="mn-sugestoes">
+  {% for nat in naturezas_carros %}<option value="{{ nat }}">{% endfor %}
+</datalist>
 <div id="modal-natureza" style="display:none;position:fixed;inset:0;z-index:600;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);" onclick="if(event.target===this)fecharNaturezaModal()">
-  <div style="background:var(--bg);border-radius:16px;padding:28px;width:min(440px,92vw);box-shadow:0 24px 64px rgba(0,0,0,.18);">
+  <div style="background:var(--bg);border-radius:16px;padding:28px;width:min(480px,94vw);box-shadow:0 24px 64px rgba(0,0,0,.18);">
     <div style="font-size:15px;font-weight:600;margin-bottom:4px;">Classificar lançamento</div>
-    <div id="mn-desc" style="font-size:12px;color:var(--muted);margin-bottom:4px;line-height:1.4;"></div>
-    <div id="mn-val" style="font-size:13px;font-weight:700;margin-bottom:20px;"></div>
-    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Natureza</label>
-    <input id="mn-natureza" type="text" placeholder="Ex: Locação, Manutenção, Taxa, IPVA..." style="width:100%;box-sizing:border-box;margin-top:6px;margin-bottom:8px;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg2);color:inherit;font-size:13px;outline:none;" list="mn-sugestoes">
-    <datalist id="mn-sugestoes">
-      <option value="Locação">
-      <option value="Taxa administrativa">
-      <option value="Manutenção">
-      <option value="Seguro">
-      <option value="IPVA">
-      <option value="Multa">
-      <option value="Combustível">
-      <option value="Taxa bancária">
-      <option value="Transferência">
-    </datalist>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+    <div id="mn-desc" style="font-size:12px;color:var(--muted);margin-bottom:2px;line-height:1.4;"></div>
+    <div id="mn-val" style="font-size:13px;font-weight:700;margin-bottom:18px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:6px;">
+      <div style="flex:1;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Natureza</div>
+      <div style="width:110px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Valor (R$)</div>
+      <div style="width:28px;"></div>
+    </div>
+    <div id="mn-splits"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+      <button onclick="adicionarSplit()" id="mn-add-btn" style="background:none;border:0.5px dashed var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px;color:var(--muted);">+ Dividir em mais uma natureza</button>
+      <span id="mn-restante" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
       <button onclick="fecharNaturezaModal()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:8px 18px;cursor:pointer;font-size:13px;">Cancelar</button>
       <button onclick="salvarNatureza()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:13px;font-weight:600;">Salvar</button>
     </div>
@@ -1876,6 +1889,9 @@ function toggleAcordDb(btn){
 .nb-panel-title { font-size:14.5px; font-weight:500; flex:1; } .nb-ent-header .nb-panel-title { color:#15805F; } .nb-sai-header .nb-panel-title { color:#991B1B; }
 .nb-panel-total { font-size:15px; font-weight:500; letter-spacing:-0.01em; } .nb-panel-body { max-height:440px; overflow-y:auto; }
 .nb-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:0.5px solid rgba(23,33,28,0.07); transition:background .1s; }
+.nb-convenio { opacity:0.45; }
+.nb-convenio td { color:var(--muted) !important; }
+tr.nb-convenio td { font-weight:400 !important; }
 .nb-item:hover { background:var(--bg2); } .nb-item-data { font-size:12px; font-weight:500; color:var(--muted); min-width:42px; text-align:center; } .nb-pendente-data { color:var(--red); }
 .nb-item-centro { flex:1; min-width:0; } .nb-item-desc { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .nb-item-cat { font-size:11px; color:var(--muted); margin-top:2px; }
 .nb-item-dir { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; } .nb-item-val { font-size:13px; font-weight:500; white-space:nowrap; } .nb-item-status { font-size:12px; color:#1D9E75; }
@@ -2113,6 +2129,80 @@ document.addEventListener('click',function(e){
 });
 {% endif %}
 
+{% if ativo_selecionado and ativo_selecionado.tipo == 'carro' %}
+const _FLUXO_DATES_C = {{ chart_fluxo_dates | tojson }};
+const _FLUXO_PTS_C   = {{ chart_fluxo_pts | tojson }};
+const _MA_C = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function fmtBrl(v){const s=Math.abs(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?=,))/g,'.');return(v<0?'- ':'')+' R$ '+s;}
+
+var _MESES_C = [];
+_FLUXO_DATES_C.forEach(function(d){var m=d.slice(0,7);if(_MESES_C.indexOf(m)===-1)_MESES_C.push(m);});
+_MESES_C.sort();
+var _mesIdxC = _MESES_C.length - 1;
+var _chartFluxoC = null;
+
+function _chartDadosMes(mes){
+  if(!mes) return {labels:_FLUXO_DATES_C.map(function(d){var p=d.split('-');return p[2]+'/'+p[1];}),data:_FLUXO_PTS_C.slice()};
+  var labels=[],data=[];
+  _FLUXO_DATES_C.forEach(function(d,i){if(d.slice(0,7)===mes){var p=d.split('-');labels.push(p[2]+'/'+p[1]);data.push(_FLUXO_PTS_C[i]);}});
+  return {labels:labels,data:data};
+}
+
+function _syncNavC(mes){
+  var idx=_MESES_C.indexOf(mes);if(idx!==-1)_mesIdxC=idx;
+  var mn=parseInt((mes||'').slice(5)),yr=(mes||'').slice(0,4);
+  var elL=document.getElementById('fluxo-mes-label');
+  if(elL)elL.textContent=mes?(_MA_C[mn]+'/'+yr):'Todos';
+  var prev=document.getElementById('fluxo-prev'),next=document.getElementById('fluxo-next');
+  if(prev)prev.disabled=(!mes||_mesIdxC<=0);
+  if(next)next.disabled=(!mes||_mesIdxC>=_MESES_C.length-1);
+}
+
+function navFluxo(delta){
+  _mesIdxC=Math.max(0,Math.min(_MESES_C.length-1,_mesIdxC+delta));
+  var mes=_MESES_C[_mesIdxC];
+  var elMes=document.getElementById('filtro-mes');if(elMes)elMes.value=mes;
+  filtrarExtrato();
+}
+
+function iniciarGraficosExtrato(){
+  var ctx=document.getElementById('chart-fluxo');
+  if(!ctx)return;
+  if(_chartFluxoC){_chartFluxoC.destroy();_chartFluxoC=null;}
+  if(!_FLUXO_DATES_C.length)return;
+  var mes=_MESES_C.length?_MESES_C[_mesIdxC]:'';
+  var d=_chartDadosMes(mes);
+  _chartFluxoC=new Chart(ctx,{type:'line',data:{labels:d.labels,datasets:[{data:d.data,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.07)',fill:true,tension:0.3,pointRadius:2,pointHoverRadius:5,pointBackgroundColor:'#1D9E75',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return 'Saldo: '+fmtBrl(c.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0,maxTicksLimit:10}},y:{ticks:{callback:function(v){return fmtBrl(v);},font:{size:10}},grid:{color:'#EEF0EF'}}}}});
+  _syncNavC(mes);
+  var elMes=document.getElementById('filtro-mes');if(elMes&&!elMes.value&&mes)elMes.value=mes;
+}
+
+function filtrarExtrato(){
+  var elMes=document.getElementById('filtro-mes');var m=elMes?elMes.value:'';
+  if(m&&_MESES_C.indexOf(m)!==-1)_mesIdxC=_MESES_C.indexOf(m);
+  var totEnt=0,totSai=0;
+  document.querySelectorAll('.nb-rec-item').forEach(function(r){var ok=!m||r.dataset.mes===m;r.style.display=ok?'':'none';if(ok)totEnt+=parseFloat(r.dataset.valor||0);});
+  document.querySelectorAll('.nb-pag-item').forEach(function(r){var ok=!m||r.dataset.mes===m;r.style.display=ok?'':'none';if(ok)totSai+=parseFloat(r.dataset.valor||0);});
+  document.querySelectorAll('.ext-row-cons').forEach(function(r){var ok=!m||r.dataset.mes===m;r.style.display=ok?'':'none';});
+  var setEl=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+  setEl('tot-entradas',fmtBrl(totEnt));setEl('tot-saidas',fmtBrl(totSai));
+  var res=totEnt-totSai;
+  var elRes=document.getElementById('fluxo-resultado');if(elRes){elRes.textContent=fmtBrl(res);elRes.style.color=res>=0?'#16A34A':'#DC2626';}
+  setEl('fluxo-ent',fmtBrl(totEnt));setEl('fluxo-sai',fmtBrl(totSai));
+  if(_chartFluxoC){var d=_chartDadosMes(m);_chartFluxoC.data.labels=d.labels;_chartFluxoC.data.datasets[0].data=d.data;_chartFluxoC.update();}
+  _syncNavC(m||(_MESES_C.length?_MESES_C[_mesIdxC]:''));
+}
+
+(function(){
+  var tab='{{ tab }}';
+  if(tab==='extrato'){setTimeout(function(){iniciarGraficosExtrato();filtrarExtrato();},80);}
+})();
+document.addEventListener('click',function(e){
+  var link=e.target.closest('.dtab-link[data-tab]');if(!link)return;
+  if(link.dataset.tab==='extrato'){setTimeout(function(){iniciarGraficosExtrato();filtrarExtrato();},80);}
+});
+{% endif %}
+
 // ── Painel de informações do cliente ──────────────────────────────────────────
 var _dadosClientes = {{ dados_clientes_carros | tojson }};
 var _pcRefId = '';
@@ -2250,20 +2340,116 @@ document.addEventListener('click', function(e) {
   if (btn) abrirPainelCliente(btn);
 });
 
-// ── Modal Natureza (conciliação carros) ──────────────────────────────────────
-var _mnId = '', _mnTipo = '';
+// ── Modal Natureza com rateio (conciliação carros) ──────────────────────────
+var _mnId = '', _mnTipo = '', _mnValorTotal = 0;
+var _mnSplits = []; // [{natureza:'', valor:0}]
+
+function _parseBrl(s) {
+  return parseFloat((s || '0').replace(/\./g, '').replace(',', '.')) || 0;
+}
+function _fmtBrl2(v) {
+  return Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function _somaAtual() {
+  var total = 0;
+  document.querySelectorAll('.mn-split-val').forEach(function(inp){ total += _parseBrl(inp.value); });
+  return Math.round(total * 100) / 100;
+}
+
+function _atualizarRestante() {
+  var usado = _somaAtual();
+  var rest  = Math.round((_mnValorTotal - usado) * 100) / 100;
+  var el    = document.getElementById('mn-restante');
+  if (rest === 0) {
+    el.textContent = '';
+  } else if (rest > 0) {
+    el.style.color = 'var(--muted)';
+    el.textContent = 'Restante: R$ ' + _fmtBrl2(rest);
+  } else {
+    el.style.color = '#EF4444';
+    el.textContent = 'Excede em R$ ' + _fmtBrl2(-rest);
+  }
+  // Atualiza o campo do último split (auto-restante) quando há mais de 1 linha
+  var linhas = document.querySelectorAll('.mn-split-row');
+  document.getElementById('mn-add-btn').style.display = rest <= 0 ? 'none' : '';
+}
+
+function _renderSplits() {
+  var container = document.getElementById('mn-splits');
+  container.innerHTML = '';
+  _mnSplits.forEach(function(sp, idx) {
+    var row = document.createElement('div');
+    row.className = 'mn-split-row';
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+    var natInput = '<input class="mn-split-nat" data-idx="'+idx+'" type="text" list="mn-sugestoes" placeholder="Natureza…" value="'+sp.natureza+'" style="flex:1;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg2);color:inherit;font-size:13px;outline:none;">';
+    var valInput = '<input class="mn-split-val" data-idx="'+idx+'" type="text" placeholder="0,00" value="'+(sp.valor ? _fmtBrl2(sp.valor) : '')+'" style="width:110px;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg2);color:inherit;font-size:13px;outline:none;text-align:right;">';
+    var delBtn   = idx > 0 ? '<button onclick="_removerSplit('+idx+')" style="width:28px;height:34px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;border-radius:6px;" title="Remover">×</button>' : '<div style="width:28px;"></div>';
+    row.innerHTML = natInput + valInput + delBtn;
+    container.appendChild(row);
+  });
+  // Vincula eventos
+  container.querySelectorAll('.mn-split-nat').forEach(function(inp){
+    inp.addEventListener('input', function(){ _mnSplits[+this.dataset.idx].natureza = this.value; });
+  });
+  container.querySelectorAll('.mn-split-val').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      _mnSplits[+this.dataset.idx].valor = _parseBrl(this.value);
+      _atualizarRestante();
+    });
+  });
+  _atualizarRestante();
+}
+
+function adicionarSplit() {
+  var usado = _somaAtual();
+  var rest  = Math.round((_mnValorTotal - usado) * 100) / 100;
+  if (rest <= 0) return;
+  _mnSplits.push({natureza: '', valor: rest});
+  _renderSplits();
+  // Foca na natureza da nova linha
+  var nats = document.querySelectorAll('.mn-split-nat');
+  if (nats.length) nats[nats.length - 1].focus();
+}
+
+function _removerSplit(idx) {
+  _mnSplits.splice(idx, 1);
+  _renderSplits();
+}
 
 function abrirNaturezaModal(id, desc, val, tipo) {
-  _mnId   = id;
-  _mnTipo = tipo;
+  _mnId         = id;
+  _mnTipo       = tipo;
+  _mnValorTotal = parseFloat(val) || 0;
+  _mnSplits     = [{natureza: '', valor: _mnValorTotal}];
   document.getElementById('mn-desc').textContent = desc;
-  document.getElementById('mn-val').textContent  = (tipo === 'credito' ? '+ ' : '- ') + 'R$ ' + parseFloat(val).toLocaleString('pt-BR', {minimumFractionDigits:2});
+  document.getElementById('mn-val').textContent  = (tipo === 'credito' ? '+ ' : '- ') + 'R$ ' + _fmtBrl2(_mnValorTotal);
   document.getElementById('mn-val').style.color  = tipo === 'credito' ? 'var(--green)' : '#EF4444';
-  document.getElementById('mn-natureza').value   = '';
   document.getElementById('mn-status').textContent = '';
+  _renderSplits();
   var m = document.getElementById('modal-natureza');
   m.style.display = 'flex';
-  setTimeout(function(){ document.getElementById('mn-natureza').focus(); }, 100);
+  setTimeout(function(){ var el = document.querySelector('.mn-split-nat'); if(el) el.focus(); }, 100);
+}
+
+function _atualizarLinhaNatureza(id, splits) {
+  var row = document.querySelector('tr[data-id="' + id + '"]');
+  if (!row) return;
+  var tds = row.querySelectorAll('td');
+  // td[3] = natureza, td[4] = status
+  var natTd = tds[3], stTd = tds[4];
+  if (!natTd) return;
+  if (splits.length === 1) {
+    natTd.innerHTML = '<span style="color:var(--text);">' + splits[0].natureza + '</span>';
+  } else {
+    natTd.innerHTML = splits.map(function(sp) {
+      return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
+        + '<span style="background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text);">' + sp.natureza + '</span>'
+        + '<span style="font-size:11px;color:var(--muted);">R$ ' + sp.valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</span>'
+        + '</div>';
+    }).join('');
+  }
+  if (stTd) stTd.innerHTML = '<span class="badge badge-verde" style="font-size:10px;">Classificado</span>';
 }
 
 function fecharNaturezaModal() {
@@ -2271,29 +2457,43 @@ function fecharNaturezaModal() {
 }
 
 function salvarNatureza() {
-  var natureza = document.getElementById('mn-natureza').value.trim();
-  if (!natureza) { document.getElementById('mn-status').textContent = 'Informe a natureza.'; return; }
+  // Coleta splits atuais do DOM
+  var splits = [];
+  var rows = document.querySelectorAll('.mn-split-row');
+  var validos = true;
+  rows.forEach(function(row, idx){
+    var nat = row.querySelector('.mn-split-nat').value.trim();
+    var val = _parseBrl(row.querySelector('.mn-split-val').value);
+    if (!nat || val <= 0) { validos = false; }
+    splits.push({natureza: nat, valor: val});
+  });
+  if (!validos) { document.getElementById('mn-status').textContent = 'Preencha natureza e valor em todas as linhas.'; return; }
+  var soma = splits.reduce(function(a,s){ return a + s.valor; }, 0);
+  if (Math.abs(soma - _mnValorTotal) > 0.01) {
+    document.getElementById('mn-status').textContent = 'A soma dos valores deve ser igual ao total do lançamento.';
+    return;
+  }
   var st = document.getElementById('mn-status');
+  st.style.color = 'var(--muted)';
   st.textContent = 'Salvando…';
+  var payload = splits.length === 1
+    ? {id: _mnId, natureza: splits[0].natureza}
+    : {id: _mnId, splits: splits};
   fetch('{{ url_for("admin.classificar_lancamento_carro") }}', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({id: _mnId, natureza: natureza})
+    body: JSON.stringify(payload)
   }).then(function(r){ return r.json(); })
     .then(function(res){
       if (res.ok) {
         fecharNaturezaModal();
-        location.reload();
-      } else {
-        st.style.color = '#EF4444';
-        st.textContent = 'Erro: ' + (res.erro || '?');
-      }
+        _atualizarLinhaNatureza(_mnId, splits);
+      } else { st.style.color = '#EF4444'; st.textContent = 'Erro: ' + (res.erro || '?'); }
     }).catch(function(){ st.style.color='#EF4444'; st.textContent='Erro de conexão.'; });
 }
 
 document.addEventListener('keydown', function(e){
   if (e.key === 'Escape') fecharNaturezaModal();
-  if (e.key === 'Enter' && document.getElementById('modal-natureza').style.display === 'flex') salvarNatureza();
 });
 
 </script>

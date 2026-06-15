@@ -98,19 +98,15 @@ def home():
 
     if ativo_tipo == "carros" and ativo_id in carros_por_slug:
         try:
-            from services.veiculos_service import recebimentos_da_empresa
-            from services.supabase_client import get_financeiro_client
+            from services.veiculos_service import recebimentos_da_empresa, contratos_por_empresa
             from datetime import timedelta
             empresa_carros_sel = carros_por_slug[ativo_id]
             hoje = date.today()
 
-            # Contratos da empresa para calcular valor líquido recebido
+            # Contratos da empresa (lido direto do Excel)
             _VALOR_SEMANA = {"TSW": 1200, "SSW": 800, "STX": 800}
             try:
-                _sb2 = get_financeiro_client()
-                _contratos = _sb2.table("contratos_frota") \
-                    .select("cliente,placa,inicio,valor_locacao") \
-                    .execute().data or []
+                _contratos = contratos_por_empresa(empresa_carros_sel["nome"])
             except Exception:
                 _contratos = []
 
@@ -202,12 +198,14 @@ def home():
                     (c.get("cliente") for c in _contratos if _norm_placa(c.get("placa", "")) == _norm_placa(v["placa"])),
                     None,
                 )
+                _tem_contrato = locatario is not None
                 carros_veiculos_status.append({
-                    "placa":     v["placa"],
-                    "modelo":    v.get("modelo") or "—",
-                    "ativo":     bool(ultima and _semana_ref and ultima == _semana_ref),
-                    "locatario": locatario,
-                    "ultima_semana": ultima,
+                    "placa":          v["placa"],
+                    "modelo":         v.get("modelo") or "—",
+                    "ativo":          bool(_tem_contrato and ultima and _semana_ref and ultima == _semana_ref),
+                    "locatario":      locatario if _tem_contrato else None,
+                    "em_manutencao":  not _tem_contrato,
+                    "ultima_semana":  ultima,
                 })
 
             # Rentabilidade estimada BYD
@@ -308,12 +306,45 @@ def home():
         except Exception:
             pass
 
-    # Faturas pendentes de carros (contas_receber_frota)
+    # Faturas pendentes de carros (lido direto do Excel)
     faturas_carros = []
+    lancamentos_carros = []
+    chart_fluxo_carros_dates = []
+    chart_fluxo_carros_pts = []
     if ativo_tipo == "carros" and empresa_carros_sel:
         try:
-            from services.veiculos_service import contas_receber_empresa
-            faturas_carros = contas_receber_empresa(empresa_carros_sel["nome"])
+            from services.veiculos_service import contas_receber_carros_excel
+            faturas_carros = contas_receber_carros_excel(empresa_carros_sel["nome"])
+        except Exception:
+            pass
+        try:
+            import json as _json
+            from services.veiculos_service import listar_lancamentos_carros
+            lancamentos_carros = listar_lancamentos_carros(empresa_carros_sel["nome"])
+            for _l in lancamentos_carros:
+                obs = _l.get("observacoes") or ""
+                if obs.startswith("["):
+                    try:
+                        _l["splits"] = _json.loads(obs)
+                    except Exception:
+                        _l["splits"] = None
+                else:
+                    _l["splits"] = None
+            if lancamentos_carros:
+                from services.veiculos_service import calcular_saldo_em as _calc_saldo_p
+                from datetime import date as _dtp, timedelta as _tdp
+                _primeira_p = min(r["data_transacao"] for r in lancamentos_carros if r.get("data_transacao"))
+                _ancora_p = (_dtp.fromisoformat(_primeira_p) - _tdp(days=1)).isoformat()
+                _sc = _calc_saldo_p(empresa_carros_sel["nome"], _ancora_p)
+                chart_fluxo_carros_dates.append(_ancora_p)
+                chart_fluxo_carros_pts.append(_sc)
+                _dia_s: dict = {}
+                for _l in sorted(lancamentos_carros, key=lambda x: x.get("data_transacao") or ""):
+                    _sc += float(_l.get("valor") or 0)
+                    _dia_s[_l["data_transacao"]] = round(_sc, 2)
+                for _d, _s in sorted(_dia_s.items()):
+                    chart_fluxo_carros_dates.append(_d)
+                    chart_fluxo_carros_pts.append(_s)
         except Exception:
             pass
 
@@ -354,8 +385,10 @@ def home():
     all_perms = "all" in perms
 
     home_tabs = ["visao_geral"]
+    if ativo_tipo == "carros" and empresa_carros_sel:
+        home_tabs.append("extrato")
     if ativo_id:
-        if all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms: home_tabs.append("extrato")
+        if (ativo_tipo != "carros") and (all_perms or "extrato_bancario" in perms or "fluxo_de_caixa" in perms): home_tabs.append("extrato")
         if all_perms or "benchmarks"       in perms:                               home_tabs.append("benchmarks")
         if all_perms or "retorno_mensal"   in perms:                               home_tabs.append("retorno_mensal")
         if all_perms or "energia"          in perms or "saldo_creditos" in perms:   home_tabs.append("saldo_creditos")
@@ -462,9 +495,13 @@ def home():
         chart_fluxo_dates=chart_fluxo_dates,
         chart_fluxo_pts=chart_fluxo_pts,
         chart_meses=chart_meses,
+        lancamentos_carros=lancamentos_carros,
+        chart_fluxo_carros_dates=chart_fluxo_carros_dates,
+        chart_fluxo_carros_pts=chart_fluxo_carros_pts,
         kpis=kpis,
         kpi_mes=kpi_mes,
         dados_clientes_carros=__import__('services.veiculos_service', fromlist=['dados_clientes_cons']).dados_clientes_cons(),
+        naturezas_carros=__import__('services.veiculos_service', fromlist=['listar_naturezas_carros']).listar_naturezas_carros(),
     )
 
 
@@ -492,6 +529,15 @@ def carros():
         empresas_veiculos=empresas,
         usuario=u,
     )
+
+
+@portal_bp.route("/carros/classificar-lancamento", methods=["POST"])
+@requer_login
+def classificar_lancamento_carro():
+    from flask import request as _req, jsonify
+    from services.veiculos_service import classificar_lancamento_carros
+    dados = _req.get_json() or {}
+    return jsonify(classificar_lancamento_carros(dados.get("id"), dados.get("natureza"), dados.get("splits")))
 
 
 @portal_bp.route("/documentos")

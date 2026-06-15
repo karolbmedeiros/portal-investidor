@@ -1483,6 +1483,146 @@ function toggleAcordI(btn){
 </div>{# /tab-extrato #}
 {% endif %}
 
+{# ══════════════════════════════════════════════ EXTRATO CARROS ═══ #}
+{% if ativo_tipo == 'carros' and 'extrato' in home_tabs %}
+<div id="tab-extrato" class="dtab-content {{ 'ativo' if tab == 'extrato' }}">
+{% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
+{% set _meses_c = namespace(lista=[]) %}
+{% for l in lancamentos_carros %}{% if l.data_transacao and l.data_transacao[:7] not in _meses_c.lista %}{% set _meses_c.lista = _meses_c.lista + [l.data_transacao[:7]] %}{% endif %}{% endfor %}
+{% set _meses_c_sorted = _meses_c.lista | sort %}
+{% set _ents_c = lancamentos_carros | selectattr('tipo','equalto','credito') | list %}
+{% set _sais_c = lancamentos_carros | selectattr('tipo','equalto','debito')  | list %}
+{% set _tot_e = namespace(v=0) %}{% set _tot_s = namespace(v=0) %}
+{% for l in _ents_c %}{% set _tot_e.v = _tot_e.v + (l.valor|abs) %}{% endfor %}
+{% for l in _sais_c %}{% set _tot_s.v = _tot_s.v + (l.valor|abs) %}{% endfor %}
+
+<div class="nb-resumo">
+  <div class="nb-card nb-saldo-card">
+    <div class="nb-mes-bar"><label class="nb-mes-label">Período</label><select class="input-sm" id="filtro-mes" onchange="filtrarExtratoC()" style="width:110px;"><option value="">Todos</option>{% for m in _meses_c_sorted %}<option value="{{ m }}">{{ _ma[m[5:7]|int] }}/{{ m[:4] }}</option>{% endfor %}</select></div>
+    <div class="nb-card-header"><span class="nb-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"></path><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4"></path></svg></span><span class="nb-card-title">Resultado</span><span class="nb-card-total {{ 'nb-positivo' if (_tot_e.v - _tot_s.v) >= 0 else 'nb-negativo' }}">{{ (_tot_e.v - _tot_s.v)|brl }}</span></div>
+    <div style="padding:12px 0 4px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--green);">↑ Entradas</span><span style="font-weight:600;color:var(--green);">{{ _tot_e.v|brl }}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:#EF4444;">↓ Saídas</span><span style="font-weight:600;color:#EF4444;">{{ _tot_s.v|brl }}</span></div>
+    </div>
+  </div>
+  <div class="nb-card nb-fluxo-card">
+    <div class="nb-card-header"><span class="nb-card-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"></path><path d="M14 7l7 0l0 7"></path></svg></span><span class="nb-card-title">Fluxo de caixa</span></div>
+    <div style="position:relative;height:200px;"><canvas id="chart-fluxo-c"></canvas></div>
+    <div class="nb-fluxo-resumo">
+      <div class="nb-fr-item"><span class="nb-fr-label" style="color:#166534;">+ Entradas</span><span class="nb-fr-val nb-positivo" id="fluxo-c-ent">{{ _tot_e.v|brl }}</span></div>
+      <div class="nb-fr-item"><span class="nb-fr-label" style="color:#991B1B;">- Saídas</span><span class="nb-fr-val nb-negativo" id="fluxo-c-sai">{{ _tot_s.v|brl }}</span></div>
+      <div class="nb-fr-sep"></div>
+      <div class="nb-fr-item nb-fr-total"><span class="nb-fr-label">Resultado</span><span class="nb-fr-val" id="fluxo-c-resultado">{{ (_tot_e.v - _tot_s.v)|brl }}</span></div>
+    </div>
+  </div>
+</div>
+
+{% if lancamentos_carros %}
+<div class="nb-lancamentos">
+  <div class="nb-card nb-panel">
+    <div class="nb-panel-header nb-ent-header"><span class="nb-panel-arrow">↑</span><span class="nb-panel-title">Recebimentos</span><span class="nb-panel-total nb-positivo" id="tot-c-entradas">{{ _tot_e.v|brl }}</span></div>
+    <div class="nb-panel-body">
+      {% if _ents_c %}{% for l in _ents_c %}
+      <div class="nb-item nb-rec-item ext-row-c{% if l._convenio %} nb-convenio{% endif %}" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}">
+        <div class="nb-item-data {{ '' if l.observacoes else 'nb-pendente-data' }}">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
+        <div class="nb-item-centro">
+          <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+          {% if l.observacoes %}<div class="nb-item-cat">{{ l.observacoes }}</div>{% endif %}
+        </div>
+        <div class="nb-item-dir">
+          <div class="nb-item-val nb-positivo">{{ (l.valor or 0)|abs|brl }}</div>
+          {% if l.observacoes %}<span class="nb-item-status">✓</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}{% else %}<div class="nb-vazio">Nenhuma entrada.</div>{% endif %}
+    </div>
+  </div>
+  <div class="nb-card nb-panel">
+    <div class="nb-panel-header nb-sai-header"><span class="nb-panel-arrow">↓</span><span class="nb-panel-title">Pagamentos</span><span class="nb-panel-total nb-negativo" id="tot-c-saidas">{{ _tot_s.v|brl }}</span></div>
+    <div class="nb-panel-body">
+      {% if _sais_c %}{% for l in _sais_c %}
+      <div class="nb-item nb-pag-item ext-row-c{% if l._convenio %} nb-convenio{% endif %}" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}">
+        <div class="nb-item-data {{ '' if l.observacoes else 'nb-pendente-data' }}">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
+        <div class="nb-item-centro">
+          <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+          {% if l.observacoes %}<div class="nb-item-cat">{{ l.observacoes }}</div>{% endif %}
+        </div>
+        <div class="nb-item-dir">
+          <div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div>
+          {% if l.observacoes %}<span class="nb-item-status">✓</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}{% else %}<div class="nb-vazio">Nenhuma saída.</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="nb-card nb-panel" style="margin-top:16px;margin-bottom:24px;">
+  <div class="nb-panel-header" style="background:var(--bg2);">
+    <span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">Extrato Consolidado</span>
+  </div>
+  <div class="tabela-wrap" style="border-radius:0;border:none;"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Natureza</th><th>Status</th></tr></thead><tbody>
+    {% for l in lancamentos_carros %}
+    <tr class="ext-row-c ext-cons-c{% if l._convenio %} nb-convenio{% endif %}" data-id="{{ l.id }}" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}">
+      <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
+      <td style="min-width:240px;">
+        <div style="font-size:13px;font-weight:500;line-height:1.3;">{{ l.descricao or l.descricao_original or '—' }}</div>
+        {% if l.descricao_original and l.descricao and l.descricao|upper != l.descricao_original|upper %}
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">{{ l.descricao_original }}</div>
+        {% endif %}
+      </td>
+      <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">{{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}</td>
+      <td style="font-size:12px;">
+        {% if l.splits %}
+          {% for sp in l.splits %}
+          <div style="display:flex;align-items:center;gap:6px;{% if not loop.first %}margin-top:4px;{% endif %}">
+            <span style="background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text);">{{ sp.natureza }}</span>
+            <span style="font-size:11px;color:var(--muted);">R$ {{ "%.2f"|format(sp.valor)|replace(".",",") }}</span>
+          </div>
+          {% endfor %}
+        {% elif l.observacoes %}
+          <span style="color:var(--text);">{{ l.observacoes }}</span>
+        {% else %}
+          <button class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="abrirNaturezaModalC('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}')">+ Natureza</button>
+        {% endif %}
+      </td>
+      <td>{% if l.observacoes %}<span class="badge badge-verde" style="font-size:10px;">Classificado</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody></table></div>
+</div>
+
+{# Modal natureza carros portal — com suporte a rateio #}
+<datalist id="mn-c-sugestoes">
+  {% for nat in naturezas_carros %}<option value="{{ nat }}">{% endfor %}
+</datalist>
+<div id="modal-natureza-c" style="display:none;position:fixed;inset:0;z-index:600;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);" onclick="if(event.target===this)fecharNaturezaModalC()">
+  <div style="background:var(--bg);border-radius:16px;padding:28px;width:min(480px,94vw);box-shadow:0 24px 64px rgba(0,0,0,.18);">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">Classificar lançamento</div>
+    <div id="mn-c-desc" style="font-size:12px;color:var(--muted);margin-bottom:2px;line-height:1.4;"></div>
+    <div id="mn-c-val" style="font-size:13px;font-weight:700;margin-bottom:18px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:6px;">
+      <div style="flex:1;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Natureza</div>
+      <div style="width:110px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Valor (R$)</div>
+      <div style="width:28px;"></div>
+    </div>
+    <div id="mn-c-splits"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+      <button onclick="adicionarSplitC()" id="mn-c-add-btn" style="background:none;border:0.5px dashed var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px;color:var(--muted);">+ Dividir em mais uma natureza</button>
+      <span id="mn-c-restante" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+      <button onclick="fecharNaturezaModalC()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:8px 18px;cursor:pointer;font-size:13px;">Cancelar</button>
+      <button onclick="salvarNaturezaC()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:13px;font-weight:600;">Salvar</button>
+    </div>
+    <div id="mn-c-status" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;"></div>
+  </div>
+</div>
+
+{% else %}<div class="vazio">Nenhum lançamento encontrado.</div>{% endif %}
+</div>{# /tab-extrato carros portal #}
+{% endif %}
+
 {# ══════════════════════════════════════════════ DRE ═══ #}
 {% if 'dre' in home_tabs %}
 <div id="tab-dre" class="dtab-content {{ 'ativo' if tab == 'dre' }}">
@@ -1738,6 +1878,9 @@ function toggleAcordI(btn){
 .nb-panel-total { font-size:15px;font-weight:500;letter-spacing:-0.01em; }
 .nb-panel-body  { max-height:440px;overflow-y:auto; }
 .nb-item { display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:0.5px solid rgba(23,33,28,0.07);transition:background .1s; }
+.nb-convenio { opacity:0.45; }
+.nb-convenio td { color:var(--muted) !important; }
+tr.nb-convenio td { font-weight:400 !important; }
 .nb-item:hover { background:var(--bg2); }
 .nb-item-data { font-size:12px;font-weight:500;color:var(--muted);min-width:42px;text-align:center; }
 .nb-pendente-data { color:var(--red); }
@@ -2393,6 +2536,158 @@ function exportarDrePdf() {
 
 tryInitExtrato();
 window.addEventListener('resize', tryInitExtrato);
+
+// ── Fluxo de caixa carros (portal) ──
+{% if ativo_tipo == 'carros' and empresa_carros_sel %}
+(function(){
+  var dates = {{ chart_fluxo_carros_dates | tojson }};
+  var pts   = {{ chart_fluxo_carros_pts   | tojson }};
+  var MA    = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  var fmt   = function(v){return 'R$ '+Math.abs(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?=,))/g,'.');};
+  var se    = function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+
+  var meses=[];
+  dates.forEach(function(d){var m=d.slice(0,7);if(meses.indexOf(m)===-1)meses.push(m);});
+  meses.sort();
+  var mesIdx = meses.length - 1;
+  var chartC = null;
+
+  function dadosMes(m){
+    if(!m)return{labels:dates.map(function(d){var p=d.split('-');return p[2]+'/'+p[1];}),data:pts.slice()};
+    var L=[],D=[];dates.forEach(function(d,i){if(d.slice(0,7)===m){var p=d.split('-');L.push(p[2]+'/'+p[1]);D.push(pts[i]);}});
+    return{labels:L,data:D};
+  }
+
+  function syncNav(m){
+    var mn=parseInt((m||'').slice(5)),yr=(m||'').slice(0,4);
+    // portal carros has no nav buttons — just update select label if needed
+    var elMes=document.getElementById('filtro-mes');if(elMes&&m&&elMes.value!==m)elMes.value=m;
+  }
+
+  function iniciarChart(){
+    var ctx=document.getElementById('chart-fluxo-c');if(!ctx||!dates.length)return;
+    if(chartC){chartC.destroy();chartC=null;}
+    var m=meses.length?meses[mesIdx]:'';
+    var d=dadosMes(m);
+    chartC=new Chart(ctx,{type:'line',data:{labels:d.labels,datasets:[{data:d.data,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.07)',fill:true,tension:0.3,pointRadius:2,pointHoverRadius:5,pointBackgroundColor:'#1D9E75',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return 'Saldo: '+fmt(c.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0,maxTicksLimit:10}},y:{ticks:{callback:function(v){return fmt(v);},font:{size:10}},grid:{color:'#EEF0EF'}}}}});
+    syncNav(m);
+    var elMes=document.getElementById('filtro-mes');if(elMes&&!elMes.value&&m)elMes.value=m;
+  }
+
+  function filtrarExtratoC(){
+    var m=(document.getElementById('filtro-mes')||{}).value||'';
+    if(m){var idx=meses.indexOf(m);if(idx!==-1)mesIdx=idx;}
+    var totE=0,totS=0;
+    document.querySelectorAll('.nb-rec-item.ext-row-c').forEach(function(r){var ok=!m||r.dataset.mes===m;r.style.display=ok?'':'none';if(ok)totE+=parseFloat(r.dataset.valor||0);});
+    document.querySelectorAll('.nb-pag-item.ext-row-c').forEach(function(r){var ok=!m||r.dataset.mes===m;r.style.display=ok?'':'none';if(ok)totS+=parseFloat(r.dataset.valor||0);});
+    document.querySelectorAll('.ext-cons-c').forEach(function(r){var ok=!m||r.dataset.mes===m;r.style.display=ok?'':'none';});
+    se('tot-c-entradas',fmt(totE));se('tot-c-saidas',fmt(totS));
+    var res=totE-totS;var er=document.getElementById('fluxo-c-resultado');
+    if(er){er.textContent=(res>=0?'':'-')+' '+fmt(Math.abs(res));er.style.color=res>=0?'#16A34A':'#DC2626';}
+    se('fluxo-c-ent',fmt(totE));se('fluxo-c-sai',fmt(totS));
+    if(chartC){var d=dadosMes(m);chartC.data.labels=d.labels;chartC.data.datasets[0].data=d.data;chartC.update();}
+  }
+
+  window.filtrarExtratoC = filtrarExtratoC;
+  document.addEventListener('click',function(e){
+    var link=e.target.closest('.dtab-link[data-tab]');
+    if(link&&link.dataset.tab==='extrato'){setTimeout(function(){iniciarChart();filtrarExtratoC();},80);}
+  });
+  var _initDone=false;
+  function tryInit(){if(_initDone)return;var el=document.getElementById('tab-extrato');if(!el||!el.classList.contains('ativo'))return;_initDone=true;iniciarChart();filtrarExtratoC();}
+  if('{{ tab }}'==='extrato'){setTimeout(function(){iniciarChart();filtrarExtratoC();},80);}
+  window.addEventListener('resize',tryInit);
+})();
+
+// ── Modal Natureza com rateio — portal carros ────────────────────────────────
+var _mnCId='',_mnCTipo='',_mnCValorTotal=0,_mnCSplits=[];
+function _parseBrlC(s){return parseFloat((s||'0').replace(/\./g,'').replace(',','.'))||0;}
+function _fmtBrlC(v){return Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function _somaSplitsC(){var t=0;document.querySelectorAll('.mn-c-split-val').forEach(function(i){t+=_parseBrlC(i.value);});return Math.round(t*100)/100;}
+function _atualizarRestanteC(){
+  var rest=Math.round((_mnCValorTotal-_somaSplitsC())*100)/100;
+  var el=document.getElementById('mn-c-restante');
+  if(rest===0){el.textContent='';}
+  else if(rest>0){el.style.color='var(--muted)';el.textContent='Restante: R$ '+_fmtBrlC(rest);}
+  else{el.style.color='#EF4444';el.textContent='Excede em R$ '+_fmtBrlC(-rest);}
+  document.getElementById('mn-c-add-btn').style.display=rest<=0?'none':'';
+}
+function _renderSplitsC(){
+  var c=document.getElementById('mn-c-splits');c.innerHTML='';
+  _mnCSplits.forEach(function(sp,idx){
+    var row=document.createElement('div');
+    row.className='mn-c-split-row';
+    row.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+    var del=idx>0?'<button onclick="_removerSplitC('+idx+')" style="width:28px;height:34px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;border-radius:6px;">×</button>':'<div style="width:28px;"></div>';
+    row.innerHTML='<input class="mn-c-split-nat" data-idx="'+idx+'" type="text" list="mn-c-sugestoes" placeholder="Natureza…" value="'+sp.natureza+'" style="flex:1;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg2);color:inherit;font-size:13px;outline:none;">'
+      +'<input class="mn-c-split-val" data-idx="'+idx+'" type="text" placeholder="0,00" value="'+(sp.valor?_fmtBrlC(sp.valor):'')+'" style="width:110px;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg2);color:inherit;font-size:13px;outline:none;text-align:right;">'+del;
+    c.appendChild(row);
+  });
+  c.querySelectorAll('.mn-c-split-nat').forEach(function(i){i.addEventListener('input',function(){_mnCSplits[+this.dataset.idx].natureza=this.value;});});
+  c.querySelectorAll('.mn-c-split-val').forEach(function(i){i.addEventListener('input',function(){_mnCSplits[+this.dataset.idx].valor=_parseBrlC(this.value);_atualizarRestanteC();});});
+  _atualizarRestanteC();
+}
+function adicionarSplitC(){
+  var rest=Math.round((_mnCValorTotal-_somaSplitsC())*100)/100;
+  if(rest<=0)return;
+  _mnCSplits.push({natureza:'',valor:rest});_renderSplitsC();
+  var nats=document.querySelectorAll('.mn-c-split-nat');if(nats.length)nats[nats.length-1].focus();
+}
+function _removerSplitC(idx){_mnCSplits.splice(idx,1);_renderSplitsC();}
+function abrirNaturezaModalC(id,desc,val,tipo){
+  _mnCId=id;_mnCTipo=tipo;_mnCValorTotal=parseFloat(val)||0;
+  _mnCSplits=[{natureza:'',valor:_mnCValorTotal}];
+  document.getElementById('mn-c-desc').textContent=desc;
+  var elV=document.getElementById('mn-c-val');
+  elV.textContent=(tipo==='credito'?'+ ':'- ')+'R$ '+_fmtBrlC(_mnCValorTotal);
+  elV.style.color=tipo==='credito'?'var(--green)':'#EF4444';
+  document.getElementById('mn-c-status').textContent='';
+  _renderSplitsC();
+  document.getElementById('modal-natureza-c').style.display='flex';
+  setTimeout(function(){var el=document.querySelector('.mn-c-split-nat');if(el)el.focus();},100);
+}
+function _atualizarLinhaNaturezaC(id,splits){
+  var row=document.querySelector('tr[data-id="'+id+'"]');
+  if(!row)return;
+  var tds=row.querySelectorAll('td');
+  var natTd=tds[3],stTd=tds[4];
+  if(!natTd)return;
+  if(splits.length===1){
+    natTd.innerHTML='<span style="color:var(--text);">'+splits[0].natureza+'</span>';
+  }else{
+    natTd.innerHTML=splits.map(function(sp){
+      return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
+        +'<span style="background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text);">'+sp.natureza+'</span>'
+        +'<span style="font-size:11px;color:var(--muted);">R$ '+sp.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</span>'
+        +'</div>';
+    }).join('');
+  }
+  if(stTd)stTd.innerHTML='<span class="badge badge-verde" style="font-size:10px;">Classificado</span>';
+}
+function fecharNaturezaModalC(){document.getElementById('modal-natureza-c').style.display='none';}
+function salvarNaturezaC(){
+  var splits=[],validos=true;
+  document.querySelectorAll('.mn-c-split-row').forEach(function(row){
+    var nat=row.querySelector('.mn-c-split-nat').value.trim();
+    var val=_parseBrlC(row.querySelector('.mn-c-split-val').value);
+    if(!nat||val<=0)validos=false;
+    splits.push({natureza:nat,valor:val});
+  });
+  if(!validos){document.getElementById('mn-c-status').textContent='Preencha natureza e valor em todas as linhas.';return;}
+  var soma=splits.reduce(function(a,s){return a+s.valor;},0);
+  if(Math.abs(soma-_mnCValorTotal)>0.01){document.getElementById('mn-c-status').textContent='A soma deve ser igual ao total do lançamento.';return;}
+  var st=document.getElementById('mn-c-status');st.style.color='var(--muted)';st.textContent='Salvando…';
+  var payload=splits.length===1?{id:_mnCId,natureza:splits[0].natureza}:{id:_mnCId,splits:splits};
+  fetch('{{ url_for("portal.classificar_lancamento_carro") }}',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res.ok){fecharNaturezaModalC();_atualizarLinhaNaturezaC(_mnCId,splits);}
+    else{st.style.color='#EF4444';st.textContent='Erro: '+(res.erro||'?');}
+  }).catch(function(){st.style.color='#EF4444';st.textContent='Erro de conexão.';});
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')fecharNaturezaModalC();});
+{% endif %}
 
 // ── Painel de informações do cliente ──
 const _dadosClientes = {{ dados_clientes_carros | tojson }};

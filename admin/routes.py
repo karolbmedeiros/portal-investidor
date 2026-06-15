@@ -89,12 +89,8 @@ def dashboard():
                 from services.supabase_client import get_financeiro_client
                 from datetime import timedelta, date as _date_c
                 _VALOR_SEMANA = {"TSW": 1200, "SSW": 800, "STX": 800}
-                try:
-                    _sb_fin = get_financeiro_client()
-                    _contratos = _sb_fin.table("contratos_frota") \
-                        .select("cliente,placa,inicio,valor_locacao").execute().data or []
-                except Exception:
-                    _contratos = []
+                from services.veiculos_service import contratos_por_empresa
+                _contratos = contratos_por_empresa(_emp_c["nome"])
                 _hoje_c      = _date_c.today()
                 _ultima_seg  = _hoje_c - timedelta(days=_hoje_c.weekday())
                 def _contar_seg(ini, ate):
@@ -155,11 +151,14 @@ def dashboard():
                     _ult  = max((_r["data_semana"] for _r in _recs if _r.get("data_semana")), default=None)
                     _loc  = next((_c.get("cliente") for _c in _contratos
                                   if _norm(_c.get("placa","")) == _norm(_veh["placa"])), None)
+                    _tem_contrato = _loc is not None
+                    _ativo = bool(_tem_contrato and _ult and _sem_ref and _ult == _sem_ref)
                     carros_veiculos_status.append({
                         "placa":   _veh["placa"],
                         "modelo":  _veh.get("modelo") or "—",
-                        "ativo":   bool(_ult and _sem_ref and _ult == _sem_ref),
-                        "locatario": _loc,
+                        "ativo":   _ativo,
+                        "locatario": _loc if _tem_contrato else None,
+                        "em_manutencao": not _tem_contrato,
                         "ultima_semana": _ult,
                     })
                 _BYD = {"nome":"BYD Dolphin Mini (Elétrico)","aluguel_semanal":1200.0,
@@ -204,8 +203,18 @@ def dashboard():
 
         # Lançamentos bancários da empresa de carros
         try:
+            import json as _json
             from services.veiculos_service import listar_lancamentos_carros
             lancamentos_carros = listar_lancamentos_carros(_emp_c["nome"] if _emp_c else "")
+            for _l in lancamentos_carros:
+                obs = _l.get("observacoes") or ""
+                if obs.startswith("["):
+                    try:
+                        _l["splits"] = _json.loads(obs)
+                    except Exception:
+                        _l["splits"] = None
+                else:
+                    _l["splits"] = None
         except Exception:
             lancamentos_carros = []
 
@@ -265,13 +274,24 @@ def dashboard():
     chart_fluxo_dates = []
     chart_fluxo_pts = []
 
-    # Gráfico de fluxo para carros (calculado aqui onde chart_fluxo_dates já existe)
+    # Gráfico de fluxo para carros — um ponto por dia (saldo acumulado ao fim do dia)
+    # Ponto inicial: saldo real da conta no dia anterior ao primeiro lançamento carros
     if lancamentos_carros:
-        _saldo_c = 0.0
+        from services.veiculos_service import calcular_saldo_em as _calc_saldo
+        from datetime import date as _dt, timedelta as _td
+        _emp_nome_c = _emp_c["nome"] if _emp_c else ""
+        _primeira_data = min(r["data_transacao"] for r in lancamentos_carros if r.get("data_transacao"))
+        _ancora = (_dt.fromisoformat(_primeira_data) - _td(days=1)).isoformat()
+        _saldo_c = _calc_saldo(_emp_nome_c, _ancora)
+        chart_fluxo_dates.append(_ancora)
+        chart_fluxo_pts.append(_saldo_c)
+        _dia_saldo: dict = {}
         for _l in sorted(lancamentos_carros, key=lambda x: x.get("data_transacao") or ""):
             _saldo_c += float(_l.get("valor") or 0)
-            chart_fluxo_dates.append(_l["data_transacao"])
-            chart_fluxo_pts.append(round(_saldo_c, 2))
+            _dia_saldo[_l["data_transacao"]] = round(_saldo_c, 2)
+        for _d, _s in sorted(_dia_saldo.items()):
+            chart_fluxo_dates.append(_d)
+            chart_fluxo_pts.append(_s)
 
     leituras_data = []
     lancamentos_data = []
@@ -406,6 +426,7 @@ def dashboard():
         faturas_carros=faturas_carros,
         lancamentos_carros=lancamentos_carros,
         dados_clientes_carros=__import__('services.veiculos_service', fromlist=['dados_clientes_cons']).dados_clientes_cons(),
+        naturezas_carros=__import__('services.veiculos_service', fromlist=['listar_naturezas_carros']).listar_naturezas_carros(),
     )
 
 
@@ -578,7 +599,7 @@ def usina_documento_excluir(usina_id, doc_id):
 @requer_admin
 def configuracoes():
     from services.usina_service import listar_usinas, listar_categorias, categorias_em_uso
-    from services.veiculos_service import listar_empresas_veiculos
+    from services.veiculos_service import listar_empresas_veiculos, listar_naturezas_carros
     return render_template(
         "admin/configuracoes.html",
         investidores=auth_service.listar_usuarios_com_acesso(),
@@ -586,6 +607,7 @@ def configuracoes():
         empresas_veiculos=listar_empresas_veiculos(),
         categorias=listar_categorias(),
         cats_em_uso=categorias_em_uso(),
+        naturezas_carros=listar_naturezas_carros(),
     )
 
 
@@ -616,6 +638,29 @@ def natureza_excluir(cat_id):
     else:
         flash("Natureza removida.", "sucesso")
     return redirect(url_for("admin.configuracoes") + "#naturezas")
+
+
+@admin_bp.route("/configuracoes/natureza-carros/nova", methods=["POST"])
+@requer_admin
+def natureza_carros_nova():
+    from services.veiculos_service import adicionar_natureza_carros
+    nome = request.form.get("nome", "").strip()
+    if not nome:
+        flash("Informe o nome da natureza.", "erro")
+        return redirect(url_for("admin.configuracoes") + "#naturezas-carros")
+    res = adicionar_natureza_carros(nome)
+    flash("Natureza adicionada." if res["ok"] else f"Erro: {res.get('erro')}", "sucesso" if res["ok"] else "erro")
+    return redirect(url_for("admin.configuracoes") + "#naturezas-carros")
+
+
+@admin_bp.route("/configuracoes/natureza-carros/excluir", methods=["POST"])
+@requer_admin
+def natureza_carros_excluir():
+    from services.veiculos_service import remover_natureza_carros
+    nome = request.form.get("nome", "").strip()
+    res = remover_natureza_carros(nome)
+    flash("Natureza removida." if res["ok"] else f"Erro: {res.get('erro')}", "sucesso" if res["ok"] else "erro")
+    return redirect(url_for("admin.configuracoes") + "#naturezas-carros")
 
 
 @admin_bp.route("/configuracoes/novo-usuario", methods=["POST"])
@@ -908,7 +953,7 @@ def classificar_lancamento_carro():
     from flask import jsonify
     from services.veiculos_service import classificar_lancamento_carros
     dados = request.get_json(force=True, silent=True) or {}
-    resultado = classificar_lancamento_carros(dados.get("id"), dados.get("natureza"))
+    resultado = classificar_lancamento_carros(dados.get("id"), dados.get("natureza"), dados.get("splits"))
     return jsonify(resultado)
 
 
