@@ -384,6 +384,7 @@ def dashboard():
         carros_veiculos_status=carros_veiculos_status,
         carros_rentabilidade=carros_rentabilidade,
         faturas_carros=faturas_carros,
+        dados_clientes_carros=__import__('services.veiculos_service', fromlist=['dados_clientes_cons']).dados_clientes_cons(),
     )
 
 
@@ -861,3 +862,18 @@ def preview_portal(investidor_id):
 def sair_preview():
     auth_service.clear_preview()
     return redirect(url_for("admin.dashboard"))
+
+
+# ── Upload PDF de cliente ─────────────────────────────────────────────────────
+
+@admin_bp.route("/clientes/upload-pdf", methods=["POST"])
+@requer_admin
+def upload_pdf_cliente():
+    from flask import jsonify
+    from services.veiculos_service import upload_pdf_cliente as _upload
+    ref_id   = request.form.get("ref_id", "sem-ref")
+    arquivo  = request.files.get("arquivo")
+    if not arquivo:
+        return jsonify({"ok": False, "erro": "Nenhum arquivo enviado"})
+    resultado = _upload(ref_id, arquivo.filename, arquivo.read(), arquivo.mimetype)
+    return jsonify(resultado)

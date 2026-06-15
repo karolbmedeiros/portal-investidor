@@ -464,6 +464,7 @@ def home():
         chart_meses=chart_meses,
         kpis=kpis,
         kpi_mes=kpi_mes,
+        dados_clientes_carros=__import__('services.veiculos_service', fromlist=['dados_clientes_cons']).dados_clientes_cons(),
     )
 
 
@@ -520,3 +521,16 @@ def documentos():
         documentos=docs,
         usuario=u,
     )
+
+
+@portal_bp.route("/clientes/upload-pdf", methods=["POST"])
+@requer_login
+def upload_pdf_cliente():
+    from flask import jsonify
+    from services.veiculos_service import upload_pdf_cliente as _upload
+    ref_id   = request.form.get("ref_id", "sem-ref")
+    arquivo  = request.files.get("arquivo")
+    if not arquivo:
+        return jsonify({"ok": False, "erro": "Nenhum arquivo enviado"})
+    resultado = _upload(ref_id, arquivo.filename, arquivo.read(), arquivo.mimetype)
+    return jsonify(resultado)

@@ -1,6 +1,38 @@
 import unicodedata
 import re
+import json
+import os
 from services.supabase_client import get_financeiro_client
+
+_CLIENTES_CACHE: dict | None = None
+
+def dados_clientes_cons() -> dict:
+    """Dict keyed by normalized plate (no dash/space, uppercase)."""
+    global _CLIENTES_CACHE
+    if _CLIENTES_CACHE is not None:
+        return _CLIENTES_CACHE
+    path = os.path.join(os.path.dirname(__file__), "..", "static", "data", "clientes_carros.json")
+    try:
+        with open(os.path.abspath(path), encoding="utf-8") as f:
+            _CLIENTES_CACHE = json.load(f)
+    except Exception:
+        _CLIENTES_CACHE = {}
+    return _CLIENTES_CACHE
+
+
+def upload_pdf_cliente(ref_id: str, nome_arquivo: str, conteudo: bytes,
+                       mime_type: str = "application/pdf") -> dict:
+    from services.supabase_client import get_service_client
+    import uuid
+    sb = get_service_client()
+    fid = str(uuid.uuid4())
+    caminho = f"clientes/{ref_id}/{fid}_{nome_arquivo}"
+    try:
+        sb.storage.from_("documentos").upload(caminho, conteudo, {"content-type": mime_type})
+        url = sb.storage.from_("documentos").get_public_url(caminho)
+        return {"ok": True, "url": url, "caminho": caminho}
+    except Exception as e:
+        return {"ok": False, "erro": str(e)}
 
 _EMPRESA_INFO = {
     "LUZ DIVINA EMPREENDIMENTOS LTDA": {

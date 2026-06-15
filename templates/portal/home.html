@@ -1128,12 +1128,14 @@ function toggleAcordI(btn){
           <th>Valor semanal</th>
           <th>Semanas pagas</th>
           <th>Status</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for m in motoristas_recebimentos %}
         {% set _vs = _vstatus.get(m.placa, {}) %}
         {% set _ativo = _vs.get('ativo', false) %}
+        {% set _pk = m.placa.upper().replace('-','').replace(' ','') %}
         <tr>
           <td style="font-weight:600;font-size:13px;">{{ m.cliente|title }}</td>
           <td>
@@ -1148,6 +1150,7 @@ function toggleAcordI(btn){
               {{ 'Ativo' if _ativo else 'Vago / Manutenção' }}
             </span>
           </td>
+          <td><button class="btn-info-cliente" data-placa="{{ _pk }}" data-nome="{{ m.cliente|title }}" data-tipo="carro" title="Verificar informações" onclick="abrirPainelCliente(this)" style="background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;color:var(--muted);font-size:16px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">⋯</button></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -1181,7 +1184,7 @@ function toggleAcordI(btn){
   <div class="tabela-wrap">
     <table>
       <thead>
-        <tr><th>Cliente</th><th>CPF/CNPJ</th><th>UC</th><th>Contrato</th><th>Desconto</th><th>Venc.</th><th>Status</th></tr>
+        <tr><th>Cliente</th><th>CPF/CNPJ</th><th>UC</th><th>Contrato</th><th>Desconto</th><th>Venc.</th><th>Status</th><th></th></tr>
       </thead>
       <tbody>
         {% for c in clientes %}
@@ -1200,6 +1203,7 @@ function toggleAcordI(btn){
           <td style="font-weight:700;color:var(--accent);">{% if c.percentual_desconto %}{{ (c.percentual_desconto * 100)|round(1) }}%{% else %}—{% endif %}</td>
           <td class="text-muted">{% if c.dia_vencimento %}dia {{ c.dia_vencimento }}{% else %}—{% endif %}</td>
           <td><span class="badge {{ 'badge-verde' if c.status == 'Ativo' else 'badge-muted' }}">{{ c.status or '—' }}</span></td>
+          <td><button class="btn-info-cliente" data-placa="" data-nome="{{ c.nome_cliente }}" data-cpf="{{ c.cpf_cnpj }}" data-tipo="usina" title="Verificar informações" onclick="abrirPainelCliente(this)" style="background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;color:var(--muted);font-size:16px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">⋯</button></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -1624,6 +1628,59 @@ function toggleAcordI(btn){
   {% endif %}
 </section>
 </div>{# /tab-visao_geral pt2 #}
+
+{# ── Painel lateral: informações do cliente ── #}
+<div id="painel-cliente" style="position:fixed;top:0;right:-480px;width:460px;height:100vh;background:var(--bg);border-left:0.5px solid var(--border);z-index:500;display:flex;flex-direction:column;transition:right .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.08);">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:0.5px solid var(--border);flex-shrink:0;">
+    <div>
+      <div style="font-size:15px;font-weight:600;" id="pc-nome">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Informações do cliente</div>
+    </div>
+    <button onclick="fecharPainelCliente()" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:6px;border-radius:6px;" title="Fechar">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:20px 24px;">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px;">Dados Pessoais</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+      <div><div style="font-size:11px;color:var(--muted);">CPF / CNPJ</div><div style="font-size:13px;font-weight:500;" id="pc-cpf">—</div></div>
+      <div><div style="font-size:11px;color:var(--muted);">Telefone</div><div style="font-size:13px;font-weight:500;" id="pc-tel">—</div></div>
+      <div style="grid-column:1/-1;"><div style="font-size:11px;color:var(--muted);">Endereço</div><div style="font-size:13px;font-weight:500;" id="pc-end">—</div></div>
+      <div><div style="font-size:11px;color:var(--muted);">CEP</div><div style="font-size:13px;" id="pc-cep">—</div></div>
+    </div>
+    <div id="pc-veiculo-bloco">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px;">Veículo</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+        <div><div style="font-size:11px;color:var(--muted);">Placa</div><div style="font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);display:inline-block;margin-top:2px;" id="pc-placa">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Ano</div><div style="font-size:13px;" id="pc-ano">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Marca / Modelo</div><div style="font-size:13px;" id="pc-marca">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Cor</div><div style="font-size:13px;" id="pc-cor">—</div></div>
+        <div style="grid-column:1/-1;"><div style="font-size:11px;color:var(--muted);">Chassi</div><div style="font-family:'Geist Mono',monospace;font-size:12px;" id="pc-chassi">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Nº Motor</div><div style="font-family:'Geist Mono',monospace;font-size:12px;" id="pc-motor">—</div></div>
+      </div>
+    </div>
+    <div id="pc-contrato-bloco">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px;">Contrato</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+        <div><div style="font-size:11px;color:var(--muted);">Nº Locação</div><div style="font-size:13px;font-weight:500;" id="pc-contrato-loc">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Nº Comercial</div><div style="font-size:13px;" id="pc-contrato-com">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Tipo</div><div style="font-size:13px;" id="pc-tipo-contrato">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Unidade</div><div style="font-size:13px;" id="pc-unidade">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Início</div><div style="font-size:13px;" id="pc-inicio">—</div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Término</div><div style="font-size:13px;" id="pc-termino">—</div></div>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px;">Documentos</div>
+    <div id="pc-docs-lista" style="margin-bottom:12px;font-size:13px;color:var(--muted);">Nenhum documento anexado.</div>
+    <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:500;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='var(--bg2)'">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m-7-7l7 7 7-7"/></svg>
+      Anexar PDF
+      <input type="file" accept=".pdf" id="pc-upload-input" style="display:none;" onchange="uploadPdfCliente(this)">
+    </label>
+    <div id="pc-upload-status" style="font-size:12px;color:var(--muted);margin-top:8px;"></div>
+  </div>
+</div>
+<div id="painel-cliente-overlay" onclick="fecharPainelCliente()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:499;"></div>
 
 {% endblock %}
 
@@ -2336,5 +2393,95 @@ function exportarDrePdf() {
 
 tryInitExtrato();
 window.addEventListener('resize', tryInitExtrato);
+
+// ── Painel de informações do cliente ──
+const _dadosClientes = {{ dados_clientes_carros | tojson }};
+
+function abrirPainelCliente(btn) {
+  const tipo  = btn.dataset.tipo;
+  const painel = document.getElementById('painel-cliente');
+  const overlay = document.getElementById('painel-cliente-overlay');
+
+  // Reset campos
+  ['pc-nome','pc-cpf','pc-tel','pc-end','pc-cep','pc-placa','pc-ano',
+   'pc-marca','pc-cor','pc-chassi','pc-motor','pc-contrato-loc',
+   'pc-contrato-com','pc-tipo-contrato','pc-unidade','pc-inicio','pc-termino']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+  document.getElementById('pc-docs-lista').textContent = 'Nenhum documento anexado.';
+  document.getElementById('pc-upload-status').textContent = '';
+  document.getElementById('pc-upload-input').value = '';
+  painel.dataset.refId = '';
+
+  if (tipo === 'carro') {
+    const placa = (btn.dataset.placa || '').toUpperCase().replace(/[-\s]/g,'');
+    const d = _dadosClientes[placa] || {};
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+    set('pc-nome', d.nome);
+    set('pc-cpf', d.cpf);
+    set('pc-tel', d.telefone);
+    set('pc-end', d.endereco);
+    set('pc-cep', d.cep);
+    set('pc-placa', d.placa || placa);
+    set('pc-ano', d.ano_modelo);
+    set('pc-marca', d.marca && d.modelo ? d.marca + ' ' + d.modelo : (d.marca || d.modelo));
+    set('pc-cor', d.cor);
+    set('pc-chassi', d.chassi);
+    set('pc-motor', d.num_motor);
+    set('pc-contrato-loc', d.contrato_locacao);
+    set('pc-contrato-com', d.contrato_comercial);
+    set('pc-tipo-contrato', d.tipo_contrato);
+    set('pc-unidade', d.unidade);
+    set('pc-inicio', d.inicio);
+    set('pc-termino', d.termino);
+    document.getElementById('pc-veiculo-bloco').style.display = '';
+    document.getElementById('pc-contrato-bloco').style.display = '';
+    painel.dataset.refId = placa;
+  } else {
+    const nome = btn.dataset.nome || btn.closest('tr')?.querySelector('td')?.textContent?.trim() || 'Usina';
+    document.getElementById('pc-nome').textContent = nome;
+    document.getElementById('pc-veiculo-bloco').style.display = 'none';
+    document.getElementById('pc-contrato-bloco').style.display = 'none';
+    painel.dataset.refId = 'usina-' + (btn.dataset.id || Date.now());
+  }
+
+  painel.style.right = '0';
+  overlay.style.display = 'block';
+}
+
+function fecharPainelCliente() {
+  document.getElementById('painel-cliente').style.right = '-480px';
+  document.getElementById('painel-cliente-overlay').style.display = 'none';
+}
+
+async function uploadPdfCliente(input) {
+  const painel = document.getElementById('painel-cliente');
+  const refId = painel.dataset.refId || 'sem-ref';
+  const status = document.getElementById('pc-upload-status');
+  const file = input.files[0];
+  if (!file) return;
+  status.textContent = 'Enviando…';
+  const fd = new FormData();
+  fd.append('ref_id', refId);
+  fd.append('arquivo', file);
+  try {
+    const res = await fetch('{{ url_for("portal.upload_pdf_cliente") }}', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (json.ok) {
+      status.textContent = 'Enviado com sucesso.';
+      const lista = document.getElementById('pc-docs-lista');
+      if (lista.textContent.includes('Nenhum')) lista.textContent = '';
+      const link = document.createElement('a');
+      link.href = json.url; link.target = '_blank';
+      link.textContent = file.name;
+      link.style.cssText = 'display:block;font-size:13px;color:var(--accent);margin-bottom:4px;';
+      lista.appendChild(link);
+    } else {
+      status.textContent = 'Erro: ' + (json.erro || 'desconhecido');
+    }
+  } catch(e) {
+    status.textContent = 'Erro ao enviar.';
+  }
+  input.value = '';
+}
 </script>
 {% endblock %}
