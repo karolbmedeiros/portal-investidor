@@ -718,11 +718,11 @@
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px;margin-bottom:8px;">
     <div class="sim-cenario-card">
       <div class="sim-cn-header">
-        <div><div class="sim-cn-titulo">Atual</div><div class="sim-cn-sub">2 clientes · maio/2026</div></div>
+        <div><div class="sim-cn-titulo">Atual</div><div class="sim-cn-sub">{{ _sa_ativos if pnl else 0 }} {{ 'cliente' if (_sa_ativos if pnl else 0) == 1 else 'clientes' }} · {{ _sa_label if pnl else '—' }}</div></div>
         <span class="sim-cn-badge sim-cn-badge--critico" id="db-badge-atual">Crítico</span>
       </div>
       <div class="sim-cn-body">
-        <div class="sim-cn-row"><span class="sim-cn-label">Receita do mês</span><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input type="number" id="db-sim-receita-atual" value="2004.69" step="0.01" oninput="calcSimDB()" style="width:100px;border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:13px;font-weight:600;color:var(--text);background:var(--bg);"></div></div>
+        <div class="sim-cn-row"><span class="sim-cn-label">Receita do mês</span><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input type="number" id="db-sim-receita-atual" value="{{ (_sa_ult.receita_bruta or 0)|round(2) if pnl else 0 }}" step="0.01" oninput="calcSimDB()" style="width:100px;border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:13px;font-weight:600;color:var(--text);background:var(--bg);"></div></div>
         <div class="sim-cn-row"><span class="sim-cn-label">Total de custos</span><span class="sim-cn-val neg" id="db-cn-atual-custos">− R$ 9.549,94</span></div>
         <div class="sim-cn-sep"></div>
         <div class="sim-cn-row"><span class="sim-cn-label" style="font-weight:700;color:var(--text);">Resultado líquido</span><span class="sim-cn-resultado neg" id="db-cn-atual-resultado">− R$ 7.545,25</span></div>
