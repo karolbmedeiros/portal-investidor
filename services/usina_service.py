@@ -889,9 +889,15 @@ def _parse_ofx(conteudo: bytes) -> list:
             continue
         for t in getattr(stmt, "transactions", []):
             v = float(t.amount)
+            _memo   = (getattr(t, "memo",   "") or "").strip()
+            _payee  = (getattr(t, "payee",  "") or "").strip()
+            if _memo and _payee and _memo.upper() != _payee.upper():
+                _desc = f"{_payee} · {_memo}"
+            else:
+                _desc = _memo or _payee
             resultado.append({
                 "data_transacao": t.date.strftime("%Y-%m-%d"),
-                "descricao_original": (getattr(t, "memo", "") or getattr(t, "payee", "") or "").strip(),
+                "descricao_original": _desc,
                 "valor": round(abs(v), 2),
                 "tipo": "credito" if v >= 0 else "debito",
                 "fitid": getattr(t, "id", None) or None,

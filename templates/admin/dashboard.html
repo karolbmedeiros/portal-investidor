@@ -717,7 +717,13 @@
       {% for l in lancamentos %}{% set especial = l._transferencia or l._neutro %}
       <tr class="ext-row ext-row-cons" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}" data-conciliado="{{ 'true' if l.conciliado else 'false' }}" data-especial="{{ 'true' if especial else 'false' }}" style="{% if especial %}color:#9CA3AF;{% elif not l.conciliado %}background:#FEFCE8;{% endif %}">
         <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
-        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{% if especial %}<span class="badge-transf">{{ 'Transf.' if l._transferencia else 'Fundo' }}</span>{% endif %}{{ l.descricao or l.descricao_original or '—' }}</td>
+        <td style="min-width:200px;">
+          {% if especial %}<span class="badge-transf">{{ 'Transf.' if l._transferencia else 'Fundo' }}</span>{% endif %}
+          <div style="font-size:13px;font-weight:500;line-height:1.3;">{{ l.descricao or l.descricao_original or '—' }}</div>
+          {% if l.descricao_original and l.descricao and l.descricao|upper != l.descricao_original|upper %}
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3;">{{ l.descricao_original }}</div>
+          {% endif %}
+        </td>
         <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">{{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}</td>
         <td style="font-size:12px;color:var(--muted);">{% set _cat = l.categorias_financeiras %}{{ _cat.nome if _cat else ('Transferência' if l._transferencia else ('Fundo' if l._neutro else '—')) }}</td>
         <td>{% if especial %}<span class="badge badge-cinza" style="font-size:10px;">Auto</span>{% elif l.conciliado %}<span class="badge badge-verde" style="font-size:10px;">Conciliado</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
