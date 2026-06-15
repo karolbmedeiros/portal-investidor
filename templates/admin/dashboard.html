@@ -154,7 +154,7 @@
           </span>
           <div style="flex:1; min-width:0;">
             <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ v.modelo or '—' }}</div>
-            <div style="font-size:11px; color:var(--muted); font-family:'Geist Mono',monospace;">{{ v.placa }}</div>
+            <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);">{{ v.placa }}</span>
           </div>
           <span class="badge {{ 'badge-verde' if _ativo else 'badge-muted' }}">{{ 'Ativo' if _ativo else 'Vago' }}</span>
         </div>
@@ -540,7 +540,7 @@
         <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px;">
           <div>
             <div style="font-size:13px; font-weight:600;">{{ m.cliente }}</div>
-            <div style="font-size:11px; color:var(--muted); font-family:'Geist Mono',monospace; margin-top:2px;">{{ m.placa }}</div>
+            <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);margin-top:4px;display:inline-block;">{{ m.placa }}</span>
           </div>
           <div style="text-align:right;">
             <div style="font-size:15px; font-weight:700; color:#D97706;">{{ m.valor_pago|brl }}</div>
@@ -1308,7 +1308,7 @@ function toggleAcordDb(btn){
     {% for v in carros_veiculos_status %}
     <div style="border:0.5px solid {{ '#D1FAE5' if v.ativo else '#FEE2E2' }};border-radius:12px;padding:14px 16px;background:{{ '#F0FDF4' if v.ativo else '#FFF8F8' }};">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;">{{ v.placa }}</span>
+        <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);">{{ v.placa }}</span>
         {% if v.ativo %}<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#D1FAE5;color:#065F46;">Ativo</span>
         {% else %}<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#FEE2E2;color:#991B1B;">Vago</span>{% endif %}
       </div>
@@ -1381,7 +1381,7 @@ function toggleAcordDb(btn){
         {% set _ativo = _vs.get('ativo', false) %}
         <tr>
           <td style="font-weight:600;font-size:13px;">{{ m.cliente }}</td>
-          <td><span style="font-family:monospace;font-size:12px;background:var(--bg2);padding:2px 6px;border-radius:4px;border:1px solid var(--border);">{{ m.placa }}</span></td>
+          <td><span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);">{{ m.placa }}</span></td>
           <td class="text-muted text-sm">{{ _vs.get('modelo', '—') }}</td>
           <td class="text-muted text-sm">{{ m.inicio }}</td>
           <td style="font-weight:600;color:#D97706;">{{ m.valor_semana|brl }}</td>
