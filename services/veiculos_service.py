@@ -7,14 +7,11 @@ from services.supabase_client import get_financeiro_client
 
 _CLIENTES_CACHE: Optional[dict] = None
 
-_NATUREZAS_CARROS_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "static", "data", "naturezas_carros.json")
-)
-
 def listar_naturezas_carros() -> list:
     try:
-        with open(_NATUREZAS_CARROS_PATH, encoding="utf-8") as f:
-            return json.load(f)
+        sb = get_financeiro_client()
+        rows = sb.table("naturezas_carros").select("nome").order("nome").execute().data or []
+        return [r["nome"] for r in rows]
     except Exception:
         return []
 
@@ -22,25 +19,18 @@ def adicionar_natureza_carros(nome: str) -> dict:
     nome = nome.strip()
     if not nome:
         return {"ok": False, "erro": "Nome vazio"}
-    nats = listar_naturezas_carros()
-    if nome in nats:
-        return {"ok": False, "erro": "Já existe"}
-    nats.append(nome)
     try:
-        with open(_NATUREZAS_CARROS_PATH, "w", encoding="utf-8") as f:
-            json.dump(nats, f, ensure_ascii=False, indent=2)
+        get_financeiro_client().table("naturezas_carros").insert({"nome": nome}).execute()
         return {"ok": True}
     except Exception as e:
-        return {"ok": False, "erro": str(e)}
+        err = str(e)
+        if "duplicate" in err.lower() or "unique" in err.lower():
+            return {"ok": False, "erro": "Já existe"}
+        return {"ok": False, "erro": err}
 
 def remover_natureza_carros(nome: str) -> dict:
-    nats = listar_naturezas_carros()
-    if nome not in nats:
-        return {"ok": False, "erro": "Não encontrada"}
-    nats.remove(nome)
     try:
-        with open(_NATUREZAS_CARROS_PATH, "w", encoding="utf-8") as f:
-            json.dump(nats, f, ensure_ascii=False, indent=2)
+        get_financeiro_client().table("naturezas_carros").delete().eq("nome", nome).execute()
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "erro": str(e)}
