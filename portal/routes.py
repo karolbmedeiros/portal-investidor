@@ -364,9 +364,6 @@ def home():
         if all_perms or "socios"           in perms:                               home_tabs.append("socios")
         if all_perms or "clientes"         in perms:                               home_tabs.append("clientes")
 
-    if ativo_tipo == "carros":
-        home_tabs = [t for t in home_tabs if t in ("visao_geral", "retorno_mensal", "clientes")]
-
     tab = request.args.get("tab", "visao_geral")
     if tab not in home_tabs:
         tab = "visao_geral"

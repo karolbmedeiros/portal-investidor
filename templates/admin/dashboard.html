@@ -118,12 +118,18 @@
 {% elif ativo_selecionado.tipo == 'carro' %}
 <div class="dtab-bar" style="margin-bottom:20px;">
   <a href="#" data-tab="visao_geral"    class="dtab-link {{ 'ativo' if tab == 'visao_geral' }}">Visão Geral</a>
+  <a href="#" data-tab="extrato"        class="dtab-link {{ 'ativo' if tab == 'extrato' }}">Fluxo de Caixa</a>
+  <a href="#" data-tab="benchmarks"     class="dtab-link {{ 'ativo' if tab == 'benchmarks' }}">Benchmarks</a>
   <a href="#" data-tab="retorno_mensal" class="dtab-link {{ 'ativo' if tab == 'retorno_mensal' }}">Retorno Mensal</a>
+  <a href="#" data-tab="pnl"            class="dtab-link {{ 'ativo' if tab == 'pnl' }}">P&L</a>
+  <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
+  <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
+  <a href="#" data-tab="socios"         class="dtab-link {{ 'ativo' if tab == 'socios' }}">Sócios</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
 </div>
 {% endif %}
 {% endif %}
-{% if filtrado and ativo_selecionado.tipo == 'usina' %}
+{% if filtrado and ativo_selecionado.tipo in ('usina', 'carro') %}
 <div id="tab-visao_geral" class="dtab-content {{ 'ativo' if tab == 'visao_geral' }}">
 {% endif %}
 
