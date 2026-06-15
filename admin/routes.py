@@ -204,13 +204,6 @@ def dashboard():
         try:
             from services.veiculos_service import listar_lancamentos_carros
             lancamentos_carros = listar_lancamentos_carros(_emp_c["nome"] if _emp_c else "")
-            # Gera séries para o gráfico de fluxo (saldo acumulado por dia)
-            _saldo_c = 0.0
-            for _l in sorted(lancamentos_carros, key=lambda x: x.get("data_transacao") or ""):
-                _v = float(_l.get("valor") or 0)
-                _saldo_c += _v
-                chart_fluxo_dates.append(_l["data_transacao"])
-                chart_fluxo_pts.append(round(_saldo_c, 2))
         except Exception:
             lancamentos_carros = []
 
@@ -269,6 +262,15 @@ def dashboard():
     chart_meses = []
     chart_fluxo_dates = []
     chart_fluxo_pts = []
+
+    # Gráfico de fluxo para carros (calculado aqui onde chart_fluxo_dates já existe)
+    if lancamentos_carros:
+        _saldo_c = 0.0
+        for _l in sorted(lancamentos_carros, key=lambda x: x.get("data_transacao") or ""):
+            _saldo_c += float(_l.get("valor") or 0)
+            chart_fluxo_dates.append(_l["data_transacao"])
+            chart_fluxo_pts.append(round(_saldo_c, 2))
+
     leituras_data = []
     lancamentos_data = []
     retorno_mensal_data = []
