@@ -21,6 +21,42 @@ def dados_clientes_cons() -> dict:
     return _CLIENTES_CACHE
 
 
+def salvar_dados_cliente(dados: dict) -> dict:
+    """Persiste as alterações de um cliente no JSON local e invalida o cache."""
+    global _CLIENTES_CACHE
+    path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "static", "data", "clientes_carros.json")
+    )
+    try:
+        try:
+            with open(path, encoding="utf-8") as f:
+                store = json.load(f)
+        except Exception:
+            store = {}
+
+        placa = (dados.get("placa") or dados.get("ref_id") or "").upper().replace("-", "").replace(" ", "")
+        if not placa:
+            return {"ok": False, "erro": "Placa/ref_id obrigatório"}
+
+        entrada = store.get(placa, {})
+        campos = ["nome", "cpf", "telefone", "endereco", "cep", "placa",
+                  "ano_modelo", "marca", "cor", "chassi", "num_motor",
+                  "contrato_locacao", "contrato_comercial", "tipo_contrato",
+                  "unidade", "inicio", "termino"]
+        for c in campos:
+            if c in dados:
+                entrada[c] = dados[c]
+        store[placa] = entrada
+
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(store, f, ensure_ascii=False, indent=2)
+
+        _CLIENTES_CACHE = store
+        return {"ok": True, "dados": entrada}
+    except Exception as e:
+        return {"ok": False, "erro": str(e)}
+
+
 def upload_pdf_cliente(ref_id: str, nome_arquivo: str, conteudo: bytes,
                        mime_type: str = "application/pdf") -> dict:
     from services.supabase_client import get_service_client

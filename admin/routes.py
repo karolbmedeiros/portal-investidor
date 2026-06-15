@@ -877,3 +877,15 @@ def upload_pdf_cliente():
         return jsonify({"ok": False, "erro": "Nenhum arquivo enviado"})
     resultado = _upload(ref_id, arquivo.filename, arquivo.read(), arquivo.mimetype)
     return jsonify(resultado)
+
+
+# ── Salvar dados do cliente ───────────────────────────────────────────────────
+
+@admin_bp.route("/clientes/salvar", methods=["POST"])
+@requer_admin
+def salvar_cliente():
+    from flask import jsonify
+    from services.veiculos_service import salvar_dados_cliente
+    dados = request.get_json(force=True, silent=True) or {}
+    resultado = salvar_dados_cliente(dados)
+    return jsonify(resultado)
