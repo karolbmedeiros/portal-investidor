@@ -34,7 +34,7 @@ def listar_lancamentos_carros(empresa_nome: str) -> list:
         sb = get_financeiro_client()
         rows = (
             sb.table("lancamentos_bancarios")
-            .select("id,data_transacao,mes_competencia,descricao,descricao_original,valor,tipo,conciliado")
+            .select("id,data_transacao,mes_competencia,descricao,descricao_original,valor,tipo,conciliado,observacoes")
             .eq("conta_bancaria_id", conta_id)
             .order("data_transacao", desc=True)
             .execute()
@@ -44,6 +44,20 @@ def listar_lancamentos_carros(empresa_nome: str) -> list:
     except Exception as e:
         print(f"[listar_lancamentos_carros] erro: {e}")
         return []
+
+
+def classificar_lancamento_carros(lancamento_id: str, natureza: str) -> dict:
+    if not lancamento_id or not natureza:
+        return {"ok": False, "erro": "id e natureza obrigatorios"}
+    try:
+        sb = get_financeiro_client()
+        sb.table("lancamentos_bancarios") \
+          .update({"observacoes": natureza, "conciliado": True}) \
+          .eq("id", lancamento_id) \
+          .execute()
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "erro": str(e)}
 
 
 def salvar_dados_cliente(dados: dict) -> dict:

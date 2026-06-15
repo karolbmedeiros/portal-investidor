@@ -1460,10 +1460,16 @@ function toggleAcordDb(btn){
     <div class="nb-panel-header nb-ent-header"><span class="nb-panel-arrow">↑</span><span class="nb-panel-title">Recebimentos</span><span class="nb-panel-total nb-positivo" id="tot-entradas">{{ _tot_e.v|brl }}</span></div>
     <div class="nb-panel-body">
       {% if _ents_c %}{% for l in _ents_c %}
-      <div class="nb-item nb-rec-item ext-row ext-row-ent" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}">
-        <div class="nb-item-data">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
-        <div class="nb-item-centro"><div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div></div>
-        <div class="nb-item-dir"><div class="nb-item-val nb-positivo">{{ (l.valor or 0)|abs|brl }}</div></div>
+      <div class="nb-item nb-rec-item ext-row ext-row-ent" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-conciliado="{{ 'true' if l.observacoes else 'false' }}">
+        <div class="nb-item-data {{ '' if l.observacoes else 'nb-pendente-data' }}">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
+        <div class="nb-item-centro">
+          <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+          {% if l.observacoes %}<div class="nb-item-cat">{{ l.observacoes }}</div>{% endif %}
+        </div>
+        <div class="nb-item-dir">
+          <div class="nb-item-val nb-positivo">{{ (l.valor or 0)|abs|brl }}</div>
+          {% if l.observacoes %}<span class="nb-item-status">✓</span>{% else %}<button class="btn btn-secondary btn-sm nb-btn-conciliar" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','credito')">Natureza</button>{% endif %}
+        </div>
       </div>
       {% endfor %}{% else %}<div class="nb-vazio">Nenhuma entrada.</div>{% endif %}
     </div>
@@ -1472,10 +1478,16 @@ function toggleAcordDb(btn){
     <div class="nb-panel-header nb-sai-header"><span class="nb-panel-arrow">↓</span><span class="nb-panel-title">Pagamentos</span><span class="nb-panel-total nb-negativo" id="tot-saidas">{{ _tot_s.v|brl }}</span></div>
     <div class="nb-panel-body">
       {% if _sais_c %}{% for l in _sais_c %}
-      <div class="nb-item nb-pag-item ext-row ext-row-sai" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}">
-        <div class="nb-item-data">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
-        <div class="nb-item-centro"><div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div></div>
-        <div class="nb-item-dir"><div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div></div>
+      <div class="nb-item nb-pag-item ext-row ext-row-sai" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-conciliado="{{ 'true' if l.observacoes else 'false' }}">
+        <div class="nb-item-data {{ '' if l.observacoes else 'nb-pendente-data' }}">{{ l.data_transacao[8:10] }}/{{ _ma[l.data_transacao[5:7]|int] }}</div>
+        <div class="nb-item-centro">
+          <div class="nb-item-desc">{{ l.descricao or l.descricao_original or '—' }}</div>
+          {% if l.observacoes %}<div class="nb-item-cat">{{ l.observacoes }}</div>{% endif %}
+        </div>
+        <div class="nb-item-dir">
+          <div class="nb-item-val nb-negativo">{{ (l.valor or 0)|abs|brl }}</div>
+          {% if l.observacoes %}<span class="nb-item-status">✓</span>{% else %}<button class="btn btn-secondary btn-sm nb-btn-conciliar" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','debito')">Natureza</button>{% endif %}
+        </div>
       </div>
       {% endfor %}{% else %}<div class="nb-vazio">Nenhuma saída.</div>{% endif %}
     </div>
@@ -1488,18 +1500,55 @@ function toggleAcordDb(btn){
     <svg id="consolidado-caret" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);transition:transform .15s;"><path d="M6 9l6 6l6 -6"></path></svg>
   </div>
   <div id="consolidado-body" style="display:none;">
-    <div class="tabela-wrap" style="border-radius:0;border:none;"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Tipo</th></tr></thead><tbody>
+    <div class="tabela-wrap" style="border-radius:0;border:none;"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Natureza</th><th>Status</th></tr></thead><tbody>
       {% for l in lancamentos_carros %}
       <tr class="ext-row ext-row-cons" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}">
         <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
-        <td><div style="font-size:13px;font-weight:500;line-height:1.3;">{{ l.descricao or l.descricao_original or '—' }}</div></td>
+        <td style="min-width:240px;">
+          <div style="font-size:13px;font-weight:500;line-height:1.3;">{{ l.descricao or l.descricao_original or '—' }}</div>
+          {% if l.descricao_original and l.descricao and l.descricao|upper != l.descricao_original|upper %}
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3;">{{ l.descricao_original }}</div>
+          {% endif %}
+        </td>
         <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">{{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}</td>
-        <td style="font-size:12px;color:var(--muted);">{{ 'Entrada' if l.tipo=='credito' else 'Saída' }}</td>
+        <td style="font-size:12px;">
+          {% if l.observacoes %}<span style="color:var(--text);">{{ l.observacoes }}</span>
+          {% else %}<button class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}')">+ Natureza</button>{% endif %}
+        </td>
+        <td>{% if l.observacoes %}<span class="badge badge-verde" style="font-size:10px;">Classificado</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody></table></div>
   </div>
 </div>
+
+{# Modal natureza/conciliação carros #}
+<div id="modal-natureza" style="display:none;position:fixed;inset:0;z-index:600;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);" onclick="if(event.target===this)fecharNaturezaModal()">
+  <div style="background:var(--bg);border-radius:16px;padding:28px;width:min(440px,92vw);box-shadow:0 24px 64px rgba(0,0,0,.18);">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">Classificar lançamento</div>
+    <div id="mn-desc" style="font-size:12px;color:var(--muted);margin-bottom:4px;line-height:1.4;"></div>
+    <div id="mn-val" style="font-size:13px;font-weight:700;margin-bottom:20px;"></div>
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Natureza</label>
+    <input id="mn-natureza" type="text" placeholder="Ex: Locação, Manutenção, Taxa, IPVA..." style="width:100%;box-sizing:border-box;margin-top:6px;margin-bottom:8px;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg2);color:inherit;font-size:13px;outline:none;" list="mn-sugestoes">
+    <datalist id="mn-sugestoes">
+      <option value="Locação">
+      <option value="Taxa administrativa">
+      <option value="Manutenção">
+      <option value="Seguro">
+      <option value="IPVA">
+      <option value="Multa">
+      <option value="Combustível">
+      <option value="Taxa bancária">
+      <option value="Transferência">
+    </datalist>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button onclick="fecharNaturezaModal()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:8px 18px;cursor:pointer;font-size:13px;">Cancelar</button>
+      <button onclick="salvarNatureza()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:13px;font-weight:600;">Salvar</button>
+    </div>
+    <div id="mn-status" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;"></div>
+  </div>
+</div>
+
 {% else %}<div class="vazio">Nenhum lancamento encontrado.</div>{% endif %}
 </div>{# /tab-extrato carros #}
 <div id="tab-benchmarks"     class="dtab-content {{ 'ativo' if tab == 'benchmarks' }}"><div class="vazio" style="padding:48px 0;">Em breve — Benchmarks de carros</div></div>
@@ -2199,6 +2248,52 @@ function uploadPdfCliente(input) {
 document.addEventListener('click', function(e) {
   var btn = e.target.closest('.btn-info-cliente');
   if (btn) abrirPainelCliente(btn);
+});
+
+// ── Modal Natureza (conciliação carros) ──────────────────────────────────────
+var _mnId = '', _mnTipo = '';
+
+function abrirNaturezaModal(id, desc, val, tipo) {
+  _mnId   = id;
+  _mnTipo = tipo;
+  document.getElementById('mn-desc').textContent = desc;
+  document.getElementById('mn-val').textContent  = (tipo === 'credito' ? '+ ' : '- ') + 'R$ ' + parseFloat(val).toLocaleString('pt-BR', {minimumFractionDigits:2});
+  document.getElementById('mn-val').style.color  = tipo === 'credito' ? 'var(--green)' : '#EF4444';
+  document.getElementById('mn-natureza').value   = '';
+  document.getElementById('mn-status').textContent = '';
+  var m = document.getElementById('modal-natureza');
+  m.style.display = 'flex';
+  setTimeout(function(){ document.getElementById('mn-natureza').focus(); }, 100);
+}
+
+function fecharNaturezaModal() {
+  document.getElementById('modal-natureza').style.display = 'none';
+}
+
+function salvarNatureza() {
+  var natureza = document.getElementById('mn-natureza').value.trim();
+  if (!natureza) { document.getElementById('mn-status').textContent = 'Informe a natureza.'; return; }
+  var st = document.getElementById('mn-status');
+  st.textContent = 'Salvando…';
+  fetch('{{ url_for("admin.classificar_lancamento_carro") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({id: _mnId, natureza: natureza})
+  }).then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.ok) {
+        fecharNaturezaModal();
+        location.reload();
+      } else {
+        st.style.color = '#EF4444';
+        st.textContent = 'Erro: ' + (res.erro || '?');
+      }
+    }).catch(function(){ st.style.color='#EF4444'; st.textContent='Erro de conexão.'; });
+}
+
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') fecharNaturezaModal();
+  if (e.key === 'Enter' && document.getElementById('modal-natureza').style.display === 'flex') salvarNatureza();
 });
 
 </script>

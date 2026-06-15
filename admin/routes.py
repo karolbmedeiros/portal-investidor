@@ -898,6 +898,18 @@ def upload_pdf_cliente():
     return jsonify(resultado)
 
 
+# ── Classificar lançamento de carro (natureza) ───────────────────────────────
+
+@admin_bp.route("/carros/classificar-lancamento", methods=["POST"])
+@requer_admin
+def classificar_lancamento_carro():
+    from flask import jsonify
+    from services.veiculos_service import classificar_lancamento_carros
+    dados = request.get_json(force=True, silent=True) or {}
+    resultado = classificar_lancamento_carros(dados.get("id"), dados.get("natureza"))
+    return jsonify(resultado)
+
+
 # ── Salvar dados do cliente ───────────────────────────────────────────────────
 
 @admin_bp.route("/clientes/salvar", methods=["POST"])
