@@ -65,6 +65,143 @@ def dashboard():
         if _soma > 0:
             total_investido = _soma
 
+    # ── Dados de carros ──────────────────────────────────────────────────────
+    _MESES_ADM = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"]
+    empresa_carros_sel       = None
+    valor_liquido_recebido   = None
+    motoristas_recebimentos  = []
+    recebimentos_por_mes_carros = []
+    carros_veiculos_status   = []
+    carros_rentabilidade     = None
+    faturas_carros           = []
+
+    if ativo_id and ativo_tipo == "carro":
+        _emp_c = next((e for e in all_carros if e["slug"] == ativo_id), None)
+        if _emp_c:
+            empresa_carros_sel = _emp_c
+            _ti = _emp_c.get("total_investido")
+            if _ti:
+                total_investido = _ti
+            try:
+                from services.veiculos_service import recebimentos_da_empresa, contas_receber_empresa
+                from services.supabase_client import get_financeiro_client
+                from datetime import timedelta, date as _date_c
+                _VALOR_SEMANA = {"TSW": 1200, "SSW": 800, "STX": 800}
+                try:
+                    _sb_fin = get_financeiro_client()
+                    _contratos = _sb_fin.table("contratos_frota") \
+                        .select("cliente,placa,inicio,valor_locacao").execute().data or []
+                except Exception:
+                    _contratos = []
+                _hoje_c      = _date_c.today()
+                _ultima_seg  = _hoje_c - timedelta(days=_hoje_c.weekday())
+                def _contar_seg(ini, ate):
+                    dias = (7 - ini.weekday()) % 7
+                    prim = ini + timedelta(days=dias)
+                    if prim > ate: return 0
+                    ult  = ate - timedelta(days=ate.weekday())
+                    return (ult - prim).days // 7 + 1
+                _pref_emp = {(v.get("placa") or "").replace("-","")[:3].upper()
+                             for v in _emp_c.get("veiculos", [])}
+                _total_liq = 0.0
+                from datetime import datetime as _dt_c
+                for _c in _contratos:
+                    _placa_c = str(_c.get("placa") or "").replace("-","").upper()
+                    _pref_c  = _placa_c[:3]
+                    if _pref_c not in _pref_emp: continue
+                    _vsem = _VALOR_SEMANA.get(_pref_c, 0)
+                    _ini_raw = _c.get("inicio") or ""
+                    _ini_dt  = None
+                    for _fmt in ["%d/%m/%Y", "%Y-%m-%d"]:
+                        try: _ini_dt = _dt_c.strptime(_ini_raw, _fmt).date(); break
+                        except Exception: pass
+                    if not _ini_dt: continue
+                    _nseg = _contar_seg(_ini_dt, _ultima_seg)
+                    _pago = _nseg * _vsem
+                    _total_liq += _pago
+                    motoristas_recebimentos.append({
+                        "cliente":      _c.get("cliente") or "—",
+                        "placa":        _c.get("placa")   or "—",
+                        "inicio":       _ini_dt.strftime("%d/%m/%Y"),
+                        "valor_locacao": float(_c.get("valor_locacao") or 0),
+                        "n_semanas":    _nseg,
+                        "valor_semana": _vsem,
+                        "valor_pago":   _pago,
+                    })
+                motoristas_recebimentos.sort(key=lambda x: -x["valor_pago"])
+                if _total_liq > 0:
+                    valor_liquido_recebido = round(_total_liq, 2)
+                _por_placa = recebimentos_da_empresa(_emp_c)
+                _por_mes_c: dict = {}
+                for _rows in _por_placa.values():
+                    for _row in _rows:
+                        _ym = str(_row.get("data_semana") or "")[:7]
+                        if not _ym: continue
+                        _por_mes_c[_ym] = _por_mes_c.get(_ym, 0.0) + float(_row.get("taxa_valor") or 0) / 0.15
+                recebimentos_por_mes_carros = [
+                    {"mes": _MESES_ADM[int(_ym.split("-")[1]) - 1], "valor": round(_v, 2)}
+                    for _ym, _v in sorted(_por_mes_c.items())
+                ]
+                _sem_ref = max(
+                    (_r["data_semana"] for _rs in _por_placa.values() for _r in _rs if _r.get("data_semana")),
+                    default=None,
+                )
+                def _norm(p): return (p or "").upper().replace("-", "")
+                _pp_norm = {_norm(k): v for k, v in _por_placa.items()}
+                for _veh in _emp_c.get("veiculos", []):
+                    _recs = _pp_norm.get(_norm(_veh["placa"]), [])
+                    _ult  = max((_r["data_semana"] for _r in _recs if _r.get("data_semana")), default=None)
+                    _loc  = next((_c.get("cliente") for _c in _contratos
+                                  if _norm(_c.get("placa","")) == _norm(_veh["placa"])), None)
+                    carros_veiculos_status.append({
+                        "placa":   _veh["placa"],
+                        "modelo":  _veh.get("modelo") or "—",
+                        "ativo":   bool(_ult and _sem_ref and _ult == _sem_ref),
+                        "locatario": _loc,
+                        "ultima_semana": _ult,
+                    })
+                _BYD = {"nome":"BYD Dolphin Mini (Elétrico)","aluguel_semanal":1200.0,
+                        "pct_investidor":0.85,"seguro_anual":5109.94,"manutencao_mensal":258.0,
+                        "depreciacao_aa_pct":0.078,"investimento":102000.0,"cdi_aa":0.144,"poupanca_aa":0.0617}
+                _b = _BYD
+                _bsem = round(_b["aluguel_semanal"]*_b["pct_investidor"],2)
+                _bmes = round(_bsem*52/12,2)
+                _smes = round(_b["seguro_anual"]/12,2)
+                _mmes = _b["manutencao_mensal"]
+                _dmes = round(_b["investimento"]*_b["depreciacao_aa_pct"]/12,2)
+                _lmes = round(_bmes-_smes-_mmes-_dmes,2)
+                _n_at = sum(1 for _v in carros_veiculos_status if _v["ativo"])
+                _n_to = len(carros_veiculos_status)
+                _n_in = _n_to - _n_at
+                _lreal = _n_at*_lmes - _n_in*(_smes+_mmes)
+                carros_rentabilidade = {
+                    "nome": _b["nome"], "aluguel_semanal": _b["aluguel_semanal"],
+                    "pct_investidor": int(_b["pct_investidor"]*100),
+                    "bruta_semanal": _bsem, "bruta_mensal": _bmes,
+                    "seguro_anual": _b["seguro_anual"], "seguro_mensal": _smes,
+                    "manutencao": _mmes,
+                    "depreciacao_pct": int(_b["depreciacao_aa_pct"]*100*10)/10,
+                    "depreciacao_mes": _dmes, "liquida_mensal": _lmes,
+                    "margem":       round(_lmes/_bmes*100, 1),
+                    "retorno_aa":   round(_lmes*12/_b["investimento"]*100, 1),
+                    "yield_aa":     round((_bmes-_smes-_mmes)*12/_b["investimento"]*100, 1),
+                    "liquida_real_aa": round(_lreal*12/(_n_to*_b["investimento"])*100,1) if _n_to else 0,
+                    "n_ativos": _n_at, "n_total": _n_to,
+                    "payback":  round(_b["investimento"]/_lmes,1),
+                    "oc_eq_pct": round((_smes+_mmes+_dmes)/_bmes*100,1),
+                    "oc_eq_sem": round((_smes+_mmes+_dmes)/_bmes*52,1),
+                    "vs_cdi":     round(_lmes*12/_b["investimento"]*100 - _b["cdi_aa"]*100, 1),
+                    "vs_poupanca":round(_lmes*12/_b["investimento"]*100 - _b["poupanca_aa"]*100, 1),
+                    "cdi_aa_pct": round(_b["cdi_aa"]*100,1),
+                    "poupanca_aa_pct": round(_b["poupanca_aa"]*100,2),
+                }
+                faturas_carros = contas_receber_empresa(_emp_c["nome"])
+            except Exception:
+                pass
+        tab = request.args.get("tab", "visao_geral")
+        if tab not in ("visao_geral","retorno_mensal","clientes"):
+            tab = "visao_geral"
+
     # Rendimento acumulado — créditos na conta bancária da usina selecionada
     rendimento_total   = None
     rendimento_meses   = []   # [{"mes": "jan", "valor": 5000.0}, ...]
@@ -240,6 +377,13 @@ def dashboard():
         leituras_det=leituras_det_data,
         saldo_creditos=saldo_creditos_data,
         participacoes=_parts if (ativo_id and ativo_tipo == "usina") else [],
+        empresa_carros_sel=empresa_carros_sel,
+        valor_liquido_recebido=valor_liquido_recebido,
+        motoristas_recebimentos=motoristas_recebimentos,
+        recebimentos_por_mes_carros=recebimentos_por_mes_carros,
+        carros_veiculos_status=carros_veiculos_status,
+        carros_rentabilidade=carros_rentabilidade,
+        faturas_carros=faturas_carros,
     )
 
 
