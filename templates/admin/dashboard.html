@@ -115,6 +115,12 @@
   <a href="#" data-tab="socios"         class="dtab-link {{ 'ativo' if tab == 'socios' }}">Sócios</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
 </div>
+{% elif ativo_selecionado.tipo == 'carro' %}
+<div class="dtab-bar" style="margin-bottom:20px;">
+  <a href="#" data-tab="visao_geral"    class="dtab-link {{ 'ativo' if tab == 'visao_geral' }}">Visão Geral</a>
+  <a href="#" data-tab="retorno_mensal" class="dtab-link {{ 'ativo' if tab == 'retorno_mensal' }}">Retorno Mensal</a>
+  <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
+</div>
 {% endif %}
 {% endif %}
 {% if filtrado and ativo_selecionado.tipo == 'usina' %}
