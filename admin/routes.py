@@ -75,6 +75,7 @@ def dashboard():
     carros_rentabilidade     = None
     faturas_carros           = []
     lancamentos_carros       = []
+    _tab_carro               = "visao_geral"
 
     if ativo_id and ativo_tipo == "carro":
         _emp_c = next((e for e in all_carros if e["slug"] == ativo_id), None)
@@ -208,9 +209,9 @@ def dashboard():
         except Exception:
             lancamentos_carros = []
 
-        tab = request.args.get("tab", "visao_geral")
-        if tab not in ("visao_geral","retorno_mensal","clientes","extrato"):
-            tab = "visao_geral"
+        _tab_carro = request.args.get("tab", "visao_geral")
+        if _tab_carro not in ("visao_geral","retorno_mensal","clientes","extrato"):
+            _tab_carro = "visao_geral"
 
     # Rendimento acumulado — créditos na conta bancária da usina selecionada
     rendimento_total   = None
@@ -257,7 +258,7 @@ def dashboard():
 
     # ── Dados analíticos da usina (tabs inline) ──────────────────────────────
     usina_obj = None
-    tab = "visao_geral"
+    tab = _tab_carro if ativo_tipo == "carro" else "visao_geral"
     contas = conta_id = conta_atual = kpis = kpi_mes = pnl_data = clientes_data = categorias = None
     saldo_inicial = 0.0
     chart_meses = []
