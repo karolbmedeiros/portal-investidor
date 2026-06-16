@@ -225,9 +225,9 @@ def dashboard():
                     if "SEGURO BYD" in desc or ("SEGURO" in desc and "TSW" in desc):
                         return "Seguro"
                     if "WHATSAPP" in desc or "NOTIFICA" in desc:
-                        return "Taxa bancária"
+                        return "Taxa Asaas"
                     if "TAXA DO PIX" in desc or "TAXA DE PIX" in desc or "TAXA DE BOLETO" in desc:
-                        return "Taxa bancária"
+                        return "Taxa Asaas"
                 return None
 
             for _l in lancamentos_carros:
