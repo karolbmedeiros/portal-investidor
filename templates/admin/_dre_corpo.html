@@ -23,9 +23,9 @@
   {% set nivel = s._nivel if s._nivel is defined else 0 %}
   {% set valor = dre_valores.get(s.id, 0) if dre_valores else 0 %}
   {% set is_neg = valor < 0 %}
+  {% set lancs = dre_lancs.get(s.id, []) if dre_lancs else [] %}
 
   {% if s.tipo == 'categoria' %}
-  {# ── Cabeçalho de categoria (clicável para expandir/recolher) ── #}
   <div class="dre-row-cat" onclick="dreToggleFilhos('{{ s.id }}')"
        style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#F3F4F6;cursor:pointer;border-bottom:0.5px solid var(--border);user-select:none;">
     <div style="display:flex;align-items:center;gap:8px;">
@@ -38,21 +38,46 @@
   </div>
 
   {% elif s.tipo == 'linha' %}
-  {# ── Linha de detalhe ── #}
   <div class="dre-row-filho" data-parent="{{ s.parent_id }}"
-       style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px 10px 44px;border-bottom:0.5px solid rgba(23,33,28,0.06);">
-    <span style="font-size:13px;color:var(--text);">{{ s.nome }}</span>
-    <span style="font-size:13px;font-weight:500;color:{{ '#EF4444' if is_neg else ('var(--text)' if valor == 0 else 'var(--accent)') }};">
-      {% if valor != 0 %}{{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}
-    </span>
+       style="border-bottom:0.5px solid rgba(23,33,28,0.06);">
+    <div onclick="dreToggleLancs('{{ s.id }}')"
+         style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px 10px 44px;cursor:{% if lancs %}pointer{% else %}default{% endif %};">
+      <div style="display:flex;align-items:center;gap:6px;">
+        {% if lancs %}
+        <span id="dre-lchevron-{{ s.id }}" style="color:var(--muted);font-size:10px;transition:transform .2s;">▶</span>
+        {% endif %}
+        <span style="font-size:13px;color:var(--text);">{{ s.nome }}</span>
+        {% if lancs %}
+        <span style="font-size:11px;color:var(--muted);">({{ lancs|length }})</span>
+        {% endif %}
+      </div>
+      <span style="font-size:13px;font-weight:500;color:{{ '#EF4444' if is_neg else ('var(--muted)' if valor == 0 else 'var(--accent)') }};">
+        {% if valor != 0 %}{{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}
+      </span>
+    </div>
+    {% if lancs %}
+    <div id="dre-lancs-{{ s.id }}" style="display:none;background:#FAFAFA;border-top:0.5px solid rgba(23,33,28,0.06);">
+      {% for l in lancs %}
+      {% set lv = l.valor %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 20px 7px 60px;border-bottom:0.5px solid rgba(23,33,28,0.04);">
+        <div style="display:flex;gap:12px;align-items:center;min-width:0;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">{{ l.data }}</span>
+          <span style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;" title="{{ l.descricao }}">{{ l.descricao }}</span>
+        </div>
+        <span style="font-size:12px;font-weight:600;white-space:nowrap;color:{{ '#EF4444' if lv < 0 else 'var(--accent)' }};">
+          {{ 'R$ {:,.2f}'.format(lv).replace(',','X').replace('.',',').replace('X','.') }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
 
   {% elif s.tipo == 'totalizador' %}
-  {# ── Totalizador ── #}
   <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 20px;background:#F9FAFB;border-top:1.5px solid var(--border);border-bottom:1.5px solid var(--border);margin-top:4px;">
     <span style="font-weight:700;font-size:13px;">= {{ s.nome }}</span>
     <span style="font-weight:700;font-size:14px;color:{{ '#EF4444' if is_neg else 'var(--accent)' }};">
-      {% if valor != 0 %}{{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}R$ 0,00{% endif %}
+      {{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}
     </span>
   </div>
   {% endif %}
@@ -67,6 +92,14 @@ function dreToggleFilhos(catId) {
   var oculto = filhos.length && filhos[0].style.display === 'none';
   filhos.forEach(function(f){ f.style.display = oculto ? '' : 'none'; });
   if (chevron) chevron.style.transform = oculto ? '' : 'rotate(-90deg)';
+}
+function dreToggleLancs(linhaId) {
+  var el = document.getElementById('dre-lancs-' + linhaId);
+  var chev = document.getElementById('dre-lchevron-' + linhaId);
+  if (!el) return;
+  var aberto = el.style.display !== 'none';
+  el.style.display = aberto ? 'none' : '';
+  if (chev) chev.style.transform = aberto ? '' : 'rotate(90deg)';
 }
 </script>
 

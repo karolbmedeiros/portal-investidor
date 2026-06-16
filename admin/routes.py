@@ -571,13 +571,15 @@ def usina_detalhe(usina_id):
     leituras_det   = leituras_detalhadas(usina_id)       if tab == "energia"        else []
     saldo_creditos = saldo_creditos_da_usina(usina_id)   if tab == "saldo_creditos" else []
 
-    dre_secoes = dre_valores = None
+    dre_secoes = dre_valores = dre_lancs = None
     if tab == "dre":
         from services.dre_service import listar_secoes_dre, calcular_dre
         dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
         dre_mes_fim = request.args.get("dre_mes_fim") or kpi_mes
-        dre_secoes  = listar_secoes_dre()
-        dre_valores = calcular_dre(usina_id, dre_mes_ini, dre_mes_fim)
+        dre_secoes   = listar_secoes_dre()
+        _dre         = calcular_dre(usina_id, dre_mes_ini, dre_mes_fim)
+        dre_valores  = _dre["valores"]
+        dre_lancs    = _dre["lancamentos"]
 
     return render_template(
         "admin/usina_detalhe.html",
@@ -604,6 +606,7 @@ def usina_detalhe(usina_id):
         saldo_creditos=saldo_creditos,
         dre_secoes=dre_secoes,
         dre_valores=dre_valores,
+        dre_lancs=dre_lancs,
         dre_mes_ini=request.args.get("dre_mes_ini") or kpi_mes,
         dre_mes_fim=request.args.get("dre_mes_fim") or kpi_mes,
     )

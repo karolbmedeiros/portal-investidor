@@ -578,7 +578,7 @@
                data-parent="{{ s.parent_id or '' }}"
                data-formula="{{ s.formula_json|tojson if s.formula_json else '' }}"
                data-vinculas="{{ s.categorias_vinculadas|map(attribute='id')|list|tojson if s.categorias_vinculadas is defined else '[]' }}"
-               style="{% if nivel == 1 %}padding-left:36px;background:#FAFAFA;{% endif %}">
+               style="position:relative;{% if nivel == 1 %}padding-left:36px;background:#FAFAFA;{% endif %}">
             <span class="dre-drag-handle">⋮⋮</span>
             <span class="dre-cfg-nome">
               {% if nivel == 0 and s.tipo == 'totalizador' %}<span style="color:var(--muted);margin-right:4px;">=</span>{% endif %}
@@ -594,7 +594,14 @@
                 {% if n_cat == 0 %}
                   <span class="badge" style="background:#FEF3C7;color:#92400E;font-size:10px;border:0.5px solid #FDE68A;">Nenhuma natureza</span>
                 {% else %}
-                  <span class="badge" style="background:#EFF6FF;color:#1D4ED8;font-size:10px;border:0.5px solid #BFDBFE;">{{ n_cat }} natureza{{ 's' if n_cat != 1 }}</span>
+                  <span class="badge" onclick="dreToggleNats('{{ s.id }}')" style="background:#EFF6FF;color:#1D4ED8;font-size:10px;border:0.5px solid #BFDBFE;cursor:pointer;">
+                    <span id="dre-nat-chev-{{ s.id }}">▶</span> {{ n_cat }} natureza{{ 's' if n_cat != 1 }}
+                  </span>
+                  <div id="dre-nat-list-{{ s.id }}" style="display:none;position:absolute;z-index:100;background:#fff;border:0.5px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.08);padding:8px 0;min-width:220px;margin-top:4px;">
+                    {% for c in s.categorias_vinculadas %}
+                    <div style="padding:6px 14px;font-size:12px;color:var(--text);border-bottom:0.5px solid rgba(23,33,28,0.05);">{{ c.nome }}</div>
+                    {% endfor %}
+                  </div>
                 {% endif %}
               {% endif %}
             </span>
@@ -1088,6 +1095,32 @@ function salvarVinculos() {
 function fecharVincularModal() {
   document.getElementById('dre-vincular-modal').style.display = 'none';
 }
+
+var _dreNatAberto = null;
+function dreToggleNats(id) {
+  var el = document.getElementById('dre-nat-list-' + id);
+  var chev = document.getElementById('dre-nat-chev-' + id);
+  if (!el) return;
+  if (_dreNatAberto && _dreNatAberto !== id) {
+    var prev = document.getElementById('dre-nat-list-' + _dreNatAberto);
+    var prevChev = document.getElementById('dre-nat-chev-' + _dreNatAberto);
+    if (prev) prev.style.display = 'none';
+    if (prevChev) prevChev.textContent = '▶';
+  }
+  var aberto = el.style.display !== 'none';
+  el.style.display = aberto ? 'none' : 'block';
+  if (chev) chev.textContent = aberto ? '▶' : '▼';
+  _dreNatAberto = aberto ? null : id;
+}
+document.addEventListener('click', function(e) {
+  if (_dreNatAberto && !e.target.closest('[id^="dre-nat-"]')) {
+    var prev = document.getElementById('dre-nat-list-' + _dreNatAberto);
+    var prevChev = document.getElementById('dre-nat-chev-' + _dreNatAberto);
+    if (prev) prev.style.display = 'none';
+    if (prevChev) prevChev.textContent = '▶';
+    _dreNatAberto = null;
+  }
+});
 </script>
 
 <style>

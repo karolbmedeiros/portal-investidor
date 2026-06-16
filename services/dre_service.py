@@ -133,17 +133,15 @@ def vincular_categorias_linha(linha_id: str, categoria_ids: list) -> dict:
 
 def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
     """
-    Retorna {secao_id: valor} para todas as linhas e totalizadores.
+    Retorna {"valores": {secao_id: float}, "lancamentos": {secao_id: [...]}}
     mes_inicio / mes_fim no formato YYYY-MM.
     """
-    from services.conciliacao_service import listar_lancamentos
-    from services.usina_service import listar_contas_da_usina
+    from services.usina_service import listar_lancamentos, listar_contas_da_usina
 
     contas = listar_contas_da_usina(usina_id)
     if not contas:
-        return {}
+        return {"valores": {}, "lancamentos": {}}
 
-    # Busca lançamentos conciliados do período
     data_ini = mes_inicio + "-01"
     import calendar
     ano, mes = int(mes_fim[:4]), int(mes_fim[5:7])
@@ -154,37 +152,43 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
     for conta in contas:
         lancs = listar_lancamentos(usina_id, conta_id=conta["id"])
         lancamentos += [l for l in lancs
-                        if l.get("conciliado")
-                        and l.get("data_transacao")
+                        if l.get("data_transacao")
                         and data_ini <= l["data_transacao"][:10] <= data_fim
                         and not l.get("_neutro")
-                        and not l.get("_rendimento")]
+                        and not l.get("_rendimento")
+                        and l.get("categorias_financeiras")]
 
-    # Soma por categoria_id
+    # Soma e lista de lançamentos por categoria_id
     soma_por_cat: dict = {}
+    lancs_por_cat: dict = {}
     for l in lancamentos:
         cat = l.get("categorias_financeiras") or {}
         cid = cat.get("id")
         if not cid:
             continue
         valor = float(l.get("valor") or 0)
-        if l.get("tipo") == "credito":
-            soma_por_cat[cid] = soma_por_cat.get(cid, 0.0) + valor
-        else:
-            soma_por_cat[cid] = soma_por_cat.get(cid, 0.0) - abs(valor)
+        contrib = valor if l.get("tipo") == "credito" else -abs(valor)
+        soma_por_cat[cid] = soma_por_cat.get(cid, 0.0) + contrib
+        lancs_por_cat.setdefault(cid, []).append({
+            "data": (l.get("data_transacao") or "")[:10],
+            "descricao": l.get("descricao") or l.get("descricao_original") or "",
+            "valor": contrib,
+        })
 
-    # Busca estrutura DRE com vínculos
     secoes = listar_secoes_dre()
 
-    # Calcula valor de cada linha (soma das categorias vinculadas)
     valor_por_secao: dict = {}
+    lancs_por_secao: dict = {}
+
     for s in secoes:
         if s["tipo"] == "linha":
             total = sum(soma_por_cat.get(c["id"], 0.0) for c in s["categorias_vinculadas"])
             valor_por_secao[s["id"]] = total
+            items = []
+            for c in s["categorias_vinculadas"]:
+                items += lancs_por_cat.get(c["id"], [])
+            lancs_por_secao[s["id"]] = sorted(items, key=lambda x: x["data"])
 
-    # Calcula totalizadores com base na formula_json
-    # Ordena para garantir que totalizadores são calculados após suas dependências
     for s in secoes:
         if s["tipo"] == "totalizador" and s.get("formula_json"):
             total = 0.0
@@ -196,9 +200,8 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
             valor_por_secao[s["id"]] = total
 
         elif s["tipo"] == "categoria":
-            # Soma das linhas filhas
             filhas = [x for x in secoes if x.get("parent_id") == s["id"]]
             total = sum(valor_por_secao.get(f["id"], 0.0) for f in filhas)
             valor_por_secao[s["id"]] = total
 
-    return valor_por_secao
+    return {"valores": valor_por_secao, "lancamentos": lancs_por_secao}
