@@ -1552,11 +1552,22 @@ function toggleAcordDb(btn){
             {% endfor %}
           {% elif l.observacoes %}
             <span style="color:var(--text);">{{ l.observacoes }}</span>
+          {% elif l.sugestao_natureza %}
+            <div class="sug-chip" id="sug-{{ l.id }}" style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:0.5px solid var(--border);border-radius:20px;padding:3px 8px 3px 10px;">
+              <span style="font-size:11px;color:var(--muted);letter-spacing:.03em;">{{ l.sugestao_natureza }}</span>
+              <button title="Confirmar" onclick="_confirmarSugestao('{{ l.id }}','{{ l.sugestao_natureza }}')" style="background:none;border:none;cursor:pointer;padding:2px;display:flex;align-items:center;color:#16A34A;">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5,8 6,12 13.5,4"/></svg>
+              </button>
+              <button title="Ignorar" onclick="document.getElementById('sug-{{ l.id }}').style.display='none';document.getElementById('nat-btn-{{ l.id }}').style.display='inline-flex';" style="background:none;border:none;cursor:pointer;padding:2px;display:flex;align-items:center;color:var(--muted);">
+                <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+              </button>
+            </div>
+            <button id="nat-btn-{{ l.id }}" class="btn btn-secondary btn-sm" style="font-size:11px;display:none;" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}')">+ Natureza</button>
           {% else %}
             <button class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}')">+ Natureza</button>
           {% endif %}
         </td>
-        <td>{% if l.observacoes %}<span class="badge badge-verde" style="font-size:10px;">Classificado</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
+        <td id="status-{{ l.id }}">{% if l.observacoes %}<span class="badge badge-verde" style="font-size:10px;">Classificado</span>{% elif l.sugestao_natureza %}<span class="badge" style="background:#F0FDF4;color:#15803D;border:0.5px solid #BBF7D0;font-size:10px;">Sugerido</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody></table></div>
@@ -2476,6 +2487,21 @@ function _atualizarLinhaNatureza(id, splits) {
     }).join('');
   }
   if (stTd) stTd.innerHTML = '<span class="badge badge-verde" style="font-size:10px;">Classificado</span>';
+}
+
+function _confirmarSugestao(id, natureza) {
+  fetch('/admin/classificar-lancamento-carro', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({id: id, natureza: natureza})
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (!data.ok) return;
+    var chip = document.getElementById('sug-' + id);
+    if (chip) chip.style.display = 'none';
+    _atualizarLinhaNatureza(id, [{natureza: natureza, valor: 0}]);
+    var stEl = document.getElementById('status-' + id);
+    if (stEl) stEl.innerHTML = '<span class="badge badge-verde" style="font-size:10px;">Classificado</span>';
+  });
 }
 
 function fecharNaturezaModal() {

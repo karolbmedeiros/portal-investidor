@@ -209,6 +209,27 @@ def dashboard():
             import json as _json
             from services.veiculos_service import listar_lancamentos_carros
             lancamentos_carros = listar_lancamentos_carros(_emp_c["nome"] if _emp_c else "")
+
+            def _sugerir_natureza(l):
+                if l.get("observacoes") or l.get("_convenio"):
+                    return None
+                desc = (l.get("descricao") or l.get("descricao_original") or "").upper()
+                tipo = l.get("tipo", "")
+                if tipo == "credito" and "COBRAN" in desc and "RECEBIDA" in desc:
+                    return "Locação"
+                if tipo == "debito":
+                    if "ATIVUZ DO BRASIL" in desc:
+                        return "Taxa administrativa"
+                    if "LUZ DIVINA LOCACAO" in desc or "LUZ DIVINA LOCA" in desc:
+                        return "Transferência"
+                    if "SEGURO BYD" in desc or ("SEGURO" in desc and "TSW" in desc):
+                        return "Seguro"
+                    if "WHATSAPP" in desc or "NOTIFICA" in desc:
+                        return "Taxa bancária"
+                    if "TAXA DO PIX" in desc or "TAXA DE PIX" in desc or "TAXA DE BOLETO" in desc:
+                        return "Taxa bancária"
+                return None
+
             for _l in lancamentos_carros:
                 obs = _l.get("observacoes") or ""
                 if obs.startswith("["):
@@ -218,6 +239,7 @@ def dashboard():
                         _l["splits"] = None
                 else:
                     _l["splits"] = None
+                _l["sugestao_natureza"] = _sugerir_natureza(_l)
         except Exception:
             lancamentos_carros = []
 
