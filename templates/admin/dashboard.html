@@ -563,11 +563,11 @@
               <span style="font-size:10px; font-weight:600; color:#EF4444; background:rgba(239,68,68,.1); padding:2px 7px; border-radius:20px; border:0.5px solid rgba(239,68,68,.25); white-space:nowrap;">Contrato encerrado</span>
               {% endif %}
             </div>
-            <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);margin-top:4px;display:inline-block;">{{ m.placa }}</span>
+            {% if m.placa and m.placa != '—' %}<span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);margin-top:4px;display:inline-block;">{{ m.placa }}</span>{% endif %}
           </div>
           <div style="text-align:right;">
             <div style="font-size:15px; font-weight:700; color:{% if not m.ativo %}var(--muted){% else %}#D97706{% endif %};">{{ m.valor_pago|brl }}</div>
-            <div style="font-size:10px; color:var(--muted);">{{ m.n_semanas }} sem. × R$ {{ m.valor_semana|int }}</div>
+            {% if m.n_semanas %}<div style="font-size:10px; color:var(--muted);">{{ m.n_semanas }} sem. × R$ {{ m.valor_semana|int }}</div>{% else %}<div style="font-size:10px; color:var(--muted);">valor recebido no extrato</div>{% endif %}
           </div>
         </div>
         <div style="height:6px; border-radius:3px; background:rgba(245,158,11,.12);">

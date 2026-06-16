@@ -164,6 +164,38 @@ def dashboard():
                 _status_by_placa = {_norm(v["placa"]): v["ativo"] for v in carros_veiculos_status}
                 for _mr in motoristas_recebimentos:
                     _mr["ativo"] = _status_by_placa.get(_norm(_mr["placa"]), False)
+
+                # Complementa com ex-motoristas presentes no extrato mas não na planilha
+                import re as _re
+                _pat_cob = _re.compile(r'cobran[çc]a recebida - fatura nr\.\s*\d+\s+(.+)', _re.I)
+                _CONV = ["GELO E GELA", "JUAN E IVAN"]
+                _nomes_ativos = {_mr["cliente"].upper() for _mr in motoristas_recebimentos}
+                _extras: dict = {}
+                for _lc in lancamentos_carros:
+                    if _lc.get("_convenio") or _lc.get("tipo") != "credito":
+                        continue
+                    _desc = (_lc.get("descricao") or _lc.get("descricao_original") or "")
+                    _m = _pat_cob.match(_desc)
+                    if not _m:
+                        continue
+                    _nome = _m.group(1).strip()
+                    if any(c in _nome.upper() for c in _CONV):
+                        continue
+                    if _nome.upper() in _nomes_ativos:
+                        continue
+                    _extras[_nome] = _extras.get(_nome, 0.0) + float(_lc.get("valor") or 0)
+                for _nome, _total in _extras.items():
+                    motoristas_recebimentos.append({
+                        "cliente":      _nome,
+                        "placa":        "—",
+                        "inicio":       "—",
+                        "valor_locacao": 0,
+                        "n_semanas":    0,
+                        "valor_semana": 0,
+                        "valor_pago":   round(_total, 2),
+                        "ativo":        False,
+                    })
+                motoristas_recebimentos.sort(key=lambda x: -x["valor_pago"])
                 _BYD = {"nome":"BYD Dolphin Mini (Elétrico)","aluguel_semanal":1200.0,
                         "pct_investidor":0.85,"seguro_anual":5109.94,"manutencao_mensal":258.0,
                         "depreciacao_aa_pct":0.078,"investimento":102000.0,"cdi_aa":0.144,"poupanca_aa":0.0617}
