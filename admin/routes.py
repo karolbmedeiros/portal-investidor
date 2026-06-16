@@ -326,6 +326,7 @@ def dashboard():
     usina_obj = None
     tab = _tab_carro if ativo_tipo == "carro" else "visao_geral"
     contas = conta_id = conta_atual = kpis = kpi_mes = pnl_data = clientes_data = categorias = None
+    dre_secoes = dre_valores = dre_lancs = None
     saldo_inicial = 0.0
     chart_meses = []
     chart_fluxo_dates = []
@@ -412,6 +413,16 @@ def dashboard():
         if tab not in _valid_tabs:
             tab = "visao_geral"
 
+        dre_secoes = dre_valores = dre_lancs = None
+        if tab == "dre":
+            from services.dre_service import listar_secoes_dre, calcular_dre
+            _dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
+            _dre_mes_fim = request.args.get("dre_mes_fim") or kpi_mes
+            dre_secoes = listar_secoes_dre()
+            _dre = calcular_dre(ativo_id, _dre_mes_ini, _dre_mes_fim)
+            dre_valores = _dre["valores"]
+            dre_lancs   = _dre["lancamentos"]
+
     # Contas a receber pendentes para "Próximos eventos"
     from services.supabase_client import get_service_client
     try:
@@ -473,6 +484,11 @@ def dashboard():
         benchmarks=benchmarks_data,
         leituras_det=leituras_det_data,
         saldo_creditos=saldo_creditos_data,
+        dre_secoes=dre_secoes,
+        dre_valores=dre_valores,
+        dre_lancs=dre_lancs,
+        dre_mes_ini=request.args.get("dre_mes_ini") or kpi_mes or "",
+        dre_mes_fim=request.args.get("dre_mes_fim") or kpi_mes or "",
         participacoes=_parts if (ativo_id and ativo_tipo == "usina") else [],
         empresa_carros_sel=empresa_carros_sel,
         valor_liquido_recebido=valor_liquido_recebido,
