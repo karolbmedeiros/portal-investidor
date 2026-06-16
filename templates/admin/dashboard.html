@@ -1553,13 +1553,13 @@ function toggleAcordDb(btn){
           {% elif l.observacoes %}
             <span style="color:var(--text);">{{ l.observacoes }}</span>
           {% elif l.sugestao_natureza %}
-            <div class="sug-chip" id="sug-{{ l.id }}" style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:0.5px solid var(--border);border-radius:20px;padding:3px 8px 3px 10px;">
-              <span style="font-size:11px;color:var(--muted);letter-spacing:.03em;">{{ l.sugestao_natureza }}</span>
-              <button title="Confirmar" onclick="_confirmarSugestao('{{ l.id }}','{{ l.sugestao_natureza }}')" style="background:none;border:none;cursor:pointer;padding:2px;display:flex;align-items:center;color:#16A34A;">
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5,8 6,12 13.5,4"/></svg>
+            <div class="sug-chip" id="sug-{{ l.id }}" style="display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:0.5px solid var(--border);border-radius:20px;padding:3px 6px 3px 10px;">
+              <span style="font-size:11px;color:var(--muted);letter-spacing:.03em;user-select:none;">{{ l.sugestao_natureza }}</span>
+              <button type="button" title="Confirmar" onclick="_confirmarSugestao('{{ l.id }}','{{ l.sugestao_natureza }}')" style="background:#DCFCE7;border:none;cursor:pointer;padding:4px 7px;border-radius:12px;display:inline-flex;align-items:center;color:#16A34A;line-height:1;">
+                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;display:block;"><polyline points="2.5,8 6,12 13.5,4"/></svg>
               </button>
-              <button title="Ignorar" onclick="document.getElementById('sug-{{ l.id }}').style.display='none';document.getElementById('nat-btn-{{ l.id }}').style.display='inline-flex';" style="background:none;border:none;cursor:pointer;padding:2px;display:flex;align-items:center;color:var(--muted);">
-                <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+              <button type="button" title="Ignorar" onclick="document.getElementById('sug-{{ l.id }}').style.display='none';document.getElementById('nat-btn-{{ l.id }}').style.display='inline-flex';" style="background:none;border:none;cursor:pointer;padding:4px 5px;display:inline-flex;align-items:center;color:#9CA3AF;line-height:1;">
+                <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="pointer-events:none;display:block;"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
               </button>
             </div>
             <button id="nat-btn-{{ l.id }}" class="btn btn-secondary btn-sm" style="font-size:11px;display:none;" onclick="abrirNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}')">+ Natureza</button>
