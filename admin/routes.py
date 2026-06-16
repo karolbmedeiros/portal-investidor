@@ -1,6 +1,6 @@
 from flask import (
     Blueprint, render_template, request,
-    redirect, url_for, flash, abort,
+    redirect, url_for, flash, abort, jsonify,
 )
 from middleware.auth_guard import requer_admin
 from services import investidor_service as inv_svc, auth_service
@@ -571,6 +571,14 @@ def usina_detalhe(usina_id):
     leituras_det   = leituras_detalhadas(usina_id)       if tab == "energia"        else []
     saldo_creditos = saldo_creditos_da_usina(usina_id)   if tab == "saldo_creditos" else []
 
+    dre_secoes = dre_valores = None
+    if tab == "dre":
+        from services.dre_service import listar_secoes_dre, calcular_dre
+        dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
+        dre_mes_fim = request.args.get("dre_mes_fim") or kpi_mes
+        dre_secoes  = listar_secoes_dre()
+        dre_valores = calcular_dre(usina_id, dre_mes_ini, dre_mes_fim)
+
     return render_template(
         "admin/usina_detalhe.html",
         usina=usina,
@@ -594,6 +602,10 @@ def usina_detalhe(usina_id):
         benchmarks=benchmarks,
         leituras_det=leituras_det,
         saldo_creditos=saldo_creditos,
+        dre_secoes=dre_secoes,
+        dre_valores=dre_valores,
+        dre_mes_ini=request.args.get("dre_mes_ini") or kpi_mes,
+        dre_mes_fim=request.args.get("dre_mes_fim") or kpi_mes,
     )
 
 
@@ -657,6 +669,7 @@ def usina_documento_excluir(usina_id, doc_id):
 def configuracoes():
     from services.usina_service import listar_usinas, listar_categorias, categorias_em_uso
     from services.veiculos_service import listar_empresas_veiculos, listar_naturezas_carros
+    from services.dre_service import listar_secoes_dre, listar_categorias_financeiras
     return render_template(
         "admin/configuracoes.html",
         investidores=auth_service.listar_usuarios_com_acesso(),
@@ -665,7 +678,75 @@ def configuracoes():
         categorias=listar_categorias(),
         cats_em_uso=categorias_em_uso(),
         naturezas_carros=listar_naturezas_carros(),
+        dre_secoes=listar_secoes_dre(),
+        dre_categorias=listar_categorias_financeiras(),
     )
+
+
+# ── DRE CRUD ─────────────────────────────────────────────────────────────────
+
+@admin_bp.route("/configuracoes/dre/secao/nova", methods=["POST"])
+@requer_admin
+def dre_secao_nova():
+    try:
+        from services.dre_service import criar_secao_dre
+        import json as _json
+        nome      = request.form.get("nome", "").strip()
+        tipo      = request.form.get("tipo", "")
+        parent_id = request.form.get("parent_id") or None
+        formula   = request.form.get("formula_json") or None
+        if formula:
+            try: formula = _json.loads(formula)
+            except Exception: formula = None
+        if not nome or tipo not in ("categoria", "linha", "totalizador"):
+            return jsonify({"ok": False, "erro": "Dados inválidos"})
+        res = criar_secao_dre(nome, tipo, parent_id, formula)
+        return jsonify(res)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"ok": False, "erro": str(e)})
+
+
+@admin_bp.route("/configuracoes/dre/secao/<secao_id>/editar", methods=["POST"])
+@requer_admin
+def dre_secao_editar(secao_id):
+    from services.dre_service import editar_secao_dre
+    import json as _json
+    nome    = (request.json or {}).get("nome", "").strip()
+    formula = (request.json or {}).get("formula_json")
+    if not nome:
+        return jsonify({"ok": False, "erro": "Nome obrigatório"})
+    res = editar_secao_dre(secao_id, nome, formula)
+    return jsonify(res)
+
+
+@admin_bp.route("/configuracoes/dre/secao/<secao_id>/excluir", methods=["POST"])
+@requer_admin
+def dre_secao_excluir(secao_id):
+    try:
+        from services.dre_service import excluir_secao_dre
+        res = excluir_secao_dre(secao_id)
+        return jsonify(res)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"ok": False, "erro": str(e)})
+
+
+@admin_bp.route("/configuracoes/dre/reordenar", methods=["POST"])
+@requer_admin
+def dre_reordenar():
+    from services.dre_service import reordenar_secoes_dre
+    items = (request.json or {}).get("items", [])
+    return jsonify(reordenar_secoes_dre(items))
+
+
+@admin_bp.route("/configuracoes/dre/linha/<linha_id>/vincular", methods=["POST"])
+@requer_admin
+def dre_vincular_categorias(linha_id):
+    from services.dre_service import vincular_categorias_linha
+    categoria_ids = (request.json or {}).get("categoria_ids", [])
+    res = vincular_categorias_linha(linha_id, categoria_ids)
+    return jsonify(res)
 
 
 @admin_bp.route("/configuracoes/natureza/nova", methods=["POST"])

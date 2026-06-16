@@ -24,6 +24,10 @@
       <svg class="cfg-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 21h-4.5a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v7"/><path d="M16 19h6"/><path d="M19 16v6"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
       Naturezas
     </button>
+    <button class="cfg-nav-item" data-tab="dre" onclick="cfgTab('dre',this)">
+      <svg class="cfg-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>
+      DRE
+    </button>
   </nav>
 
   {# ── Conteúdo ── #}
@@ -546,9 +550,157 @@
       </div>
     </div>
 
+    {# ══ DRE ══ #}
+    <div id="cfg-dre" class="cfg-tab" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div>
+          <div class="cfg-section-title" style="margin-bottom:2px;">Categorias de DRE</div>
+          <p style="font-size:12px;color:var(--muted);margin:0;">Estruture a Demonstração de Resultado vinculando naturezas a cada linha.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="dreNovaTotalizador()" style="white-space:nowrap;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 19v-7"/><path d="M12 5v3"/></svg>
+            Totalizador
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="dreNovaCategoria()" style="white-space:nowrap;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Categoria
+          </button>
+        </div>
+      </div>
+
+      <div class="tabela-wrap" style="padding:0;">
+        <div id="dre-lista" style="min-height:60px;">
+          {% for s in dre_secoes %}
+          {% set nivel = s._nivel if s._nivel is defined else 0 %}
+          <div class="dre-cfg-row {{ 'dre-cfg-linha' if nivel == 1 else 'dre-cfg-cat' }}"
+               data-id="{{ s.id }}" data-tipo="{{ s.tipo }}" data-nome="{{ s.nome }}"
+               data-parent="{{ s.parent_id or '' }}"
+               data-formula="{{ s.formula_json|tojson if s.formula_json else '' }}"
+               data-vinculas="{{ s.categorias_vinculadas|map(attribute='id')|list|tojson if s.categorias_vinculadas is defined else '[]' }}"
+               style="{% if nivel == 1 %}padding-left:36px;background:#FAFAFA;{% endif %}">
+            <span class="dre-drag-handle">⋮⋮</span>
+            <span class="dre-cfg-nome">
+              {% if nivel == 0 and s.tipo == 'totalizador' %}<span style="color:var(--muted);margin-right:4px;">=</span>{% endif %}
+              {{ s.nome }}
+            </span>
+            <span style="margin-left:8px;">
+              {% if s.tipo == 'categoria' %}
+                <span class="badge" style="background:#DCFCE7;color:#15803D;font-size:10px;border:0.5px solid #BBF7D0;">CATEGORIA</span>
+              {% elif s.tipo == 'totalizador' %}
+                <span class="badge" style="background:#1F2937;color:#fff;font-size:10px;">TOTALIZADOR</span>
+              {% else %}
+                {% set n_cat = s.categorias_vinculadas|length %}
+                {% if n_cat == 0 %}
+                  <span class="badge" style="background:#FEF3C7;color:#92400E;font-size:10px;border:0.5px solid #FDE68A;">Nenhuma natureza</span>
+                {% else %}
+                  <span class="badge" style="background:#EFF6FF;color:#1D4ED8;font-size:10px;border:0.5px solid #BFDBFE;">{{ n_cat }} natureza{{ 's' if n_cat != 1 }}</span>
+                {% endif %}
+              {% endif %}
+            </span>
+            <span class="dre-cfg-acoes">
+              {% if s.tipo == 'categoria' %}
+                <button type="button" title="Adicionar linha" onclick="dreNovaLinha(this)" class="dre-btn-icon dre-btn-add">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                </button>
+              {% elif s.tipo == 'linha' %}
+                <button type="button" title="Vincular naturezas" onclick="dreVincularNaturezas(this)" class="dre-btn-icon dre-btn-link">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                </button>
+              {% endif %}
+              <button type="button" title="Editar" onclick="dreEditar(this)" class="dre-btn-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+              <button type="button" title="Excluir" onclick="dreExcluir(this)" class="dre-btn-icon dre-btn-del">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7v-3h6v3"/></svg>
+              </button>
+            </span>
+          </div>
+          {% else %}
+          <div style="padding:32px;text-align:center;color:var(--muted);font-size:13px;">Nenhuma seção criada. Comece adicionando uma categoria principal.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
   </div>{# /cfg-body #}
 </div>{# /cfg-layout #}
 </div>{# /page-content #}
+
+{# ── Modal DRE nova seção ── #}
+<div id="dre-modal" class="modal-overlay" onclick="if(event.target===this)fecharDreModal()" style="display:none;">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <span id="dre-modal-titulo" style="font-weight:700;font-size:15px;">Nova categoria</span>
+      <button class="modal-close" onclick="fecharDreModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="dre-modal-id" value="">
+      <input type="hidden" id="dre-modal-tipo" value="">
+      <input type="hidden" id="dre-modal-parent" value="">
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" id="dre-modal-nome" placeholder="Ex: Receita Operacional Bruta" style="width:100%;"/>
+      </div>
+      <div id="dre-modal-formula-wrap" style="display:none;">
+        <div class="cfg-section-title" style="margin-bottom:8px;font-size:11px;">Fórmula (categorias que compõem este totalizador)</div>
+        <div id="dre-formula-linhas" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+        <button type="button" onclick="dreAdicionarFormulaLinha()" class="btn btn-secondary btn-sm">+ Adicionar linha</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="fecharDreModal()">Cancelar</button>
+      <button type="button" class="btn btn-primary" onclick="salvarDreSecao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+{# ── Modal vincular naturezas ── #}
+<div id="dre-vincular-modal" class="modal-overlay" onclick="if(event.target===this)fecharVincularModal()" style="display:none;">
+  <div class="modal-box" style="max-width:680px;">
+    <div class="modal-header">
+      <span style="font-weight:700;font-size:15px;">Vincular naturezas — <span id="dre-vincular-nome" style="color:var(--accent);"></span></span>
+      <button class="modal-close" onclick="fecharVincularModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;max-height:480px;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead style="position:sticky;top:0;background:#fff;z-index:1;">
+          <tr>
+            <th style="padding:10px 16px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);width:36px;">
+              <input type="checkbox" id="dre-check-all" onchange="dreToggleAll(this)">
+            </th>
+            <th style="padding:10px 16px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);">Natureza</th>
+            <th style="padding:10px 16px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);width:160px;">Linha DRE</th>
+          </tr>
+        </thead>
+        <tbody id="dre-vincular-tbody">
+          {% for cat in dre_categorias %}
+          {% set tem_codigo = cat.codigo %}
+          {% set nivel = cat.codigo.count('.') if cat.codigo else -1 %}
+          <tr class="dre-nat-row" data-id="{{ cat.id }}" data-nivel="{{ nivel }}"
+              style="border-bottom:0.5px solid rgba(23,33,28,0.06);{% if nivel < 3 %}background:#F9FAFB;color:var(--muted);{% endif %}">
+            <td style="padding:8px 16px;">
+              {% if nivel == 3 or not cat.codigo %}
+                <input type="checkbox" class="dre-nat-check" value="{{ cat.id }}">
+              {% endif %}
+            </td>
+            <td style="padding:8px 16px;padding-left:{{ (nivel+1)*16 if nivel >= 0 else 16 }}px;font-weight:{{ '400' if nivel == 3 else '500' }};">
+              {% if cat.codigo %}<span style="color:var(--muted);margin-right:6px;font-size:11px;">{{ cat.codigo }}</span>{% endif %}
+              {{ cat.nome }}
+            </td>
+            <td style="padding:8px 16px;font-size:11px;color:var(--muted);">—</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="fecharVincularModal()">Cancelar</button>
+      <button type="button" class="btn btn-primary" onclick="salvarVinculos()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -738,5 +890,218 @@ function confirmarExclusaoNatureza(form, nome, emUso) {
   // Marcar tipo-inv-label como selecionado por padrão
   document.getElementById('tipo-inv-label').classList.add('selecionado');
 })();
+
+/* ═══════════════════════════ DRE ═══════════════════════════ */
+var _dreLinhaAtualId = null;
+
+(function() {
+  if (typeof Sortable === 'undefined') {
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+    s.onload = initDreSortable;
+    document.head.appendChild(s);
+  } else {
+    initDreSortable();
+  }
+})();
+
+function initDreSortable() {
+  var lista = document.getElementById('dre-lista');
+  if (!lista) return;
+  new Sortable(lista, {
+    handle: '.dre-drag-handle',
+    animation: 150,
+    onEnd: function() {
+      var items = [];
+      lista.querySelectorAll('.dre-cfg-row').forEach(function(row, idx) {
+        items.push({id: row.dataset.id, ordem: idx + 1});
+      });
+      fetch('/admin/configuracoes/dre/reordenar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({items: items})
+      });
+    }
+  });
+}
+
+function dreNovaCategoria() {
+  document.getElementById('dre-modal-id').value = '';
+  document.getElementById('dre-modal-tipo').value = 'categoria';
+  document.getElementById('dre-modal-parent').value = '';
+  document.getElementById('dre-modal-titulo').textContent = 'Nova categoria principal';
+  document.getElementById('dre-modal-nome').value = '';
+  document.getElementById('dre-modal-formula-wrap').style.display = 'none';
+  document.getElementById('dre-modal').style.display = 'flex';
+}
+
+function dreNovaLinha(btn) {
+  var row = btn.closest('.dre-cfg-row');
+  var parentId = row.dataset.id;
+  document.getElementById('dre-modal-id').value = '';
+  document.getElementById('dre-modal-tipo').value = 'linha';
+  document.getElementById('dre-modal-parent').value = parentId;
+  document.getElementById('dre-modal-titulo').textContent = 'Nova linha';
+  document.getElementById('dre-modal-nome').value = '';
+  document.getElementById('dre-modal-formula-wrap').style.display = 'none';
+  document.getElementById('dre-modal').style.display = 'flex';
+}
+
+function dreNovaTotalizador() {
+  document.getElementById('dre-modal-id').value = '';
+  document.getElementById('dre-modal-tipo').value = 'totalizador';
+  document.getElementById('dre-modal-parent').value = '';
+  document.getElementById('dre-modal-titulo').textContent = 'Novo totalizador';
+  document.getElementById('dre-modal-nome').value = '';
+  document.getElementById('dre-formula-linhas').innerHTML = '';
+  document.getElementById('dre-modal-formula-wrap').style.display = 'block';
+  dreAdicionarFormulaLinha();
+  document.getElementById('dre-modal').style.display = 'flex';
+}
+
+function dreEditar(btn) {
+  var row = btn.closest('.dre-cfg-row');
+  var id = row.dataset.id, tipo = row.dataset.tipo, nome = row.dataset.nome;
+  document.getElementById('dre-modal-id').value = id;
+  document.getElementById('dre-modal-tipo').value = tipo;
+  document.getElementById('dre-modal-parent').value = row.dataset.parent || '';
+  document.getElementById('dre-modal-titulo').textContent = 'Editar — ' + nome;
+  document.getElementById('dre-modal-nome').value = nome;
+  var formulaWrap = document.getElementById('dre-modal-formula-wrap');
+  if (tipo === 'totalizador') {
+    formulaWrap.style.display = 'block';
+    document.getElementById('dre-formula-linhas').innerHTML = '';
+    var formula = [];
+    try { formula = JSON.parse(row.dataset.formula || '[]'); } catch(e) {}
+    formula.forEach(function(item) { dreAdicionarFormulaLinha(item.secao_id, item.op); });
+    if (!formula.length) dreAdicionarFormulaLinha();
+  } else {
+    formulaWrap.style.display = 'none';
+  }
+  document.getElementById('dre-modal').style.display = 'flex';
+}
+
+function dreAdicionarFormulaLinha(secaoId, op) {
+  var container = document.getElementById('dre-formula-linhas');
+  var secoes = [];
+  document.querySelectorAll('.dre-cfg-row[data-tipo="categoria"]').forEach(function(r) {
+    secoes.push({id: r.dataset.id, nome: r.dataset.nome});
+  });
+  document.querySelectorAll('.dre-cfg-row[data-tipo="totalizador"]').forEach(function(r) {
+    secoes.push({id: r.dataset.id, nome: '= ' + r.dataset.nome});
+  });
+  var opts = secoes.map(function(s) {
+    return '<option value="' + s.id + '"' + (s.id === secaoId ? ' selected' : '') + '>' + s.nome + '</option>';
+  }).join('');
+  var div = document.createElement('div');
+  div.style.cssText = 'display:flex;gap:8px;align-items:center;';
+  div.innerHTML = '<select style="flex:1;padding:7px 10px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg2);color:inherit;font-size:13px;"><option value="">Selecione…</option>' + opts + '</select>'
+    + '<select style="width:70px;padding:7px 10px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg2);color:inherit;font-size:13px;">'
+    + '<option value="+"' + ((!op || op==='+') ? ' selected' : '') + '>+</option>'
+    + '<option value="-"' + (op==='-' ? ' selected' : '') + '>−</option>'
+    + '</select>'
+    + '<button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:16px;padding:0 4px;">×</button>';
+  container.appendChild(div);
+}
+
+function salvarDreSecao() {
+  var id = document.getElementById('dre-modal-id').value;
+  var tipo = document.getElementById('dre-modal-tipo').value;
+  var parent = document.getElementById('dre-modal-parent').value;
+  var nome = document.getElementById('dre-modal-nome').value.trim();
+  if (!nome) { alert('Informe o nome.'); return; }
+
+  var formula = null;
+  if (tipo === 'totalizador') {
+    formula = [];
+    document.querySelectorAll('#dre-formula-linhas > div').forEach(function(div) {
+      var sels = div.querySelectorAll('select');
+      var sid = sels[0].value, op = sels[1].value;
+      if (sid) formula.push({secao_id: sid, op: op});
+    });
+  }
+
+  function _dreOk(d) { if (d.ok) location.reload(); else alert('Erro: ' + d.erro); }
+  function _dreErr(e) { alert('Erro de comunicação: ' + e); }
+
+  if (id) {
+    fetch('/admin/configuracoes/dre/secao/' + id + '/editar', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({nome: nome, formula_json: formula})
+    }).then(function(r) { return r.json(); }).then(_dreOk).catch(_dreErr);
+  } else {
+    var fd = new FormData();
+    fd.append('nome', nome); fd.append('tipo', tipo);
+    if (parent) fd.append('parent_id', parent);
+    if (formula) fd.append('formula_json', JSON.stringify(formula));
+    fetch('/admin/configuracoes/dre/secao/nova', {method: 'POST', body: fd})
+      .then(function(r) { return r.json(); }).then(_dreOk).catch(_dreErr);
+  }
+}
+
+function dreExcluir(btn) {
+  var row = btn.closest('.dre-cfg-row');
+  var id = row.dataset.id, nome = row.dataset.nome;
+  if (!confirm('Excluir "' + nome + '"?')) return;
+  var url = '/admin/configuracoes/dre/secao/' + id + '/excluir';
+  fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}})
+    .then(function(r) {
+      if (!r.ok) return r.text().then(function(t) { throw new Error('HTTP ' + r.status + ' — ' + t.substring(0,200)); });
+      return r.json();
+    })
+    .then(function(d) { if (d.ok) location.reload(); else alert('Erro: ' + d.erro); })
+    .catch(function(e) { alert('URL: ' + url + '\n\n' + e); });
+}
+
+function fecharDreModal() {
+  document.getElementById('dre-modal').style.display = 'none';
+}
+
+/* ── Vincular naturezas ── */
+function dreVincularNaturezas(btn) {
+  var row = btn.closest('.dre-cfg-row');
+  var linhaId = row.dataset.id, nome = row.dataset.nome;
+  _dreLinhaAtualId = linhaId;
+  document.getElementById('dre-vincular-nome').textContent = nome;
+  var vinculadas = [];
+  try { vinculadas = JSON.parse(row.dataset.vinculas || '[]'); } catch(e) {}
+  document.querySelectorAll('.dre-nat-check').forEach(function(c) {
+    c.checked = vinculadas.indexOf(c.value) !== -1;
+  });
+  document.getElementById('dre-check-all').checked = false;
+  document.getElementById('dre-vincular-modal').style.display = 'flex';
+}
+
+function dreToggleAll(cb) {
+  document.querySelectorAll('.dre-nat-check').forEach(function(c) { c.checked = cb.checked; });
+}
+
+function salvarVinculos() {
+  var ids = [];
+  document.querySelectorAll('.dre-nat-check:checked').forEach(function(c) { ids.push(c.value); });
+  fetch('/admin/configuracoes/dre/linha/' + _dreLinhaAtualId + '/vincular', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({categoria_ids: ids})
+  }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert('Erro: ' + d.erro); });
+}
+
+function fecharVincularModal() {
+  document.getElementById('dre-vincular-modal').style.display = 'none';
+}
 </script>
+
+<style>
+.dre-cfg-row { display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:0.5px solid rgba(23,33,28,0.07);transition:background .1s; }
+.dre-cfg-row:hover { background:#F7F8FA; }
+.dre-cfg-nome { font-size:13px;font-weight:500;flex:1; }
+.dre-cfg-cat .dre-cfg-nome { font-size:13px;font-weight:600;color:#111827; }
+.dre-drag-handle { color:var(--muted);cursor:grab;font-size:13px;letter-spacing:-2px;user-select:none;flex-shrink:0; }
+.dre-cfg-acoes { display:flex;gap:4px;align-items:center;margin-left:auto;flex-shrink:0; }
+.dre-btn-icon { background:none;border:none;cursor:pointer;padding:5px;border-radius:6px;color:var(--muted);display:flex;align-items:center;transition:background .1s,color .1s; }
+.dre-btn-icon:hover { background:var(--bg2);color:var(--text); }
+.dre-btn-add:hover { color:#16A34A; }
+.dre-btn-link:hover { color:#2563EB; }
+.dre-btn-del:hover { color:#DC2626; }
+</style>
+
 {% endblock %}

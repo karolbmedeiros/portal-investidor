@@ -738,19 +738,19 @@
   </div>
   <div id="consolidado-body" style="display:none;">
     <div class="tabela-wrap" style="border-radius:0;border:none;"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Natureza</th><th>Status</th></tr></thead><tbody>
-      {% for l in lancamentos %}{% set especial = l._transferencia or l._neutro %}
-      <tr class="ext-row ext-row-cons" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}" data-conciliado="{{ 'true' if l.conciliado else 'false' }}" data-especial="{{ 'true' if especial else 'false' }}" style="{% if especial %}color:#9CA3AF;{% elif not l.conciliado %}background:#FEFCE8;{% endif %}">
+      {% for l in lancamentos %}{% set especial = l._transferencia or l._neutro %}{% set rendimento = l._rendimento %}
+      <tr class="ext-row ext-row-cons" data-mes="{{ l.data_transacao[:7] if l.data_transacao else '' }}" data-valor="{{ l.valor|abs }}" data-tipo="{{ l.tipo }}" data-conciliado="{{ 'true' if l.conciliado else 'false' }}" data-especial="{{ 'true' if especial else 'false' }}" data-rendimento="{{ 'true' if rendimento else 'false' }}" style="{% if especial or rendimento %}color:#9CA3AF;{% elif not l.conciliado %}background:#FEFCE8;{% endif %}">
         <td style="white-space:nowrap;font-size:12px;">{{ l.data_transacao[:10] if l.data_transacao else '—' }}</td>
         <td style="min-width:200px;">
-          {% if especial %}<span class="badge-transf">{{ 'Transf.' if l._transferencia else 'Fundo' }}</span>{% endif %}
+          {% if especial %}<span class="badge-transf">{{ 'Transf.' if l._transferencia else 'Fundo' }}</span>{% elif rendimento %}<span class="badge-transf">Rendimento</span>{% endif %}
           <div style="font-size:13px;font-weight:500;line-height:1.3;">{{ l.descricao or l.descricao_original or '—' }}</div>
           {% if l.descricao_original and l.descricao and l.descricao|upper != l.descricao_original|upper %}
           <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3;">{{ l.descricao_original }}</div>
           {% endif %}
         </td>
         <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">{{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}</td>
-        <td style="font-size:12px;color:var(--muted);">{% set _cat = l.categorias_financeiras %}{{ _cat.nome if _cat else ('Transferência' if l._transferencia else ('Fundo' if l._neutro else '—')) }}</td>
-        <td>{% if especial %}<span class="badge badge-cinza" style="font-size:10px;">Auto</span>{% elif l.conciliado %}<span class="badge badge-verde" style="font-size:10px;">Conciliado</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
+        <td style="font-size:12px;color:var(--muted);">{% set _cat = l.categorias_financeiras %}{{ _cat.nome if _cat else ('Transferência' if l._transferencia else ('Fundo' if l._neutro else ('Rendimento' if rendimento else '—'))) }}</td>
+        <td>{% if especial or rendimento %}<span class="badge badge-cinza" style="font-size:10px;">Auto</span>{% elif l.conciliado %}<span class="badge badge-verde" style="font-size:10px;">Conciliado</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody></table></div>
@@ -2082,7 +2082,7 @@ function filtrarExtrato(){
   document.querySelectorAll('.nb-rec-item').forEach(r=>{const ok=!mes||r.dataset.mes===mes;const tOk=curR==='todos'||r.getAttribute('data-tab-rec')===curR;r.style.display=(ok&&tOk)?'':'none';if(ok)totEnt+=parseFloat(r.dataset.valor||0);});
   const curP=(document.querySelector('.nb-tab-btn[data-panel="pag"].nb-tab-ativo')||{}).dataset?.tab||'todos';
   document.querySelectorAll('.nb-pag-item').forEach(r=>{const ok=!mes||r.dataset.mes===mes;const tOk=curP==='todos'||r.getAttribute('data-tab-pag')===curP;r.style.display=(ok&&tOk)?'':'none';if(ok)totSai+=parseFloat(r.dataset.valor||0);});
-  document.querySelectorAll('.ext-row-cons').forEach(r=>{const ok=!mes||r.dataset.mes===mes;r.style.display=ok?'':'none';if(ok&&r.dataset.conciliado==='true'){const v=parseFloat(r.dataset.valor||0);if(r.dataset.tipo==='credito')totConsEnt+=v;else totConsSai+=v;}});
+  document.querySelectorAll('.ext-row-cons').forEach(r=>{const ok=!mes||r.dataset.mes===mes;r.style.display=ok?'':'none';if(ok&&r.dataset.conciliado==='true'&&r.dataset.rendimento!=='true'){const v=parseFloat(r.dataset.valor||0);if(r.dataset.tipo==='credito')totConsEnt+=v;else totConsSai+=v;}});
   const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   setEl('tot-entradas',fmtBrl(totEnt));setEl('tot-saidas',fmtBrl(totSai));
   const elSaldo=document.getElementById('extrato-saldo');if(elSaldo){const s=totConsEnt-totConsSai;elSaldo.textContent=fmtBrl(s);elSaldo.style.color=s>=0?'#16A34A':'#DC2626';}

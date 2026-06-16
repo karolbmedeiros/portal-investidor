@@ -7,9 +7,16 @@ _CORES = ["#E8621A", "#2563EB", "#16A34A", "#9333EA", "#EAB308", "#EC4899"]
 # Descricoes que representam movimentos internos de fundo (não contam como receita/despesa operacional)
 _DESCRICOES_NEUTRAS = ["RESGATE FUNDOS", "APLICACAO FUNDO", "APLICAÇÃO FUNDO"]
 
+# Lançamentos informativos de rendimento do fundo (lançados no último dia do mês, não são fluxo real)
+_DESCRICOES_RENDIMENTO = ["RENDIMENTO FUNDO", "IR FUNDO", "IOF FUNDO"]
+
 def _eh_neutro(l: dict) -> bool:
     desc = (l.get("descricao") or l.get("descricao_original") or "").upper()
     return any(kw in desc for kw in _DESCRICOES_NEUTRAS)
+
+def _eh_rendimento(l: dict) -> bool:
+    desc = (l.get("descricao") or l.get("descricao_original") or "").upper()
+    return any(kw in desc for kw in _DESCRICOES_RENDIMENTO)
 
 
 def auto_conciliar_neutros(usina_id: str) -> None:
@@ -21,8 +28,8 @@ def auto_conciliar_neutros(usina_id: str) -> None:
     nomes = _nomes_transferencia()
     for conta in contas:
         conta_id = conta["id"]
-        # fundos
-        for kw in _DESCRICOES_NEUTRAS:
+        # fundos e rendimentos informativos
+        for kw in _DESCRICOES_NEUTRAS + _DESCRICOES_RENDIMENTO:
             try:
                 sb.table("lancamentos_bancarios") \
                   .update({"conciliado": True, "categoria_id": None}) \
@@ -735,6 +742,7 @@ def listar_lancamentos(usina_id: str, conta_id: Optional[str] = None) -> list:
         for l in lancamentos:
             l["_transferencia"] = _eh_transferencia(l, nomes)
             l["_neutro"] = _eh_neutro(l)
+            l["_rendimento"] = _eh_rendimento(l)
             # Lançamento com categoria de receita/despesa explícita nunca é transferência
             cat = l.get("categorias_financeiras") or {}
             if isinstance(cat, dict) and cat.get("tipo") in ("receita", "despesa"):
