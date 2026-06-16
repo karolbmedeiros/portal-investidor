@@ -1544,14 +1544,21 @@ function toggleAcordDb(btn){
         <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">{{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}</td>
         <td style="font-size:12px;">
           {% if l.splits %}
-            {% for sp in l.splits %}
-            <div style="display:flex;align-items:center;gap:6px;{% if not loop.first %}margin-top:4px;{% endif %}">
-              <span style="background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text);">{{ sp.natureza }}</span>
-              <span style="font-size:11px;color:var(--muted);">R$ {{ "%.2f"|format(sp.valor)|replace(".",",") }}</span>
+            {% set _sp_json = l.splits|tojson|replace("'","\\'")|replace('"','\\"') %}
+            <div class="nat-edit-wrap" onclick="editarNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}',null,'{{ _sp_json }}')" title="Alterar natureza">
+              {% for sp in l.splits %}
+              <div style="display:flex;align-items:center;gap:6px;{% if not loop.first %}margin-top:4px;{% endif %}">
+                <span style="background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text);">{{ sp.natureza }}</span>
+                <span style="font-size:11px;color:var(--muted);">R$ {{ "%.2f"|format(sp.valor)|replace(".",",") }}</span>
+              </div>
+              {% endfor %}
+              <span class="nat-edit-icon"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M11.5 2.5l2 2L5 13H3v-2L11.5 2.5z"/></svg></span>
             </div>
-            {% endfor %}
           {% elif l.observacoes %}
-            <span style="color:var(--text);">{{ l.observacoes }}</span>
+            <div class="nat-edit-wrap" onclick="editarNaturezaModal('{{ l.id }}','{{ (l.descricao or l.descricao_original or '')|replace("'","\\'")|replace('"','\\"') }}','{{ "%.2f"|format(l.valor|abs) }}','{{ l.tipo }}','{{ l.observacoes }}',null)" title="Alterar natureza">
+              <span style="color:var(--text);">{{ l.observacoes }}</span>
+              <span class="nat-edit-icon"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M11.5 2.5l2 2L5 13H3v-2L11.5 2.5z"/></svg></span>
+            </div>
           {% elif l.sugestao_natureza %}
             <div class="sug-chip" id="sug-{{ l.id }}" style="display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:0.5px solid var(--border);border-radius:20px;padding:3px 6px 3px 10px;">
               <span style="font-size:11px;color:var(--muted);letter-spacing:.03em;user-select:none;">{{ l.sugestao_natureza }}</span>
@@ -1929,6 +1936,10 @@ function toggleAcordDb(btn){
 .nb-panel-total { font-size:15px; font-weight:500; letter-spacing:-0.01em; } .nb-panel-body { max-height:440px; overflow-y:auto; }
 .nb-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:0.5px solid rgba(23,33,28,0.07); transition:background .1s; }
 .nb-convenio { display:none !important; }
+.nat-edit-wrap { display:inline-flex;align-items:center;gap:6px;cursor:pointer;border-radius:6px;padding:2px 4px;transition:background .12s; }
+.nat-edit-wrap:hover { background:var(--bg2); }
+.nat-edit-icon { color:var(--muted);opacity:0;transition:opacity .12s;flex-shrink:0; }
+.nat-edit-wrap:hover .nat-edit-icon { opacity:1; }
 .nb-item:hover { background:var(--bg2); } .nb-item-data { font-size:12px; font-weight:500; color:var(--muted); min-width:42px; text-align:center; } .nb-pendente-data { color:var(--red); }
 .nb-item-centro { flex:1; min-width:0; } .nb-item-desc { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .nb-item-cat { font-size:11px; color:var(--muted); margin-top:2px; }
 .nb-item-dir { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; } .nb-item-val { font-size:13px; font-weight:500; white-space:nowrap; } .nb-item-status { font-size:12px; color:#1D9E75; }
@@ -2454,6 +2465,27 @@ function _removerSplit(idx) {
   _renderSplits();
 }
 
+function editarNaturezaModal(id, desc, val, tipo, naturezaAtual, splitsJson) {
+  _mnId         = id;
+  _mnTipo       = tipo;
+  _mnValorTotal = parseFloat(val) || 0;
+  if (splitsJson) {
+    try { _mnSplits = JSON.parse(splitsJson.replace(/\\"/g, '"')); } catch(e) { _mnSplits = [{natureza:'', valor:_mnValorTotal}]; }
+  } else if (naturezaAtual) {
+    _mnSplits = [{natureza: naturezaAtual, valor: _mnValorTotal}];
+  } else {
+    _mnSplits = [{natureza: '', valor: _mnValorTotal}];
+  }
+  document.getElementById('mn-desc').textContent = desc;
+  document.getElementById('mn-val').textContent  = (tipo === 'credito' ? '+ ' : '- ') + 'R$ ' + _fmtBrl2(_mnValorTotal);
+  document.getElementById('mn-val').style.color  = tipo === 'credito' ? 'var(--green)' : '#EF4444';
+  document.getElementById('mn-status').textContent = '';
+  _renderSplits();
+  var m = document.getElementById('modal-natureza');
+  m.style.display = 'flex';
+  setTimeout(function(){ var el = document.querySelector('.mn-split-nat'); if(el) el.focus(); }, 100);
+}
+
 function abrirNaturezaModal(id, desc, val, tipo) {
   _mnId         = id;
   _mnTipo       = tipo;
@@ -2473,18 +2505,26 @@ function _atualizarLinhaNatureza(id, splits) {
   var row = document.querySelector('tr[data-id="' + id + '"]');
   if (!row) return;
   var tds = row.querySelectorAll('td');
-  // td[3] = natureza, td[4] = status
   var natTd = tds[3], stTd = tds[4];
   if (!natTd) return;
-  if (splits.length === 1) {
-    natTd.innerHTML = '<span style="color:var(--text);">' + splits[0].natureza + '</span>';
+  var desc = row.querySelector('td:nth-child(2) div')?.textContent?.trim() || '';
+  var val  = row.dataset.valor || '0';
+  var tipo = row.dataset.tipo  || 'debito';
+  var splitsJson = JSON.stringify(splits).replace(/"/g, '&quot;');
+  var editIcon = '<span class="nat-edit-icon"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M11.5 2.5l2 2L5 13H3v-2L11.5 2.5z"/></svg></span>';
+  var inner;
+  if (splits.length === 1 && !splits[0].valor) {
+    inner = '<span style="color:var(--text);">' + splits[0].natureza + '</span>';
+    var nat = splits[0].natureza.replace(/"/g,'&quot;').replace(/'/g,"\\'");
+    natTd.innerHTML = '<div class="nat-edit-wrap" onclick="editarNaturezaModal(\'' + id + '\',\'' + desc.replace(/'/g,"\\'") + '\',\'' + val + '\',\'' + tipo + '\',\'' + nat + '\',null)" title="Alterar natureza">' + inner + editIcon + '</div>';
   } else {
-    natTd.innerHTML = splits.map(function(sp) {
+    inner = splits.map(function(sp) {
       return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
         + '<span style="background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text);">' + sp.natureza + '</span>'
         + '<span style="font-size:11px;color:var(--muted);">R$ ' + sp.valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</span>'
         + '</div>';
     }).join('');
+    natTd.innerHTML = '<div class="nat-edit-wrap" onclick="editarNaturezaModal(\'' + id + '\',\'' + desc.replace(/'/g,"\\'") + '\',\'' + val + '\',\'' + tipo + '\',null,\'' + splitsJson.replace(/'/g,"\\'") + '\')" title="Alterar natureza">' + inner + editIcon + '</div>';
   }
   if (stTd) stTd.innerHTML = '<span class="badge badge-verde" style="font-size:10px;">Classificado</span>';
 }
