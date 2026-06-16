@@ -2490,7 +2490,7 @@ function _atualizarLinhaNatureza(id, splits) {
 }
 
 function _confirmarSugestao(id, natureza) {
-  fetch('/admin/classificar-lancamento-carro', {
+  fetch('/admin/carros/classificar-lancamento', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({id: id, natureza: natureza})
