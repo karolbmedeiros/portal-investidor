@@ -519,7 +519,7 @@
         {% set _dias = f.dias_vencimento if f.dias_vencimento is defined else 0 %}
         <tr>
           <td class="text-mono text-sm">{{ f.numero_documento or f.id or '—' }}</td>
-          <td style="font-weight:600;">{{ (f.nome_cliente or f.locatario or '—')|title }}</td>
+          <td style="font-weight:600;">{{ (f.cliente or f.nome_cliente or f.locatario or '—')|title }}</td>
           <td>
             <span class="text-sm">{{ f.data_vencimento[:10]|fmtdata if f.data_vencimento else '—' }}</span>
             {% if _dias < 0 %}<span class="db-fat-tag db-fat-tag--vencida">{{ _dias|abs }}d atraso</span>
