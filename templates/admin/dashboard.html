@@ -554,19 +554,24 @@
     <div style="display:flex; flex-direction:column; gap:16px;">
       {% for m in motoristas_recebimentos %}
       {% set _pct = ((m.valor_pago / _max_m) * 100)|round(1) if _max_m > 0 else 0 %}
-      <div style="border:0.5px solid rgba(23,33,28,.1); border-radius:12px; padding:14px 16px;">
+      <div style="border:0.5px solid {% if not m.ativo %}rgba(239,68,68,.25){% else %}rgba(23,33,28,.1){% endif %}; border-radius:12px; padding:14px 16px; {% if not m.ativo %}background:rgba(239,68,68,.02);{% endif %}">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px;">
           <div>
-            <div style="font-size:13px; font-weight:600;">{{ m.cliente|title }}</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="font-size:13px; font-weight:600;">{{ m.cliente|title }}</div>
+              {% if not m.ativo %}
+              <span style="font-size:10px; font-weight:600; color:#EF4444; background:rgba(239,68,68,.1); padding:2px 7px; border-radius:20px; border:0.5px solid rgba(239,68,68,.25); white-space:nowrap;">Contrato encerrado</span>
+              {% endif %}
+            </div>
             <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);margin-top:4px;display:inline-block;">{{ m.placa }}</span>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:15px; font-weight:700; color:#D97706;">{{ m.valor_pago|brl }}</div>
+            <div style="font-size:15px; font-weight:700; color:{% if not m.ativo %}var(--muted){% else %}#D97706{% endif %};">{{ m.valor_pago|brl }}</div>
             <div style="font-size:10px; color:var(--muted);">{{ m.n_semanas }} sem. × R$ {{ m.valor_semana|int }}</div>
           </div>
         </div>
         <div style="height:6px; border-radius:3px; background:rgba(245,158,11,.12);">
-          <div style="height:100%; width:{{ _pct }}%; background:#F59E0B; border-radius:3px;"></div>
+          <div style="height:100%; width:{{ _pct }}%; background:{% if not m.ativo %}#9CA3AF{% else %}#F59E0B{% endif %}; border-radius:3px;"></div>
         </div>
       </div>
       {% endfor %}

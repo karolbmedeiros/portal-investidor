@@ -207,6 +207,9 @@ def home():
                     "em_manutencao":  not _tem_contrato,
                     "ultima_semana":  ultima,
                 })
+            _status_by_placa_p = {_norm_placa(v["placa"]): v["ativo"] for v in carros_veiculos_status}
+            for _mr in motoristas_recebimentos:
+                _mr["ativo"] = _status_by_placa_p.get(_norm_placa(_mr["placa"]), False)
 
             # Rentabilidade estimada BYD
             _BYD = {

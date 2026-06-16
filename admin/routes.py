@@ -161,6 +161,9 @@ def dashboard():
                         "em_manutencao": not _tem_contrato,
                         "ultima_semana": _ult,
                     })
+                _status_by_placa = {_norm(v["placa"]): v["ativo"] for v in carros_veiculos_status}
+                for _mr in motoristas_recebimentos:
+                    _mr["ativo"] = _status_by_placa.get(_norm(_mr["placa"]), False)
                 _BYD = {"nome":"BYD Dolphin Mini (Elétrico)","aluguel_semanal":1200.0,
                         "pct_investidor":0.85,"seguro_anual":5109.94,"manutencao_mensal":258.0,
                         "depreciacao_aa_pct":0.078,"investimento":102000.0,"cdi_aa":0.144,"poupanca_aa":0.0617}
