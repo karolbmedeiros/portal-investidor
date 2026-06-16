@@ -1594,7 +1594,7 @@ function toggleAcordI(btn){
 
 {# Modal natureza carros portal — com suporte a rateio #}
 <datalist id="mn-c-sugestoes">
-  {% for nat in naturezas_carros %}<option value="{{ nat }}">{% endfor %}
+  {% for nat in naturezas_carros %}<option value="{{ nat.nome }}">{% endfor %}
 </datalist>
 <div id="modal-natureza-c" style="display:none;position:fixed;inset:0;z-index:600;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);" onclick="if(event.target===this)fecharNaturezaModalC()">
   <div style="background:var(--bg);border-radius:16px;padding:28px;width:min(480px,94vw);box-shadow:0 24px 64px rgba(0,0,0,.18);">

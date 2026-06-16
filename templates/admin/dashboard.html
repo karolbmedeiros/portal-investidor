@@ -159,7 +159,9 @@
       <div style="margin-top:16px; border-top:0.5px solid rgba(23,33,28,.07); padding-top:14px; display:flex; flex-direction:column; gap:10px;">
         {% for v in empresa_carros_sel.veiculos %}
         {% set _vs = carros_veiculos_status|selectattr('placa','equalto',v.placa)|list %}
-        {% set _ativo = _vs[0].ativo if _vs else false %}
+        {% set _vst = _vs[0] if _vs else none %}
+        {% set _ativo = _vst.ativo if _vst else false %}
+        {% set _manut = _vst.em_manutencao if _vst else false %}
         <div style="display:flex; align-items:center; gap:10px;">
           <span style="width:32px; height:32px; flex:none; border-radius:8px; background:#FEF3C7; display:flex; align-items:center; justify-content:center;">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></svg>
@@ -168,7 +170,9 @@
             <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ v.modelo or '—' }}</div>
             <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);">{{ v.placa }}</span>
           </div>
-          <span class="badge {{ 'badge-verde' if _ativo else 'badge-muted' }}">{{ 'Ativo' if _ativo else 'Vago' }}</span>
+          {% if _ativo %}<span class="badge badge-verde">Ativo</span>
+          {% elif _manut %}<span class="badge" style="background:#F3F4F6;color:#6B7280;border-color:#E5E7EB;">Manutenção</span>
+          {% else %}<span class="badge badge-muted">Vago</span>{% endif %}
         </div>
         {% endfor %}
       </div>
@@ -1537,7 +1541,7 @@ function toggleAcordDb(btn){
 
 {# Modal natureza/conciliação carros — com suporte a rateio #}
 <datalist id="mn-sugestoes">
-  {% for nat in naturezas_carros %}<option value="{{ nat }}">{% endfor %}
+  {% for nat in naturezas_carros %}<option value="{{ nat.nome }}">{% endfor %}
 </datalist>
 <div id="modal-natureza" style="display:none;position:fixed;inset:0;z-index:600;align-items:center;justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(3px);" onclick="if(event.target===this)fecharNaturezaModal()">
   <div style="background:var(--bg);border-radius:16px;padding:28px;width:min(480px,94vw);box-shadow:0 24px 64px rgba(0,0,0,.18);">

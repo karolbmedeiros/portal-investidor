@@ -3,24 +3,24 @@ import re
 import json
 import os
 from typing import Optional
-from services.supabase_client import get_financeiro_client
+from services.supabase_client import get_financeiro_client, get_service_client
 
 _CLIENTES_CACHE: Optional[dict] = None
 
 def listar_naturezas_carros() -> list:
     try:
         sb = get_financeiro_client()
-        rows = sb.table("naturezas_carros").select("nome").order("nome").execute().data or []
-        return [r["nome"] for r in rows]
+        rows = sb.table("naturezas_carros").select("nome,tipo").order("nome").execute().data or []
+        return rows  # lista de dicts {nome, tipo}
     except Exception:
         return []
 
-def adicionar_natureza_carros(nome: str) -> dict:
+def adicionar_natureza_carros(nome: str, tipo: str = "saida") -> dict:
     nome = nome.strip()
-    if not nome:
-        return {"ok": False, "erro": "Nome vazio"}
+    if not nome or tipo not in ("entrada", "saida"):
+        return {"ok": False, "erro": "Nome ou tipo inválido"}
     try:
-        get_financeiro_client().table("naturezas_carros").insert({"nome": nome}).execute()
+        get_financeiro_client().table("naturezas_carros").insert({"nome": nome, "tipo": tipo}).execute()
         return {"ok": True}
     except Exception as e:
         err = str(e)
@@ -170,8 +170,48 @@ def upload_pdf_cliente(ref_id: str, nome_arquivo: str, conteudo: bytes,
     except Exception as e:
         return {"ok": False, "erro": str(e)}
 
-_CONTAS_RECEBER_PATH  = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/CONTAS-A-RECEBER.xlsx"
+_CONTAS_RECEBER_PATH    = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/CONTAS-A-RECEBER.xlsx"
 _CONTRATOS_LOCACAO_PATH = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/Contratos de Locação.xlsx"
+_STORAGE_BUCKET = "contratos"
+_STORAGE_CONTAS  = "planilhas/CONTAS-A-RECEBER.xlsx"
+_STORAGE_CONTRATOS = "planilhas/Contratos de Locacao.xlsx"
+
+
+def _planilha_path(local_path: str, storage_key: str) -> str:
+    """Retorna caminho local se existir, senão baixa do Supabase Storage para /tmp."""
+    if os.path.exists(local_path):
+        return local_path
+    tmp = os.path.join("/tmp", os.path.basename(storage_key))
+    if os.path.exists(tmp):
+        return tmp
+    try:
+        from services.supabase_client import get_service_client
+        data = get_service_client().storage.from_(_STORAGE_BUCKET).download(storage_key)
+        with open(tmp, "wb") as f:
+            f.write(data)
+        return tmp
+    except Exception as e:
+        print(f"[_planilha_path] falha ao baixar {storage_key}: {e}")
+        return local_path  # retorna original para gerar erro legível
+
+
+def upload_planilha(filename: str, conteudo: bytes) -> dict:
+    """Sobe Excel para Supabase Storage (bucket contratos/planilhas/)."""
+    key = f"planilhas/{filename}"
+    try:
+        sb = get_service_client()
+        try:
+            sb.storage.from_(_STORAGE_BUCKET).remove([key])
+        except Exception:
+            pass
+        sb.storage.from_(_STORAGE_BUCKET).upload(key, conteudo, {"content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
+        # invalida cache local em /tmp
+        tmp = os.path.join("/tmp", filename)
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "erro": str(e)}
 
 _UNIDADE_EMPRESA = {
     "JOÃO PAULO CONSÓRCIOS": "JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA",
@@ -185,7 +225,7 @@ def listar_contratos_excel(unidades: list) -> list:
     """Lê Contratos de Locação.xlsx e retorna contratos ativos das unidades informadas."""
     import openpyxl
     try:
-        wb = openpyxl.load_workbook(_CONTRATOS_LOCACAO_PATH, data_only=True)
+        wb = openpyxl.load_workbook(_planilha_path(_CONTRATOS_LOCACAO_PATH, _STORAGE_CONTRATOS), data_only=True)
         ws = wb.active
         rows = list(ws.iter_rows(values_only=True))
     except Exception as e:
@@ -235,7 +275,7 @@ def contas_receber_carros_excel(empresa_nome: str) -> list:
         return []
 
     try:
-        wb = openpyxl.load_workbook(_CONTAS_RECEBER_PATH, data_only=True)
+        wb = openpyxl.load_workbook(_planilha_path(_CONTAS_RECEBER_PATH, _STORAGE_CONTAS), data_only=True)
         ws = wb.active
         rows = list(ws.iter_rows(values_only=True))
     except Exception as e:

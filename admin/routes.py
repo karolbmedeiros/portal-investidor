@@ -640,15 +640,29 @@ def natureza_excluir(cat_id):
     return redirect(url_for("admin.configuracoes") + "#naturezas")
 
 
+@admin_bp.route("/configuracoes/upload-planilha", methods=["POST"])
+@requer_admin
+def upload_planilha_carros():
+    from services.veiculos_service import upload_planilha
+    arquivo = request.files.get("planilha")
+    if not arquivo or not arquivo.filename:
+        flash("Selecione um arquivo.", "erro")
+        return redirect(url_for("admin.configuracoes") + "#planilhas-carros")
+    res = upload_planilha(arquivo.filename, arquivo.read())
+    flash(f"'{arquivo.filename}' atualizado." if res["ok"] else f"Erro: {res.get('erro')}", "sucesso" if res["ok"] else "erro")
+    return redirect(url_for("admin.configuracoes") + "#planilhas-carros")
+
+
 @admin_bp.route("/configuracoes/natureza-carros/nova", methods=["POST"])
 @requer_admin
 def natureza_carros_nova():
     from services.veiculos_service import adicionar_natureza_carros
     nome = request.form.get("nome", "").strip()
+    tipo = request.form.get("tipo", "saida")
     if not nome:
         flash("Informe o nome da natureza.", "erro")
         return redirect(url_for("admin.configuracoes") + "#naturezas-carros")
-    res = adicionar_natureza_carros(nome)
+    res = adicionar_natureza_carros(nome, tipo)
     flash("Natureza adicionada." if res["ok"] else f"Erro: {res.get('erro')}", "sucesso" if res["ok"] else "erro")
     return redirect(url_for("admin.configuracoes") + "#naturezas-carros")
 
