@@ -2170,6 +2170,12 @@ window.addEventListener('resize', tryInitChartsAdmin);
 document.addEventListener('click',function(e){
   var link=e.target.closest('.dtab-link[data-tab]');if(!link)return;
   var t=link.dataset.tab;
+  if(t==='dre'){
+    var url=new URL(window.location.href);
+    url.searchParams.set('tab','dre');
+    window.location.href=url.toString();
+    return;
+  }
   setTimeout(function(){
     if(t==='extrato'){iniciarGraficosExtrato();filtrarExtrato();}
     else{tryInitChartsAdmin();}
@@ -2247,6 +2253,7 @@ function filtrarExtrato(){
 })();
 document.addEventListener('click',function(e){
   var link=e.target.closest('.dtab-link[data-tab]');if(!link)return;
+  if(link.dataset.tab==='dre'){var url=new URL(window.location.href);url.searchParams.set('tab','dre');window.location.href=url.toString();return;}
   if(link.dataset.tab==='extrato'){setTimeout(function(){iniciarGraficosExtrato();filtrarExtrato();},80);}
 });
 {% endif %}

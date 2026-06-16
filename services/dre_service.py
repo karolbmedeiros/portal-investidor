@@ -152,7 +152,8 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
     for conta in contas:
         lancs = listar_lancamentos(usina_id, conta_id=conta["id"])
         lancamentos += [l for l in lancs
-                        if l.get("data_transacao")
+                        if l.get("conciliado")
+                        and l.get("data_transacao")
                         and data_ini <= l["data_transacao"][:10] <= data_fim
                         and not l.get("_neutro")
                         and not l.get("_rendimento")
