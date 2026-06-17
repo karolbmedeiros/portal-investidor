@@ -558,6 +558,7 @@
 <div id="tab-saldo_creditos" data-tab="saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}">
 <div style="padding-top:4px;">
   {% set _ma = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] %}
+  {% set _cota_dec = (cotas.get(ativo_id, 0) or 0) %}
   {# Agrega totais #}
   {% set _ei = namespace(total_kwh=0, total_cons=0, total_bruto=0, total_eco=0, total_cosern=0) %}
   {% for l in leituras_det %}

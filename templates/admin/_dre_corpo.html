@@ -29,7 +29,8 @@
 {% macro fmt_pct(p) %}{{ '%.2f'|format(p)|replace('.', ',') }}%{% endmacro %}
 
 {# ── Tabela DRE ── #}
-<div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
+<div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;">
+<div style="overflow-x:auto;">
 
   <div style="display:grid;grid-template-columns:{{ _grid_cols }};padding:12px 20px;background:#F9FAFB;border-bottom:1px solid var(--border);">
     <div></div>
@@ -109,6 +110,7 @@
   {% endif %}
 
   {% endfor %}
+</div>
 </div>
 
 <script>
