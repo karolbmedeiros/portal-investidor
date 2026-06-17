@@ -22,8 +22,8 @@
 {% set _MESES_DRE = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] %}
 {% set _n_meses = dre_meses|length if dre_meses else 1 %}
 {% set _grid_cols = '240px ' + 'minmax(160px,1fr) ' * _n_meses %}
-{% set _mes_cell = 'display:flex;justify-content:flex-end;align-items:baseline;gap:8px;white-space:nowrap;border-left:1px solid rgba(23,33,28,0.08);padding:0 14px;' %}
-{% set _pct_w = 'min-width:54px;text-align:right;flex-shrink:0;' %}
+{% set _mes_cell = 'display:flex;justify-content:center;align-items:baseline;gap:8px;white-space:nowrap;border-left:1px solid rgba(23,33,28,0.08);padding:0 14px;' %}
+{% set _pct_w = 'min-width:54px;text-align:center;flex-shrink:0;' %}
 
 {% macro fmt_brl(valor) %}{% if valor != 0 %}R$ {{ '{:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}{% endmacro %}
 {% macro fmt_pct(p) %}{{ '%.2f'|format(p)|replace('.', ',') }}%{% endmacro %}
