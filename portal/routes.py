@@ -293,7 +293,7 @@ def home():
             }
         except Exception:
             pass
-    elif tab == "visao_geral":
+    else:
         # Rendimento: créditos nas contas bancárias das usinas × cota
         try:
             sb   = get_service_client()
@@ -373,34 +373,34 @@ def home():
         except Exception:
             pass
 
-    # Faturas pendentes das usinas visíveis (só usadas na aba visão geral)
+    # Faturas pendentes das usinas visíveis
     faturas_pendentes = []
-    if tab == "visao_geral":
-        try:
-            ids_vis = [us["id"] for us in usinas]
-            if ids_vis:
-                _q = sb.from_("v_faturas_completas") \
-                       .select("id,numero_fatura,ref_mes_ano,data_vencimento,status,"
-                               "valor_final_cobrado,valor_total_cobrado,valor_liquido,"
-                               "codigo_uc,uc_apelido,usina_razao_social") \
-                       .in_("status", ["Pendente", "Emitida", "Enviada", "Atrasada"]) \
-                       .in_("usina_id", ids_vis) \
-                       .order("data_vencimento", desc=False) \
-                       .execute().data or []
-                hoje_d = date.today()
-                for f in _q:
-                    try:
-                        y, m, d = str(f["data_vencimento"])[:10].split("-")
-                        f["dias_vencimento"] = (date(int(y), int(m), int(d)) - hoje_d).days
-                    except Exception:
-                        f["dias_vencimento"] = 0
-                    faturas_pendentes.append(f)
-        except Exception:
-            pass
+    try:
+        ids_vis = [us["id"] for us in usinas]
+        if ids_vis:
+            _q = sb.from_("v_faturas_completas") \
+                   .select("id,numero_fatura,ref_mes_ano,data_vencimento,status,"
+                           "valor_final_cobrado,valor_total_cobrado,valor_liquido,"
+                           "codigo_uc,uc_apelido,usina_razao_social") \
+                   .in_("status", ["Pendente", "Emitida", "Enviada", "Atrasada"]) \
+                   .in_("usina_id", ids_vis) \
+                   .order("data_vencimento", desc=False) \
+                   .execute().data or []
+            hoje_d = date.today()
+            for f in _q:
+                try:
+                    y, m, d = str(f["data_vencimento"])[:10].split("-")
+                    f["dias_vencimento"] = (date(int(y), int(m), int(d)) - hoje_d).days
+                except Exception:
+                    f["dias_vencimento"] = 0
+                faturas_pendentes.append(f)
+    except Exception:
+        pass
 
-    # Dados visuais — só busca os dados da aba que está de fato sendo exibida
-    # (cada aba é uma página renderizada à parte, então não há motivo para
-    # calcular dados de abas que o usuário não está vendo nesta requisição).
+    # Dados visuais — só busca se tiver usina selecionada e permissão
+    # (mesmo padrão do admin: todas as abas permitidas são pré-carregadas
+    # numa única página, e a troca de aba é só client-side; a DRE é a
+    # exceção que precisa de reload real, ver carregarDre/click handler).
     from services.usina_service import (
         retorno_mensal_investidor, leituras_detalhadas,
         saldo_creditos_da_usina, pnl_da_usina,
@@ -411,25 +411,25 @@ def home():
     from services.benchmark_service import comparativo_benchmarks
 
     _is_usina = ativo_tipo == "usina"
-    retorno_mensal  = retorno_mensal_investidor(ativo_id) if _is_usina and ativo_id and tab == "retorno_mensal" else []
-    rentabilidade   = rentabilidade_investidor(ativo_id)  if _is_usina and ativo_id and tab == "retorno_mensal" else {}
+    retorno_mensal  = retorno_mensal_investidor(ativo_id) if _is_usina and ativo_id and "retorno_mensal" in home_tabs else []
+    rentabilidade   = rentabilidade_investidor(ativo_id)  if _is_usina and ativo_id and "retorno_mensal" in home_tabs else {}
     benchmarks_data = {}
-    if _is_usina and ativo_id and tab == "benchmarks":
-        _rb = rentabilidade_investidor(ativo_id)
-        _rm = retorno_mensal_investidor(ativo_id)
+    if _is_usina and ativo_id and "benchmarks" in home_tabs:
+        _rb = rentabilidade if rentabilidade else rentabilidade_investidor(ativo_id)
+        _rm = retorno_mensal if retorno_mensal else retorno_mensal_investidor(ativo_id)
         benchmarks_data = comparativo_benchmarks(
             float(_rb.get("capital") or 0),
             str(_rb.get("data_desembolso") or ""),
             _rm,
         )
-    leituras_det   = leituras_detalhadas(ativo_id)       if _is_usina and ativo_id and tab == "saldo_creditos" else []
-    pnl            = pnl_da_usina(ativo_id)              if _is_usina and ativo_id and tab == "pnl"           else []
-    saldo_creditos = saldo_creditos_da_usina(ativo_id)   if _is_usina and ativo_id and tab == "saldo_creditos" else []
-    participacoes  = participacoes_da_usina(ativo_id)    if _is_usina and ativo_id and tab == "socios"        else []
-    clientes       = clientes_da_usina(ativo_id)         if _is_usina and ativo_id and tab in ("clientes", "retorno_mensal") else []
+    leituras_det   = leituras_detalhadas(ativo_id)       if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
+    pnl            = pnl_da_usina(ativo_id)              if _is_usina and ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
+    saldo_creditos = saldo_creditos_da_usina(ativo_id)   if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
+    participacoes  = participacoes_da_usina(ativo_id)    if _is_usina and ativo_id and "socios"         in home_tabs else []
+    clientes       = clientes_da_usina(ativo_id)         if _is_usina and ativo_id and "clientes"       in home_tabs else []
 
-    tem_extrato = bool(_is_usina and ativo_id and tab == "extrato")
-    tem_dre     = bool(_is_usina and ativo_id and tab == "dre")
+    tem_extrato = bool(_is_usina and ativo_id and "extrato" in home_tabs)
+    tem_dre     = bool(_is_usina and ativo_id and "dre"     in home_tabs)
     contas        = listar_contas_da_usina(ativo_id) if (tem_extrato or tem_dre) else []
     conta_id      = request.args.get("conta_id") or (contas[0]["id"] if contas else None)
     conta_atual   = next((c for c in contas if c["id"] == conta_id), contas[0] if contas else None)
@@ -460,13 +460,13 @@ def home():
     else:
         _datas = [l["data_transacao"][:7] for l in lancamentos if l.get("data_transacao")]
         kpi_mes = max(_datas) if _datas else date.today().strftime("%Y-%m")
-    leituras_raw   = leituras_da_usina(ativo_id) if _is_usina and ativo_id and tab == "retorno_mensal" else []
+    leituras_raw   = leituras_da_usina(ativo_id) if tem_dre else []
     _num_ativos    = sum(1 for c in clientes if c.get("status") == "Ativo")
-    kpis = calcular_kpis(ativo_id, kpi_mes, lancamentos, leituras_raw, pnl, _num_ativos) if tab == "retorno_mensal" else {}
+    kpis = calcular_kpis(ativo_id, kpi_mes, lancamentos, leituras_raw, pnl, _num_ativos) if tem_dre else {}
 
     dre_secoes = dre_valores = dre_lancs = None
     dre_mes_ini = dre_mes_fim = ""
-    if tem_dre:
+    if tem_dre and tab == "dre":
         from services.dre_service import listar_secoes_dre, calcular_dre
         dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
         dre_mes_fim = request.args.get("dre_mes_fim") or kpi_mes

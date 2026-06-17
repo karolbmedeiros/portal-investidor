@@ -2541,14 +2541,13 @@ function carregarDre(mes) {
   window.location.href = window.location.pathname + '?ativo_id={{ ativo_id }}&kpi_mes=' + mes + '&tab=dre';
 }
 
-// base.html troca de aba só no client (sem nova requisição). Como o servidor
-// agora busca só os dados da aba ativa (ver portal/routes.py), cada clique
-// precisa de fato recarregar a página para os dados daquela aba chegarem.
+// Igual ao admin: as outras abas trocam só no client (base.html), mas a
+// DRE precisa de reload real para o servidor calcular dre_secoes/valores/lancs.
 document.addEventListener('click', function (e) {
-  var link = e.target.closest('.dtab-link[data-tab]');
+  var link = e.target.closest('.dtab-link[data-tab="dre"]');
   if (!link) return;
   var url = new URL(window.location.href);
-  url.searchParams.set('tab', link.dataset.tab);
+  url.searchParams.set('tab', 'dre');
   window.location.href = url.toString();
 });
 
