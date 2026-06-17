@@ -131,16 +131,33 @@ def vincular_categorias_linha(linha_id: str, categoria_ids: list) -> dict:
 
 # ── Cálculo DRE ─────────────────────────────────────────────────────────────
 
+def _meses_intervalo(mes_inicio: str, mes_fim: str) -> list:
+    """Lista de YYYY-MM entre mes_inicio e mes_fim, inclusive."""
+    ano_i, mi = int(mes_inicio[:4]), int(mes_inicio[5:7])
+    ano_f, mf = int(mes_fim[:4]), int(mes_fim[5:7])
+    meses = []
+    a, m = ano_i, mi
+    while (a, m) <= (ano_f, mf):
+        meses.append(f"{a:04d}-{m:02d}")
+        m += 1
+        if m > 12:
+            m = 1
+            a += 1
+    return meses
+
+
 def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
     """
-    Retorna {"valores": {secao_id: float}, "lancamentos": {secao_id: [...]}}
-    mes_inicio / mes_fim no formato YYYY-MM.
+    Retorna {"meses": [...], "valores": {secao_id: {mes: float}},
+              "lancamentos": {secao_id: {mes: [...]}}}.
+    mes_inicio / mes_fim no formato YYYY-MM — uma coluna por mês do intervalo.
     """
     from services.usina_service import listar_lancamentos, listar_contas_da_usina
 
+    meses = _meses_intervalo(mes_inicio, mes_fim)
     contas = listar_contas_da_usina(usina_id)
-    if not contas:
-        return {"valores": {}, "lancamentos": {}}
+    if not contas or not meses:
+        return {"meses": meses, "valores": {}, "lancamentos": {}}
 
     data_ini = mes_inicio + "-01"
     import calendar
@@ -159,18 +176,20 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
                         and not l.get("_rendimento")
                         and l.get("categorias_financeiras")]
 
-    # Soma e lista de lançamentos por categoria_id
-    soma_por_cat: dict = {}
-    lancs_por_cat: dict = {}
+    # Soma e lista de lançamentos por categoria_id, quebrado por mês
+    soma_por_cat: dict = {}   # cid -> {mes: valor}
+    lancs_por_cat: dict = {}  # cid -> {mes: [...]}
     for l in lancamentos:
         cat = l.get("categorias_financeiras") or {}
         cid = cat.get("id")
         if not cid:
             continue
+        mes_l = (l.get("data_transacao") or "")[:7]
         valor = float(l.get("valor") or 0)
         contrib = valor if l.get("tipo") == "credito" else -abs(valor)
-        soma_por_cat[cid] = soma_por_cat.get(cid, 0.0) + contrib
-        lancs_por_cat.setdefault(cid, []).append({
+        soma_por_cat.setdefault(cid, {})
+        soma_por_cat[cid][mes_l] = soma_por_cat[cid].get(mes_l, 0.0) + contrib
+        lancs_por_cat.setdefault(cid, {}).setdefault(mes_l, []).append({
             "data": (l.get("data_transacao") or "")[:10],
             "descricao": l.get("descricao") or l.get("descricao_original") or "",
             "valor": contrib,
@@ -178,31 +197,38 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
 
     secoes = listar_secoes_dre()
 
-    valor_por_secao: dict = {}
-    lancs_por_secao: dict = {}
+    valor_por_secao: dict = {}  # secao_id -> {mes: valor}
+    lancs_por_secao: dict = {}  # secao_id -> {mes: [...]}
 
     for s in secoes:
         if s["tipo"] == "linha":
-            total = sum(soma_por_cat.get(c["id"], 0.0) for c in s["categorias_vinculadas"])
-            valor_por_secao[s["id"]] = total
-            items = []
-            for c in s["categorias_vinculadas"]:
-                items += lancs_por_cat.get(c["id"], [])
-            lancs_por_secao[s["id"]] = sorted(items, key=lambda x: x["data"])
+            valor_por_secao[s["id"]] = {}
+            lancs_por_secao[s["id"]] = {}
+            for mes_l in meses:
+                total = sum(soma_por_cat.get(c["id"], {}).get(mes_l, 0.0) for c in s["categorias_vinculadas"])
+                valor_por_secao[s["id"]][mes_l] = total
+                items = []
+                for c in s["categorias_vinculadas"]:
+                    items += lancs_por_cat.get(c["id"], {}).get(mes_l, [])
+                lancs_por_secao[s["id"]][mes_l] = sorted(items, key=lambda x: x["data"])
 
     for s in secoes:
         if s["tipo"] == "totalizador" and s.get("formula_json"):
-            total = 0.0
-            for item in s["formula_json"]:
-                sid = item.get("secao_id")
-                op = item.get("op", "+")
-                v = valor_por_secao.get(sid, 0.0)
-                total += v if op == "+" else -v
-            valor_por_secao[s["id"]] = total
+            valor_por_secao[s["id"]] = {}
+            for mes_l in meses:
+                total = 0.0
+                for item in s["formula_json"]:
+                    sid = item.get("secao_id")
+                    op = item.get("op", "+")
+                    v = valor_por_secao.get(sid, {}).get(mes_l, 0.0)
+                    total += v if op == "+" else -v
+                valor_por_secao[s["id"]][mes_l] = total
 
         elif s["tipo"] == "categoria":
             filhas = [x for x in secoes if x.get("parent_id") == s["id"]]
-            total = sum(valor_por_secao.get(f["id"], 0.0) for f in filhas)
-            valor_por_secao[s["id"]] = total
+            valor_por_secao[s["id"]] = {}
+            for mes_l in meses:
+                total = sum(valor_por_secao.get(f["id"], {}).get(mes_l, 0.0) for f in filhas)
+                valor_por_secao[s["id"]][mes_l] = total
 
-    return {"valores": valor_por_secao, "lancamentos": lancs_por_secao}
+    return {"meses": meses, "valores": valor_por_secao, "lancamentos": lancs_por_secao}

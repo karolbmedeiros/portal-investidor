@@ -762,10 +762,6 @@
 {# ══════════════════════════════════════════════ DRE ═══ #}
 <div id="tab-dre" class="dtab-content {{ 'ativo' if tab == 'dre' }}">
   <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <label style="font-size:12px;color:var(--muted);font-weight:600;">Período</label>
-      <input type="month" id="dre-mes" class="input-sm" value="{{ kpi_mes }}" onchange="carregarDre(this.value)" />
-    </div>
     <button class="btn btn-ghost" onclick="exportarDrePdf()" style="margin-left:auto;">↓ Exportar PDF</button>
   </div>
   <div id="dre-corpo">{% include 'admin/_dre_corpo.html' %}</div>
@@ -2099,7 +2095,6 @@ function iniciarGraficosExtrato(){
   atualizarPie('');
 }
 function atualizarPie(mes){const ctx=document.getElementById('chart-cat');if(!ctx)return;const cats={};const CORES=['#E8621A','#2563EB','#16A34A','#9333EA','#EAB308','#EC4899','#06B6D4','#F97316'];document.querySelectorAll('.ext-row-ent,.ext-row-sai').forEach(r=>{if(mes&&r.dataset.mes!==mes)return;const desc=r.querySelector('.nb-item-cat')?.textContent?.trim()||'—';cats[desc]=(cats[desc]||0)+parseFloat(r.dataset.valor||0);});const labels=Object.keys(cats);const data=labels.map(k=>cats[k]);const cores=labels.map((_,i)=>CORES[i%CORES.length]);const mesStr=mes?(_MESES_ABREV[parseInt(mes.slice(5))]+'/'+mes.slice(0,4)):'Total';const el=document.getElementById('chart-cat-mes-label');if(el)el.textContent=mesStr;if(_chartCat){_chartCat.destroy();_chartCat=null;}if(!labels.length)return;_chartCat=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:cores,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:c=>c.label+': '+fmtBrl(c.parsed)}}}}});}
-function carregarDre(mes){window.location.href=window.location.pathname+'?ativo_id={{ ativo_id }}&ativo_tipo=usina&kpi_mes='+mes+'&tab=dre';}
 function exportarDrePdf(){const corpo=document.getElementById('dre-corpo').innerHTML;const w=window.open('','_blank');w.document.write('<html><head><title>DRE</title><style>body{font-family:system-ui,sans-serif;padding:32px;max-width:700px;margin:auto;}.dre-section-header{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;border-bottom:2px solid #E5E7EB;padding:8px 0 4px;margin-top:16px;}.dre-row{display:flex;justify-content:space-between;padding:6px 8px;font-size:13px;}.dre-row.total{font-weight:700;border-top:1px solid #E5E7EB;background:#F7F8FA;}.dre-row.result{font-weight:800;font-size:15px;color:#E8510A;border:1px solid #E8510A;border-radius:4px;padding:8px;}.dre-val{font-weight:700;}</style></head><body>'+corpo+'</body></html>');w.document.close();setTimeout(()=>{w.print();},400);}
 var _adInited={};
 function _visible(el){return el&&el.offsetParent!==null;}

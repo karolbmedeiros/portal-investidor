@@ -326,7 +326,7 @@ def dashboard():
     usina_obj = None
     tab = _tab_carro if ativo_tipo == "carro" else "visao_geral"
     contas = conta_id = conta_atual = kpis = kpi_mes = pnl_data = clientes_data = categorias = None
-    dre_secoes = dre_valores = dre_lancs = None
+    dre_secoes = dre_valores = dre_lancs = dre_meses = None
     saldo_inicial = 0.0
     chart_meses = []
     chart_fluxo_dates = []
@@ -413,7 +413,7 @@ def dashboard():
         if tab not in _valid_tabs:
             tab = "visao_geral"
 
-        dre_secoes = dre_valores = dre_lancs = None
+        dre_secoes = dre_valores = dre_lancs = dre_meses = None
         if tab == "dre":
             from services.dre_service import listar_secoes_dre, calcular_dre
             _dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
@@ -422,6 +422,7 @@ def dashboard():
             _dre = calcular_dre(ativo_id, _dre_mes_ini, _dre_mes_fim)
             dre_valores = _dre["valores"]
             dre_lancs   = _dre["lancamentos"]
+            dre_meses   = _dre["meses"]
 
     # Contas a receber pendentes para "Próximos eventos"
     from services.supabase_client import get_service_client
@@ -487,6 +488,7 @@ def dashboard():
         dre_secoes=dre_secoes,
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,
+        dre_meses=dre_meses,
         dre_mes_ini=request.args.get("dre_mes_ini") or kpi_mes or "",
         dre_mes_fim=request.args.get("dre_mes_fim") or kpi_mes or "",
         participacoes=_parts if (ativo_id and ativo_tipo == "usina") else [],
@@ -587,7 +589,7 @@ def usina_detalhe(usina_id):
     leituras_det   = leituras_detalhadas(usina_id)       if tab == "energia"        else []
     saldo_creditos = saldo_creditos_da_usina(usina_id)   if tab == "saldo_creditos" else []
 
-    dre_secoes = dre_valores = dre_lancs = None
+    dre_secoes = dre_valores = dre_lancs = dre_meses = None
     if tab == "dre":
         from services.dre_service import listar_secoes_dre, calcular_dre
         dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
@@ -596,6 +598,7 @@ def usina_detalhe(usina_id):
         _dre         = calcular_dre(usina_id, dre_mes_ini, dre_mes_fim)
         dre_valores  = _dre["valores"]
         dre_lancs    = _dre["lancamentos"]
+        dre_meses    = _dre["meses"]
 
     return render_template(
         "admin/usina_detalhe.html",
@@ -623,6 +626,7 @@ def usina_detalhe(usina_id):
         dre_secoes=dre_secoes,
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,
+        dre_meses=dre_meses,
         dre_mes_ini=request.args.get("dre_mes_ini") or kpi_mes,
         dre_mes_fim=request.args.get("dre_mes_fim") or kpi_mes,
     )

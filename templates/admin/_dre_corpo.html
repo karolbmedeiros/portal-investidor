@@ -1,6 +1,6 @@
 {% if dre_secoes %}
 
-{# ── Filtro de período ── #}
+{# ── Filtro de período (De/Até) — uma coluna por mês do intervalo ── #}
 <form method="get" style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
   <input type="hidden" name="tab" value="dre">
   {% if ativo_id %}<input type="hidden" name="ativo_id" value="{{ ativo_id }}">{% endif %}
@@ -19,55 +19,76 @@
   <button type="submit" class="btn btn-secondary btn-sm">Filtrar</button>
 </form>
 
+{% set _MESES_DRE = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] %}
+{% set _n_meses = dre_meses|length if dre_meses else 1 %}
+{% set _grid_cols = '220px ' + 'minmax(96px,1fr) ' * _n_meses %}
+
 {# ── Tabela DRE ── #}
-<div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;">
+<div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
+
+  <div style="display:grid;grid-template-columns:{{ _grid_cols }};padding:10px 20px;background:#F9FAFB;border-bottom:1px solid var(--border);">
+    <div></div>
+    {% for mes_l in dre_meses %}
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-align:right;white-space:nowrap;">
+      {{ _MESES_DRE[mes_l[5:7]|int] }}/{{ mes_l[2:4] }}
+    </div>
+    {% endfor %}
+  </div>
+
   {% for s in dre_secoes %}
   {% set nivel = s._nivel if s._nivel is defined else 0 %}
-  {% set valor = dre_valores.get(s.id, 0) if dre_valores else 0 %}
-  {% set is_neg = valor < 0 %}
-  {% set lancs = dre_lancs.get(s.id, []) if dre_lancs else [] %}
+  {% set valores_mes = dre_valores.get(s.id, {}) if dre_valores else {} %}
+  {% set ns = namespace(lancs=[]) %}
+  {% for mes_l in dre_meses %}
+    {% set ns.lancs = ns.lancs + (dre_lancs.get(s.id, {}).get(mes_l, []) if dre_lancs else []) %}
+  {% endfor %}
 
   {% if s.tipo == 'categoria' %}
   <div class="dre-row-cat" onclick="dreToggleFilhos('{{ s.id }}')"
-       style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#F3F4F6;cursor:pointer;border-bottom:0.5px solid var(--border);user-select:none;">
+       style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:12px 20px;background:#F3F4F6;cursor:pointer;border-bottom:0.5px solid var(--border);user-select:none;">
     <div style="display:flex;align-items:center;gap:8px;">
       <span id="dre-chevron-{{ s.id }}" style="color:var(--muted);font-size:11px;transition:transform .2s;">▼</span>
       <span style="font-weight:700;font-size:13px;color:#111827;">{{ s.nome }}</span>
     </div>
-    <span style="font-weight:700;font-size:13px;color:{{ '#EF4444' if is_neg else 'var(--accent)' }};">
+    {% for mes_l in dre_meses %}
+    {% set valor = valores_mes.get(mes_l, 0) %}
+    <div style="text-align:right;font-weight:700;font-size:13px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">
       {% if valor != 0 %}{{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}
-    </span>
+    </div>
+    {% endfor %}
   </div>
 
   {% elif s.tipo == 'linha' %}
   <div class="dre-row-filho" data-parent="{{ s.parent_id }}"
        style="border-bottom:0.5px solid rgba(23,33,28,0.06);">
     <div onclick="dreToggleLancs('{{ s.id }}')"
-         style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px 10px 44px;cursor:{% if lancs %}pointer{% else %}default{% endif %};">
+         style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:10px 20px 10px 44px;cursor:{% if ns.lancs %}pointer{% else %}default{% endif %};">
       <div style="display:flex;align-items:center;gap:6px;">
-        {% if lancs %}
+        {% if ns.lancs %}
         <span id="dre-lchevron-{{ s.id }}" style="color:var(--muted);font-size:10px;transition:transform .2s;">▶</span>
         {% endif %}
         <span style="font-size:13px;color:var(--text);">{{ s.nome }}</span>
-        {% if lancs %}
-        <span style="font-size:11px;color:var(--muted);">({{ lancs|length }})</span>
+        {% if ns.lancs %}
+        <span style="font-size:11px;color:var(--muted);">({{ ns.lancs|length }})</span>
         {% endif %}
       </div>
-      <span style="font-size:13px;font-weight:500;color:{{ '#EF4444' if is_neg else ('var(--muted)' if valor == 0 else 'var(--accent)') }};">
+      {% for mes_l in dre_meses %}
+      {% set valor = valores_mes.get(mes_l, 0) %}
+      <div style="text-align:right;font-size:13px;font-weight:500;color:{{ '#EF4444' if valor < 0 else ('var(--muted)' if valor == 0 else 'var(--accent)') }};">
         {% if valor != 0 %}{{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}
-      </span>
+      </div>
+      {% endfor %}
     </div>
-    {% if lancs %}
+    {% if ns.lancs %}
     <div id="dre-lancs-{{ s.id }}" style="display:none;background:#FAFAFA;border-top:0.5px solid rgba(23,33,28,0.06);">
-      {% for l in lancs %}
-      {% set lv = l.valor %}
+      {% for l in ns.lancs|sort(attribute='data') %}
       <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 20px 7px 60px;border-bottom:0.5px solid rgba(23,33,28,0.04);">
         <div style="display:flex;gap:12px;align-items:center;min-width:0;">
           <span style="font-size:11px;color:var(--muted);white-space:nowrap;">{{ l.data }}</span>
           <span style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;" title="{{ l.descricao }}">{{ l.descricao }}</span>
         </div>
-        <span style="font-size:12px;font-weight:600;white-space:nowrap;color:{{ '#EF4444' if lv < 0 else 'var(--accent)' }};">
-          {{ 'R$ {:,.2f}'.format(lv).replace(',','X').replace('.',',').replace('X','.') }}
+        <span style="font-size:12px;font-weight:600;white-space:nowrap;color:{{ '#EF4444' if l.valor < 0 else 'var(--accent)' }};">
+          {{ 'R$ {:,.2f}'.format(l.valor).replace(',','X').replace('.',',').replace('X','.') }}
         </span>
       </div>
       {% endfor %}
@@ -76,11 +97,14 @@
   </div>
 
   {% elif s.tipo == 'totalizador' %}
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 20px;background:#F9FAFB;border-top:1.5px solid var(--border);border-bottom:1.5px solid var(--border);margin-top:4px;">
+  <div style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:13px 20px;background:#F9FAFB;border-top:1.5px solid var(--border);border-bottom:1.5px solid var(--border);margin-top:4px;">
     <span style="font-weight:700;font-size:13px;">= {{ s.nome }}</span>
-    <span style="font-weight:700;font-size:14px;color:{{ '#EF4444' if is_neg else 'var(--accent)' }};">
+    {% for mes_l in dre_meses %}
+    {% set valor = valores_mes.get(mes_l, 0) %}
+    <span style="text-align:right;font-weight:700;font-size:14px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">
       {{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}
     </span>
+    {% endfor %}
   </div>
   {% endif %}
 

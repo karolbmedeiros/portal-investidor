@@ -1651,10 +1651,6 @@ function toggleAcordI(btn){
 {% if 'dre' in home_tabs %}
 <div id="tab-dre" class="dtab-content {{ 'ativo' if tab == 'dre' }}">
   <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <label style="font-size:12px;color:var(--muted);font-weight:600;">Período</label>
-      <input type="month" id="dre-mes" class="input-sm" value="{{ kpi_mes }}" onchange="carregarDre(this.value)" />
-    </div>
     <button class="btn btn-ghost" onclick="exportarDrePdf()" style="margin-left:auto;">↓ Exportar PDF</button>
   </div>
   <div id="dre-corpo">{% include 'admin/_dre_corpo.html' %}</div>
@@ -2535,10 +2531,6 @@ function tryInitExtrato() {
     var elMes = document.getElementById('filtro-mes');
     if (elMes && ultimo) { elMes.value = ultimo; filtrarExtrato(); }
   }
-}
-
-function carregarDre(mes) {
-  window.location.href = window.location.pathname + '?ativo_id={{ ativo_id }}&kpi_mes=' + mes + '&tab=dre';
 }
 
 // Igual ao admin: as outras abas trocam só no client (base.html), mas a
