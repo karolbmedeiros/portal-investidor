@@ -3,6 +3,8 @@
 {# ── Filtro de período ── #}
 <form method="get" style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
   <input type="hidden" name="tab" value="dre">
+  {% if ativo_id %}<input type="hidden" name="ativo_id" value="{{ ativo_id }}">{% endif %}
+  {% if ativo_tipo %}<input type="hidden" name="ativo_tipo" value="{{ ativo_tipo }}">{% endif %}
   {% if conta_id %}<input type="hidden" name="conta_id" value="{{ conta_id }}">{% endif %}
   <div style="display:flex;align-items:center;gap:6px;">
     <label style="font-size:12px;color:var(--muted);white-space:nowrap;">De</label>
