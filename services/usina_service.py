@@ -8,7 +8,10 @@ _CORES = ["#E8621A", "#2563EB", "#16A34A", "#9333EA", "#EAB308", "#EC4899"]
 _DESCRICOES_NEUTRAS = ["RESGATE FUNDOS", "APLICACAO FUNDO", "APLICAÇÃO FUNDO"]
 
 # Lançamentos informativos de rendimento do fundo (lançados no último dia do mês, não são fluxo real)
-_DESCRICOES_RENDIMENTO = ["RENDIMENTO FUNDO", "IR FUNDO", "IOF FUNDO"]
+_DESCRICOES_RENDIMENTO = [
+    "RENDIMENTO FUNDO", "IR FUNDO", "IOF FUNDO",
+    "S/ RENDIMENTO FUNDO", "S/ RESGATES FUNDO", "S/ RESGATE FUNDO",
+]
 
 def _eh_neutro(l: dict) -> bool:
     desc = (l.get("descricao") or l.get("descricao_original") or "").upper()

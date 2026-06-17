@@ -617,8 +617,8 @@
 {% set _meses = _meses_ns.lista | sort %}
 {% set _bal = namespace(v=saldo_inicial) %}
 {% for l in lancamentos if not l._neutro %}{% if l.tipo=='credito' %}{% set _bal.v = _bal.v + (l.valor|abs) %}{% else %}{% set _bal.v = _bal.v - (l.valor|abs) %}{% endif %}{% endfor %}
-{% set _ents      = lancamentos | selectattr('tipo','equalto','credito') | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
-{% set _sais_list = lancamentos | selectattr('tipo','equalto','debito')  | rejectattr('_transferencia') | rejectattr('_neutro') | list %}
+{% set _ents      = lancamentos | selectattr('tipo','equalto','credito') | rejectattr('_transferencia') | rejectattr('_neutro') | rejectattr('_rendimento') | list %}
+{% set _sais_list = lancamentos | selectattr('tipo','equalto','debito')  | rejectattr('_transferencia') | rejectattr('_neutro') | rejectattr('_rendimento') | list %}
 {% set _ent_ns = namespace(tot=0,conc=0,nao_conc=0) %}{% set _sai_ns = namespace(tot=0,conc=0,nao_conc=0) %}
 {% for l in _ents %}{% set _ent_ns.tot = _ent_ns.tot + (l.valor|abs) %}{% if l.conciliado %}{% set _ent_ns.conc = _ent_ns.conc + (l.valor|abs) %}{% else %}{% set _ent_ns.nao_conc = _ent_ns.nao_conc + (l.valor|abs) %}{% endif %}{% endfor %}
 {% for l in _sais_list %}{% set _sai_ns.tot = _sai_ns.tot + (l.valor|abs) %}{% if l.conciliado %}{% set _sai_ns.conc = _sai_ns.conc + (l.valor|abs) %}{% else %}{% set _sai_ns.nao_conc = _sai_ns.nao_conc + (l.valor|abs) %}{% endif %}{% endfor %}
@@ -718,7 +718,7 @@
           {% endif %}
         </td>
         <td style="font-weight:700;white-space:nowrap;color:{{ 'var(--green)' if l.tipo=='credito' else '#EF4444' }};">{{ '+' if l.tipo=='credito' else '-' }} {{ (l.valor or 0)|abs|brl }}</td>
-        <td style="font-size:12px;color:var(--muted);">{% set _cat = l.categorias_financeiras %}{{ _cat.nome if _cat else ('Transferência' if l._transferencia else ('Fundo' if l._neutro else ('Rendimento' if rendimento else '—'))) }}</td>
+        <td style="font-size:12px;color:var(--muted);">{% set _cat = l.categorias_financeiras %}{{ 'Transferência' if l._transferencia else ('Fundo' if l._neutro else ('Rendimento' if rendimento else (_cat.nome if _cat else '—'))) }}</td>
         <td>{% if especial or rendimento %}<span class="badge badge-cinza" style="font-size:10px;">Auto</span>{% elif l.conciliado %}<span class="badge badge-verde" style="font-size:10px;">Conciliado</span>{% else %}<span class="badge" style="background:#FEF9C3;color:#92400E;font-size:10px;">Pendente</span>{% endif %}</td>
       </tr>
       {% endfor %}
