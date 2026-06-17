@@ -652,7 +652,19 @@ def listar_contas_da_usina(usina_id: str) -> list:
 
 
 def _nomes_transferencia() -> set:
-    """Conjunto de nomes de entidades conhecidas para detectar transferências entre contas."""
+    """Conjunto de nomes de entidades conhecidas para detectar transferências entre contas.
+
+    Cacheado por requisição (via flask.g) porque é recalculado uma vez por
+    conta bancária ao montar a DRE/extrato — sem cache isso gera 3 queries
+    full-table redundantes por conta na mesma requisição.
+    """
+    try:
+        from flask import g
+        if hasattr(g, "_nomes_transferencia_cache"):
+            return g._nomes_transferencia_cache
+    except RuntimeError:
+        g = None
+
     sb = get_service_client()
     nomes: set = set()
     try:
@@ -677,6 +689,8 @@ def _nomes_transferencia() -> set:
                 nomes.add(n)
     except Exception:
         pass
+    if g is not None:
+        g._nomes_transferencia_cache = nomes
     return nomes
 
 
