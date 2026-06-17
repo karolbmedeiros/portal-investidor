@@ -459,7 +459,7 @@ def home():
     _num_ativos    = sum(1 for c in clientes if c.get("status") == "Ativo")
     kpis = calcular_kpis(ativo_id, kpi_mes, lancamentos, leituras_raw, pnl, _num_ativos) if tem_dre else {}
 
-    dre_secoes = dre_valores = dre_lancs = dre_meses = None
+    dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     dre_mes_ini = dre_mes_fim = ""
     if tem_dre and tab == "dre":
         from services.dre_service import listar_secoes_dre, calcular_dre
@@ -471,6 +471,8 @@ def home():
         dre_valores = _dre["valores"]
         dre_lancs   = _dre["lancamentos"]
         dre_meses   = _dre["meses"]
+        dre_percentuais = _dre["percentuais"]
+        dre_naturezas   = _dre["naturezas"]
 
     return render_template(
         "portal/home.html",
@@ -518,6 +520,8 @@ def home():
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,
         dre_meses=dre_meses,
+        dre_percentuais=dre_percentuais,
+        dre_naturezas=dre_naturezas,
         dre_mes_ini=dre_mes_ini,
         dre_mes_fim=dre_mes_fim,
         dados_clientes_carros=__import__('services.veiculos_service', fromlist=['dados_clientes_cons']).dados_clientes_cons(),

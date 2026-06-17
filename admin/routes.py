@@ -328,7 +328,7 @@ def dashboard():
     usina_obj = None
     tab = _tab_carro if ativo_tipo == "carro" else "visao_geral"
     contas = conta_id = conta_atual = kpis = kpi_mes = pnl_data = clientes_data = categorias = None
-    dre_secoes = dre_valores = dre_lancs = dre_meses = None
+    dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     saldo_inicial = 0.0
     chart_meses = []
     chart_fluxo_dates = []
@@ -415,7 +415,7 @@ def dashboard():
         if tab not in _valid_tabs:
             tab = "visao_geral"
 
-        dre_secoes = dre_valores = dre_lancs = dre_meses = None
+        dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
         if tab == "dre":
             from services.dre_service import listar_secoes_dre, calcular_dre
             _dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01"
@@ -425,6 +425,8 @@ def dashboard():
             dre_valores = _dre["valores"]
             dre_lancs   = _dre["lancamentos"]
             dre_meses   = _dre["meses"]
+            dre_percentuais = _dre["percentuais"]
+            dre_naturezas   = _dre["naturezas"]
 
     # Contas a receber pendentes para "Próximos eventos"
     from services.supabase_client import get_service_client
@@ -491,6 +493,8 @@ def dashboard():
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,
         dre_meses=dre_meses,
+        dre_percentuais=dre_percentuais,
+        dre_naturezas=dre_naturezas,
         dre_mes_ini=request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01",
         dre_mes_fim=request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06",
         participacoes=_parts if (ativo_id and ativo_tipo == "usina") else [],
@@ -593,7 +597,7 @@ def usina_detalhe(usina_id):
     leituras_det   = leituras_detalhadas(usina_id)       if tab == "energia"        else []
     saldo_creditos = saldo_creditos_da_usina(usina_id)   if tab == "saldo_creditos" else []
 
-    dre_secoes = dre_valores = dre_lancs = dre_meses = None
+    dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     if tab == "dre":
         from services.dre_service import listar_secoes_dre, calcular_dre
         dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01"
@@ -603,6 +607,8 @@ def usina_detalhe(usina_id):
         dre_valores  = _dre["valores"]
         dre_lancs    = _dre["lancamentos"]
         dre_meses    = _dre["meses"]
+        dre_percentuais = _dre["percentuais"]
+        dre_naturezas   = _dre["naturezas"]
 
     return render_template(
         "admin/usina_detalhe.html",
@@ -631,6 +637,8 @@ def usina_detalhe(usina_id):
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,
         dre_meses=dre_meses,
+        dre_percentuais=dre_percentuais,
+        dre_naturezas=dre_naturezas,
         dre_mes_ini=request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01",
         dre_mes_fim=request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06",
     )

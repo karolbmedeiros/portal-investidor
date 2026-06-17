@@ -149,15 +149,19 @@ def _meses_intervalo(mes_inicio: str, mes_fim: str) -> list:
 def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
     """
     Retorna {"meses": [...], "valores": {secao_id: {mes: float}},
-              "lancamentos": {secao_id: {mes: [...]}}}.
+              "percentuais": {secao_id: {mes: float}},
+              "lancamentos": {secao_id: {mes: [...]}},
+              "naturezas": {secao_id: [{"id","nome","valores","percentuais"}]}}.
     mes_inicio / mes_fim no formato YYYY-MM — uma coluna por mês do intervalo.
+    "percentuais" e os percentuais de "naturezas" são sempre em relação ao
+    valor da seção "RECEITA OPERACIONAL BRUTA" no mesmo mês (base = 100%).
     """
     from services.usina_service import listar_lancamentos, listar_contas_da_usina
 
     meses = _meses_intervalo(mes_inicio, mes_fim)
     contas = listar_contas_da_usina(usina_id)
     if not contas or not meses:
-        return {"meses": meses, "valores": {}, "lancamentos": {}}
+        return {"meses": meses, "valores": {}, "percentuais": {}, "lancamentos": {}, "naturezas": {}}
 
     data_ini = mes_inicio + "-01"
     import calendar
@@ -197,13 +201,22 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
 
     secoes = listar_secoes_dre()
 
-    valor_por_secao: dict = {}  # secao_id -> {mes: valor}
-    lancs_por_secao: dict = {}  # secao_id -> {mes: [...]}
+    valor_por_secao: dict = {}      # secao_id -> {mes: valor}
+    lancs_por_secao: dict = {}      # secao_id -> {mes: [...]}
+    naturezas_por_secao: dict = {}  # secao_id -> [{"id","nome","valores":{mes:valor}}]
 
     for s in secoes:
         if s["tipo"] == "linha":
             valor_por_secao[s["id"]] = {}
             lancs_por_secao[s["id"]] = {}
+            naturezas_por_secao[s["id"]] = [
+                {
+                    "id": c["id"],
+                    "nome": c["nome"],
+                    "valores": {mes_l: soma_por_cat.get(c["id"], {}).get(mes_l, 0.0) for mes_l in meses},
+                }
+                for c in s["categorias_vinculadas"]
+            ]
             for mes_l in meses:
                 total = sum(soma_por_cat.get(c["id"], {}).get(mes_l, 0.0) for c in s["categorias_vinculadas"])
                 valor_por_secao[s["id"]][mes_l] = total
@@ -231,4 +244,29 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
                 total = sum(valor_por_secao.get(f["id"], {}).get(mes_l, 0.0) for f in filhas)
                 valor_por_secao[s["id"]][mes_l] = total
 
-    return {"meses": meses, "valores": valor_por_secao, "lancamentos": lancs_por_secao}
+    # Base dos percentuais: seção "RECEITA OPERACIONAL BRUTA" = 100% do mês
+    base_secao = next(
+        (s for s in secoes if (s.get("nome") or "").strip().upper() == "RECEITA OPERACIONAL BRUTA"),
+        None,
+    )
+    base_por_mes = valor_por_secao.get(base_secao["id"], {}) if base_secao else {}
+
+    def _pct(valor: float, mes_l: str) -> float:
+        base = base_por_mes.get(mes_l, 0.0)
+        return round(valor / base * 100, 2) if base else 0.0
+
+    percentual_por_secao = {
+        sid: {mes_l: _pct(vals.get(mes_l, 0.0), mes_l) for mes_l in meses}
+        for sid, vals in valor_por_secao.items()
+    }
+    for naturezas in naturezas_por_secao.values():
+        for nat in naturezas:
+            nat["percentuais"] = {mes_l: _pct(nat["valores"].get(mes_l, 0.0), mes_l) for mes_l in meses}
+
+    return {
+        "meses": meses,
+        "valores": valor_por_secao,
+        "percentuais": percentual_por_secao,
+        "lancamentos": lancs_por_secao,
+        "naturezas": naturezas_por_secao,
+    }

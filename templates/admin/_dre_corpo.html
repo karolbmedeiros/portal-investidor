@@ -21,7 +21,9 @@
 
 {% set _MESES_DRE = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] %}
 {% set _n_meses = dre_meses|length if dre_meses else 1 %}
-{% set _grid_cols = '220px ' + 'minmax(96px,1fr) ' * _n_meses %}
+{% set _grid_cols = '220px ' + 'minmax(84px,1fr) 52px ' * _n_meses %}
+
+{% macro fmt_brl(valor) %}{% if valor != 0 %}R$ {{ '{:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}{% endmacro %}
 
 {# ── Tabela DRE ── #}
 <div style="border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
@@ -29,7 +31,7 @@
   <div style="display:grid;grid-template-columns:{{ _grid_cols }};padding:10px 20px;background:#F9FAFB;border-bottom:1px solid var(--border);">
     <div></div>
     {% for mes_l in dre_meses %}
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-align:right;white-space:nowrap;">
+    <div style="grid-column:span 2;font-size:11px;font-weight:700;color:var(--muted);text-align:center;white-space:nowrap;">
       {{ _MESES_DRE[mes_l[5:7]|int] }}/{{ mes_l[2:4] }}
     </div>
     {% endfor %}
@@ -38,10 +40,8 @@
   {% for s in dre_secoes %}
   {% set nivel = s._nivel if s._nivel is defined else 0 %}
   {% set valores_mes = dre_valores.get(s.id, {}) if dre_valores else {} %}
-  {% set ns = namespace(lancs=[]) %}
-  {% for mes_l in dre_meses %}
-    {% set ns.lancs = ns.lancs + (dre_lancs.get(s.id, {}).get(mes_l, []) if dre_lancs else []) %}
-  {% endfor %}
+  {% set pcts_mes = dre_percentuais.get(s.id, {}) if dre_percentuais else {} %}
+  {% set naturezas = dre_naturezas.get(s.id, []) if dre_naturezas else [] %}
 
   {% if s.tipo == 'categoria' %}
   <div class="dre-row-cat" onclick="dreToggleFilhos('{{ s.id }}')"
@@ -52,44 +52,42 @@
     </div>
     {% for mes_l in dre_meses %}
     {% set valor = valores_mes.get(mes_l, 0) %}
-    <div style="text-align:right;font-weight:700;font-size:13px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">
-      {% if valor != 0 %}{{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}
-    </div>
+    <div style="text-align:right;font-weight:700;font-size:13px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">{{ fmt_brl(valor) }}</div>
+    <div style="text-align:right;font-size:11px;font-weight:700;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ '%.2f'|format(pcts_mes.get(mes_l, 0))|replace('.', ',') }}%</div>
     {% endfor %}
   </div>
 
   {% elif s.tipo == 'linha' %}
   <div class="dre-row-filho" data-parent="{{ s.parent_id }}"
        style="border-bottom:0.5px solid rgba(23,33,28,0.06);">
-    <div onclick="dreToggleLancs('{{ s.id }}')"
-         style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:10px 20px 10px 44px;cursor:{% if ns.lancs %}pointer{% else %}default{% endif %};">
+    <div onclick="dreToggleNaturezas('{{ s.id }}')"
+         style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:10px 20px 10px 44px;cursor:{% if naturezas %}pointer{% else %}default{% endif %};">
       <div style="display:flex;align-items:center;gap:6px;">
-        {% if ns.lancs %}
-        <span id="dre-lchevron-{{ s.id }}" style="color:var(--muted);font-size:10px;transition:transform .2s;">▶</span>
+        {% if naturezas %}
+        <span id="dre-nchevron-{{ s.id }}" style="color:var(--muted);font-size:10px;transition:transform .2s;">▶</span>
         {% endif %}
         <span style="font-size:13px;color:var(--text);">{{ s.nome }}</span>
-        {% if ns.lancs %}
-        <span style="font-size:11px;color:var(--muted);">({{ ns.lancs|length }})</span>
+        {% if naturezas %}
+        <span style="font-size:11px;color:var(--muted);">({{ naturezas|length }})</span>
         {% endif %}
       </div>
       {% for mes_l in dre_meses %}
       {% set valor = valores_mes.get(mes_l, 0) %}
-      <div style="text-align:right;font-size:13px;font-weight:500;color:{{ '#EF4444' if valor < 0 else ('var(--muted)' if valor == 0 else 'var(--accent)') }};">
-        {% if valor != 0 %}{{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}
-      </div>
+      <div style="text-align:right;font-size:13px;font-weight:500;color:{{ '#EF4444' if valor < 0 else ('var(--muted)' if valor == 0 else 'var(--accent)') }};">{{ fmt_brl(valor) }}</div>
+      <div style="text-align:right;font-size:11px;font-weight:600;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ '%.2f'|format(pcts_mes.get(mes_l, 0))|replace('.', ',') }}%</div>
       {% endfor %}
     </div>
-    {% if ns.lancs %}
-    <div id="dre-lancs-{{ s.id }}" style="display:none;background:#FAFAFA;border-top:0.5px solid rgba(23,33,28,0.06);">
-      {% for l in ns.lancs|sort(attribute='data') %}
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 20px 7px 60px;border-bottom:0.5px solid rgba(23,33,28,0.04);">
-        <div style="display:flex;gap:12px;align-items:center;min-width:0;">
-          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">{{ l.data }}</span>
-          <span style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;" title="{{ l.descricao }}">{{ l.descricao }}</span>
-        </div>
-        <span style="font-size:12px;font-weight:600;white-space:nowrap;color:{{ '#EF4444' if l.valor < 0 else 'var(--accent)' }};">
-          {{ 'R$ {:,.2f}'.format(l.valor).replace(',','X').replace('.',',').replace('X','.') }}
-        </span>
+    {% if naturezas %}
+    <div id="dre-naturezas-{{ s.id }}" style="display:none;background:#FAFAFA;border-top:0.5px solid rgba(23,33,28,0.06);">
+      {% for nat in naturezas %}
+      <div style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:8px 20px 8px 64px;border-bottom:0.5px solid rgba(23,33,28,0.04);">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ nat.nome }}">{{ nat.nome }}</span>
+        {% for mes_l in dre_meses %}
+        {% set nv = nat.valores.get(mes_l, 0) %}
+        {% set np = nat.percentuais.get(mes_l, 0) %}
+        <div style="text-align:right;font-size:12px;color:{{ '#EF4444' if nv < 0 else ('var(--muted)' if nv == 0 else 'var(--text)') }};">{{ fmt_brl(nv) }}</div>
+        <div style="text-align:right;font-size:11px;color:{{ 'var(--accent)' if np else 'var(--muted)' }};">{{ '%.2f'|format(np)|replace('.', ',') }}%</div>
+        {% endfor %}
       </div>
       {% endfor %}
     </div>
@@ -101,9 +99,8 @@
     <span style="font-weight:700;font-size:13px;">= {{ s.nome }}</span>
     {% for mes_l in dre_meses %}
     {% set valor = valores_mes.get(mes_l, 0) %}
-    <span style="text-align:right;font-weight:700;font-size:14px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">
-      {{ 'R$ {:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}
-    </span>
+    <span style="text-align:right;font-weight:700;font-size:14px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">{{ fmt_brl(valor) }}</span>
+    <span style="text-align:right;font-size:11px;font-weight:700;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ '%.2f'|format(pcts_mes.get(mes_l, 0))|replace('.', ',') }}%</span>
     {% endfor %}
   </div>
   {% endif %}
@@ -119,9 +116,9 @@ function dreToggleFilhos(catId) {
   filhos.forEach(function(f){ f.style.display = oculto ? '' : 'none'; });
   if (chevron) chevron.style.transform = oculto ? '' : 'rotate(-90deg)';
 }
-function dreToggleLancs(linhaId) {
-  var el = document.getElementById('dre-lancs-' + linhaId);
-  var chev = document.getElementById('dre-lchevron-' + linhaId);
+function dreToggleNaturezas(linhaId) {
+  var el = document.getElementById('dre-naturezas-' + linhaId);
+  var chev = document.getElementById('dre-nchevron-' + linhaId);
   if (!el) return;
   var aberto = el.style.display !== 'none';
   el.style.display = aberto ? 'none' : '';
