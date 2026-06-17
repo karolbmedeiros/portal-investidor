@@ -108,11 +108,9 @@
   <a href="#" data-tab="visao_geral"    class="dtab-link {{ 'ativo' if tab == 'visao_geral' }}">Visão Geral</a>
   <a href="#" data-tab="extrato"        class="dtab-link {{ 'ativo' if tab == 'extrato' }}">Fluxo de Caixa</a>
   <a href="#" data-tab="benchmarks"     class="dtab-link {{ 'ativo' if tab == 'benchmarks' }}">Benchmarks</a>
-  <a href="#" data-tab="retorno_mensal" class="dtab-link {{ 'ativo' if tab == 'retorno_mensal' }}">Retorno Mensal</a>
   <a href="#" data-tab="pnl"            class="dtab-link {{ 'ativo' if tab == 'pnl' }}">P&L</a>
   <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
   <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
-  <a href="#" data-tab="socios"         class="dtab-link {{ 'ativo' if tab == 'socios' }}">Sócios</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
 </div>
 {% elif ativo_selecionado.tipo == 'carro' %}
@@ -120,11 +118,9 @@
   <a href="#" data-tab="visao_geral"    class="dtab-link {{ 'ativo' if tab == 'visao_geral' }}">Visão Geral</a>
   <a href="#" data-tab="extrato"        class="dtab-link {{ 'ativo' if tab == 'extrato' }}">Fluxo de Caixa</a>
   <a href="#" data-tab="benchmarks"     class="dtab-link {{ 'ativo' if tab == 'benchmarks' }}">Benchmarks</a>
-  <a href="#" data-tab="retorno_mensal" class="dtab-link {{ 'ativo' if tab == 'retorno_mensal' }}">Retorno Mensal</a>
   <a href="#" data-tab="pnl"            class="dtab-link {{ 'ativo' if tab == 'pnl' }}">P&L</a>
   <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
   <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
-  <a href="#" data-tab="socios"         class="dtab-link {{ 'ativo' if tab == 'socios' }}">Sócios</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
 </div>
 {% endif %}
@@ -587,33 +583,6 @@
 {% if filtrado and ativo_selecionado.tipo == 'usina' %}
 </div>{# /tab-visao_geral #}
 
-{# ══════════════════════════════════════════════ SÓCIOS ═══ #}
-{% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
-<div id="tab-socios" class="dtab-content {{ 'ativo' if tab == 'socios' }}">
-  {% if participacoes %}
-  <div class="card mb-24" style="max-width:600px;">
-    <div class="card-label">Distribuição de cotas</div>
-    <div class="socios-barra" style="margin-top:12px;">
-      {% for p in participacoes %}<div style="height:12px;width:{{ (p.percentual * 100)|round(2) }}%;background:{{ p.cor }};border-radius:2px;" title="{{ (p.investidores.nome if p.investidores else '?') }} — {{ (p.percentual*100)|round(1) }}%"></div>{% endfor %}
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;">
-      {% for p in participacoes %}<div style="display:flex;align-items:center;gap:6px;font-size:12px;"><div style="width:10px;height:10px;border-radius:50%;background:{{ p.cor }};flex-shrink:0;"></div><span>{{ (p.investidores.nome if p.investidores else '?') }} — {{ (p.percentual*100)|round(1) }}%</span></div>{% endfor %}
-    </div>
-  </div>
-  <div class="tabela-wrap"><table><thead><tr><th>Sócio</th><th>CPF/CNPJ</th><th>E-mail</th><th>Cota</th><th>Valor investido</th></tr></thead><tbody>
-    {% for p in participacoes %}
-    <tr>
-      <td><div style="display:flex;align-items:center;gap:8px;"><div style="width:26px;height:26px;border-radius:50%;background:{{ p.cor }};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;">{{ p.iniciais }}</div><span style="font-weight:600;">{{ p.investidores.nome if p.investidores else '—' }}</span></div></td>
-      <td class="text-muted">{{ (p.investidores.cpf_cnpj if p.investidores else '') or '—' }}</td>
-      <td class="text-muted text-sm">{{ (p.investidores.email if p.investidores else '') or '—' }}</td>
-      <td><span style="font-weight:700;color:var(--accent);">{{ (p.percentual*100)|round(2) }}%</span></td>
-      <td class="text-muted">{% if p.valor_investido_total %}{{ p.valor_investido_total|brl }}{% else %}—{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </tbody></table></div>
-  {% else %}<div class="vazio">Nenhuma participação cadastrada.</div>{% endif %}
-</div>
-
 {# ══════════════════════════════════════════════ CLIENTES ═══ #}
 <div id="tab-clientes" class="dtab-content {{ 'ativo' if tab == 'clientes' }}">
   {% set ativos_c   = clientes | selectattr('status','equalto','Ativo') | list %}
@@ -825,179 +794,6 @@
   {% else %}
     <div class="vazio">Sem dados suficientes para comparativo. Verifique se o capital e a data de desembolso estão cadastrados.</div>
   {% endif %}
-</div>
-
-{# ══════════════════════════════════════════════ RETORNO MENSAL ═══ #}
-<div id="tab-retorno_mensal" class="dtab-content {{ 'ativo' if tab == 'retorno_mensal' }}">
-<style>
-.sim-label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
-.sim-input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;font-weight:500;color:var(--text);background:var(--bg);box-sizing:border-box;transition:border-color .15s;}
-.sim-input:focus{outline:none;border-color:var(--accent);}
-.sim-computed{padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:14px;font-weight:700;background:#F9FAFB;color:var(--accent);}
-.sim-cenario-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
-.sim-cn-header{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--border);}
-.sim-cn-titulo{font-size:15px;font-weight:700;color:var(--text);}
-.sim-cn-sub{font-size:11px;color:var(--muted);margin-top:2px;}
-.sim-cn-badge{font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;transition:background .2s,color .2s;}
-.sim-cn-badge--verde{background:#D1FAE5;color:#065F46;}
-.sim-cn-badge--amarelo{background:#FEF3C7;color:#92400E;}
-.sim-cn-badge--critico{background:#FEE2E2;color:#991B1B;}
-.sim-cn-body{padding:16px 18px;flex:1;}
-.sim-cn-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;}
-.sim-cn-label{color:var(--muted);}
-.sim-cn-val{font-weight:600;}
-.sim-cn-val.pos{color:#16A34A;}
-.sim-cn-val.neg{color:#DC2626;}
-.sim-cn-sep{border-top:1px solid var(--border);margin:10px 0;}
-.sim-cn-resultado{font-size:17px;font-weight:800;transition:color .2s;}
-.sim-cn-resultado.pos{color:#16A34A;}
-.sim-cn-resultado.neg{color:#DC2626;}
-.sim-cn-health{padding:12px 18px 16px;background:#F9FAFB;border-top:1px solid var(--border);}
-.sim-health-bar{height:6px;background:#E5E7EB;border-radius:3px;overflow:hidden;margin-bottom:6px;}
-.sim-health-fill{height:100%;border-radius:3px;transition:width .35s,background .35s;}
-.sim-health-label{font-size:11px;font-weight:500;transition:color .2s;}
-.sim-custo-row{display:flex;flex-direction:column;gap:4px;}
-.sim-custo-row .sim-input{padding:6px 8px;font-size:13px;}
-</style>
-<div style="padding-top:4px;">
-
-{% if pnl %}
-{% set _sa_ult = pnl[0] %}
-{% set _sa_meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
-{% set _sa_ref = _sa_ult.ref_mes_ano or '' %}
-{% set _sa_label = _sa_meses[_sa_ref[5:7]|int - 1] ~ '/' ~ _sa_ref[:4] if _sa_ref else '—' %}
-{% set _sa_ativos = clientes|selectattr('status','equalto','Ativo')|list|length %}
-{% set _sa_receita = (_sa_ult.receita_bruta or 0)|float %}
-{% set _sa_max = namespace(v=1.0) %}
-{% for _p in pnl %}{% if (_p.receita_bruta or 0)|float > _sa_max.v %}{% set _sa_max.v = (_p.receita_bruta or 0)|float %}{% endif %}{% endfor %}
-{% set _sa_ociosa = ((1 - _sa_receita / _sa_max.v) * 100)|round(0)|int if _sa_max.v > 0 else 0 %}
-<div style="display:flex;align-items:center;gap:10px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:20px;">
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 9v4m0 4h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-  <div>
-    <strong style="font-size:13px;color:#92400E;">Situação atual · {{ _sa_label }}</strong>
-    <span style="font-size:12px;color:#92400E;margin-left:8px;">{{ _sa_ativos }} {{ 'cliente ativo' if _sa_ativos == 1 else 'clientes ativos' }} · receita real {{ _sa_receita|brl }} · ~{{ _sa_ociosa }}% de capacidade ociosa</span>
-  </div>
-</div>
-{% endif %}
-
-  <section class="card" style="margin-bottom:16px;">
-    <div class="db-chart-title" style="margin-bottom:14px;">Premissas da Usina <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;">· campos editáveis para simulação</span></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
-      <div><label class="sim-label">Geração média (kWh/mês)</label><input class="sim-input" id="db-sim-geracao" type="number" value="14000" step="100" oninput="calcSimDB()"></div>
-      <div><label class="sim-label">Tarifa (R$/kWh)</label><input class="sim-input" id="db-sim-tarifa" type="number" value="1.03715764" step="0.001" oninput="calcSimDB()"></div>
-      <div><label class="sim-label">Receita bruta projetada</label><div class="sim-computed" id="db-sim-receita-proj">R$ 14.520,21</div><div style="font-size:10px;color:var(--muted);margin-top:4px;">geração × tarifa</div></div>
-    </div>
-  </section>
-
-  <section class="card" style="margin-bottom:16px;">
-    <div class="db-chart-title" style="margin-bottom:14px;">Custos Fixos Mensais <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;">· clique para editar</span></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:16px;">
-      <div class="sim-custo-row"><label class="sim-label">Amortização financiamento</label><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input class="sim-input" id="db-c-amort"   type="number" value="2730.06" step="0.01" oninput="calcSimDB()"></div></div>
-      <div class="sim-custo-row"><label class="sim-label">Juros</label><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input class="sim-input" id="db-c-juros"   type="number" value="762.29"  step="0.01" oninput="calcSimDB()"></div></div>
-      <div class="sim-custo-row"><label class="sim-label">Aluguel da área</label><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input class="sim-input" id="db-c-aluguel" type="number" value="768.00"  step="0.01" oninput="calcSimDB()"></div></div>
-      <div class="sim-custo-row"><label class="sim-label">Taxa de administração</label><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input class="sim-input" id="db-c-adm"     type="number" value="800.00"  step="0.01" oninput="calcSimDB()"></div></div>
-      <div class="sim-custo-row"><label class="sim-label">Contabilidade</label><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input class="sim-input" id="db-c-cont"    type="number" value="405.25"  step="0.01" oninput="calcSimDB()"></div></div>
-      <div class="sim-custo-row"><label class="sim-label">Seguro</label><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input class="sim-input" id="db-c-seguro"  type="number" value="2083.34" step="0.01" oninput="calcSimDB()"></div></div>
-      <div class="sim-custo-row"><label class="sim-label">Simples Nacional</label><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input class="sim-input" id="db-c-simples" type="number" value="500.00"  step="0.01" oninput="calcSimDB()"></div></div>
-      <div class="sim-custo-row"><label class="sim-label">COSERN geradora</label><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input class="sim-input" id="db-c-cosern"  type="number" value="1500.00" step="0.01" oninput="calcSimDB()"></div></div>
-    </div>
-    <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:13px;font-weight:600;">Total de custos mensais</span>
-      <span style="font-size:18px;font-weight:800;color:#DC2626;" id="db-sim-total-custos">R$ 9.549,94</span>
-    </div>
-  </section>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px;margin-bottom:8px;">
-    <div class="sim-cenario-card">
-      <div class="sim-cn-header">
-        <div><div class="sim-cn-titulo">Atual</div><div class="sim-cn-sub">{{ _sa_ativos if pnl else 0 }} {{ 'cliente' if (_sa_ativos if pnl else 0) == 1 else 'clientes' }} · {{ _sa_label if pnl else '—' }}</div></div>
-        <span class="sim-cn-badge sim-cn-badge--critico" id="db-badge-atual">Crítico</span>
-      </div>
-      <div class="sim-cn-body">
-        <div class="sim-cn-row"><span class="sim-cn-label">Receita do mês</span><div style="display:flex;align-items:center;gap:4px;"><span style="font-size:12px;color:var(--muted);">R$</span><input type="number" id="db-sim-receita-atual" value="{{ (_sa_ult.receita_bruta or 0)|round(2) if pnl else 0 }}" step="0.01" oninput="calcSimDB()" style="width:100px;border:1.5px solid var(--border);border-radius:6px;padding:4px 7px;font-size:13px;font-weight:600;color:var(--text);background:var(--bg);"></div></div>
-        <div class="sim-cn-row"><span class="sim-cn-label">Total de custos</span><span class="sim-cn-val neg" id="db-cn-atual-custos">− R$ 9.549,94</span></div>
-        <div class="sim-cn-sep"></div>
-        <div class="sim-cn-row"><span class="sim-cn-label" style="font-weight:700;color:var(--text);">Resultado líquido</span><span class="sim-cn-resultado neg" id="db-cn-atual-resultado">− R$ 7.545,25</span></div>
-      </div>
-      <div class="sim-cn-health"><div class="sim-health-bar"><div class="sim-health-fill" id="db-hbar-atual" style="width:14%;background:#EF4444;"></div></div><span class="sim-health-label" id="db-hlabel-atual" style="color:#EF4444;">14% da receita potencial</span></div>
-    </div>
-    <div class="sim-cenario-card">
-      <div class="sim-cn-header">
-        <div><div class="sim-cn-titulo">Projetado</div><div class="sim-cn-sub">100% · sem inadimplência</div></div>
-        <span class="sim-cn-badge sim-cn-badge--verde" id="db-badge-proj">Saudável</span>
-      </div>
-      <div class="sim-cn-body">
-        <div class="sim-cn-row"><span class="sim-cn-label">Receita do mês</span><span class="sim-cn-val pos" id="db-cn-proj-receita">R$ 14.520,21</span></div>
-        <div class="sim-cn-row"><span class="sim-cn-label">Total de custos</span><span class="sim-cn-val neg" id="db-cn-proj-custos">− R$ 9.549,94</span></div>
-        <div class="sim-cn-sep"></div>
-        <div class="sim-cn-row"><span class="sim-cn-label" style="font-weight:700;color:var(--text);">Resultado líquido</span><span class="sim-cn-resultado pos" id="db-cn-proj-resultado">+ R$ 4.970,27</span></div>
-      </div>
-      <div class="sim-cn-health"><div class="sim-health-bar"><div class="sim-health-fill" id="db-hbar-proj" style="width:100%;background:#16A34A;"></div></div><span class="sim-health-label" id="db-hlabel-proj" style="color:#16A34A;">100% da receita potencial</span></div>
-    </div>
-    <div class="sim-cenario-card">
-      <div class="sim-cn-header">
-        <div><div class="sim-cn-titulo">Realista</div><div class="sim-cn-sub">com vacância/inadimplência</div></div>
-        <span class="sim-cn-badge sim-cn-badge--verde" id="db-badge-real">Saudável</span>
-      </div>
-      <div class="sim-cn-body">
-        <div class="sim-cn-row" style="margin-bottom:10px;"><span class="sim-cn-label">Vacância / inadimplência</span><div style="display:flex;align-items:center;gap:8px;"><input id="db-sim-inadim" type="range" min="0" max="100" value="10" step="1" oninput="calcSimDB()" style="width:80px;accent-color:var(--accent);cursor:pointer;"><span id="db-sim-inadim-pct" style="font-size:13px;font-weight:700;min-width:34px;text-align:right;">10%</span></div></div>
-        <div class="sim-cn-row"><span class="sim-cn-label">Receita do mês</span><span class="sim-cn-val pos" id="db-cn-real-receita">R$ 13.068,19</span></div>
-        <div class="sim-cn-row"><span class="sim-cn-label">Total de custos</span><span class="sim-cn-val neg" id="db-cn-real-custos">− R$ 9.549,94</span></div>
-        <div class="sim-cn-sep"></div>
-        <div class="sim-cn-row"><span class="sim-cn-label" style="font-weight:700;color:var(--text);">Resultado líquido</span><span class="sim-cn-resultado pos" id="db-cn-real-resultado">+ R$ 3.518,25</span></div>
-      </div>
-      <div class="sim-cn-health"><div class="sim-health-bar"><div class="sim-health-fill" id="db-hbar-real" style="width:90%;background:#16A34A;"></div></div><span class="sim-health-label" id="db-hlabel-real" style="color:#16A34A;">90% da receita potencial</span></div>
-    </div>
-  </div>
-</div>
-<script>
-(function(){
-  function fmtV(v){return Math.abs(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
-  function setResult(elId,badgeId,v){
-    var el=document.getElementById(elId),badge=document.getElementById(badgeId);
-    if(!el)return;
-    el.textContent=(v>=0?'+ R$ ':'− R$ ')+fmtV(v);
-    el.className='sim-cn-resultado '+(v>=0?'pos':'neg');
-    if(!badge)return;
-    if(v>=0){badge.textContent='Saudável';badge.className='sim-cn-badge sim-cn-badge--verde';}
-    else if(v>-3000){badge.textContent='Atenção';badge.className='sim-cn-badge sim-cn-badge--amarelo';}
-    else{badge.textContent='Crítico';badge.className='sim-cn-badge sim-cn-badge--critico';}
-  }
-  function setHealth(barId,lblId,receita,pot){
-    var pct=pot>0?Math.min(100,receita/pot*100):0;
-    var bar=document.getElementById(barId),lbl=document.getElementById(lblId);
-    if(!bar||!lbl)return;
-    var cor=pct>=70?'#16A34A':pct>=40?'#D97706':'#EF4444';
-    bar.style.width=pct.toFixed(1)+'%';bar.style.background=cor;
-    lbl.textContent=pct.toFixed(0)+'% da receita potencial';lbl.style.color=cor;
-  }
-  window.calcSimDB=function(){
-    var ger=parseFloat(document.getElementById('db-sim-geracao').value)||0;
-    var tar=parseFloat(document.getElementById('db-sim-tarifa').value)||0;
-    var pot=ger*tar;
-    var ids=['db-c-amort','db-c-juros','db-c-aluguel','db-c-adm','db-c-cont','db-c-seguro','db-c-simples','db-c-cosern'];
-    var custos=ids.reduce(function(s,id){return s+(parseFloat(document.getElementById(id).value)||0);},0);
-    var rp=document.getElementById('db-sim-receita-proj');if(rp)rp.textContent='R$ '+fmtV(pot);
-    var tc=document.getElementById('db-sim-total-custos');if(tc)tc.textContent='R$ '+fmtV(custos);
-    var custStr='− R$ '+fmtV(custos);
-    var rA=parseFloat(document.getElementById('db-sim-receita-atual').value)||0;
-    var ca=document.getElementById('db-cn-atual-custos');if(ca)ca.textContent=custStr;
-    setResult('db-cn-atual-resultado','db-badge-atual',rA-custos);
-    setHealth('db-hbar-atual','db-hlabel-atual',rA,pot);
-    var rp2=document.getElementById('db-cn-proj-receita');if(rp2)rp2.textContent='R$ '+fmtV(pot);
-    var cp=document.getElementById('db-cn-proj-custos');if(cp)cp.textContent=custStr;
-    setResult('db-cn-proj-resultado','db-badge-proj',pot-custos);
-    setHealth('db-hbar-proj','db-hlabel-proj',pot,pot);
-    var inadim=parseFloat(document.getElementById('db-sim-inadim').value)||0;
-    var pi=document.getElementById('db-sim-inadim-pct');if(pi)pi.textContent=inadim.toFixed(0)+'%';
-    var rR=pot*(1-inadim/100);
-    var rr=document.getElementById('db-cn-real-receita');if(rr)rr.textContent='R$ '+fmtV(rR);
-    var cr=document.getElementById('db-cn-real-custos');if(cr)cr.textContent=custStr;
-    setResult('db-cn-real-resultado','db-badge-real',rR-custos);
-    setHealth('db-hbar-real','db-hlabel-real',rR,pot);
-  };
-})();
-</script>
 </div>
 
 {# ══════════════════════════════════════════════ ENERGIA ═══ #}
@@ -1270,120 +1066,6 @@ function toggleAcordDb(btn){
 {% if filtrado and ativo_selecionado.tipo == 'carro' %}
 </div>{# /tab-visao_geral carros #}
 
-{# ══ RETORNO MENSAL — CARROS ══ #}
-<div id="tab-retorno_mensal" class="dtab-content {{ 'ativo' if tab == 'retorno_mensal' }}">
-<div style="padding-top:4px;">
-  {% set _vagos_adm = carros_veiculos_status|selectattr('ativo','equalto',false)|list %}
-  {% if _vagos_adm %}
-  <div style="display:flex;align-items:center;gap:10px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:20px;">
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 9v4m0 4h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-    <div>
-      <strong style="font-size:13px;color:#92400E;">{{ _vagos_adm|length }} veículo{{ 's' if _vagos_adm|length != 1 }} vago{{ 's' if _vagos_adm|length != 1 }}/manutenção</strong>
-      <span style="font-size:12px;color:#92400E;margin-left:6px;">{{ _vagos_adm|map(attribute='placa')|join(', ') }}</span>
-    </div>
-  </div>
-  {% endif %}
-
-  {% if carros_rentabilidade %}
-  {% set r = carros_rentabilidade %}
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
-    <div class="db-metric-card" style="padding:18px 20px;">
-      <div class="db-mc-label">Yield líquido a.a.</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#D97706;">{{ r.yield_aa }}%</span></div>
-      <div class="db-mc-sub">por veículo {{ r.nome.split('(')[0].strip() }}</div>
-    </div>
-    <div class="db-metric-card" style="padding:18px 20px;">
-      <div class="db-mc-label">Retorno real a.a.</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ r.retorno_aa }}%</span></div>
-      <div class="db-mc-sub">após depreciação de {{ r.depreciacao_pct }}% a.a.</div>
-    </div>
-    <div class="db-metric-card" style="padding:18px 20px;">
-      <div class="db-mc-label">Margem líquida</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ r.margem }}%</span></div>
-      <div class="db-mc-sub">da renda bruta mensal</div>
-    </div>
-    <div class="db-metric-card" style="padding:18px 20px;">
-      <div class="db-mc-label">Renda líquida mensal</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ r.liquida_mensal|brl }}</span></div>
-      <div class="db-mc-sub">após seguro, revisão e depreciação</div>
-    </div>
-    <div class="db-metric-card" style="padding:18px 20px;">
-      <div class="db-mc-label">Ocupação de equilíbrio</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ r.oc_eq_pct }}%</span></div>
-      <div class="db-mc-sub">{{ r.oc_eq_sem }} semanas/ano para cobrir custos</div>
-    </div>
-    <div class="db-metric-card" style="padding:18px 20px; cursor:pointer;" onclick="document.getElementById('modal-motoristas-adm').style.display='flex'">
-      <div class="db-mc-label">Rentabilidade líquida real</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if r.liquida_real_aa > 0 else '#DC2626' }};">{{ r.liquida_real_aa }}%</span></div>
-      <div class="db-mc-sub">{{ r.n_ativos }}/{{ r.n_total }} veículos · clique p/ detalhes</div>
-    </div>
-    <div class="db-metric-card" style="padding:18px 20px;">
-      <div class="db-mc-label">Payback estimado</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg">{{ r.payback }} meses</span></div>
-      <div class="db-mc-sub">recuperação total</div>
-    </div>
-    <div class="db-metric-card" style="padding:18px 20px;">
-      <div class="db-mc-label">vs CDI ({{ r.cdi_aa_pct }}% a.a.)</div>
-      <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#16A34A;">+{{ r.vs_cdi }} p.p.</span></div>
-      <div class="db-mc-sub">vs Poupança: +{{ r.vs_poupanca }} p.p.</div>
-    </div>
-  </div>
-  {% endif %}
-
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
-    {% for v in carros_veiculos_status %}
-    <div style="border:0.5px solid {{ '#D1FAE5' if v.ativo else '#FEE2E2' }};border-radius:12px;padding:14px 16px;background:{{ '#F0FDF4' if v.ativo else '#FFF8F8' }};">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);">{{ v.placa }}</span>
-        {% if v.ativo %}<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#D1FAE5;color:#065F46;">Ativo</span>
-        {% elif v.em_manutencao %}<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280;">Manutenção</span>
-        {% else %}<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#FEE2E2;color:#991B1B;">Vago</span>{% endif %}
-      </div>
-      <div style="font-size:12px;color:var(--muted);">{{ v.modelo }}</div>
-      {% if v.locatario %}
-      <div style="font-size:11px;margin-top:6px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ v.locatario|title }}</div>
-      {% elif v.em_manutencao %}
-      <div style="font-size:11px;margin-top:6px;color:var(--muted);font-style:italic;">Manutenção</div>
-      {% else %}
-      <div style="font-size:11px;margin-top:6px;color:var(--muted);">Sem locatário</div>
-      {% endif %}
-    </div>
-    {% endfor %}
-  </div>
-
-  {% if carros_rentabilidade %}
-  {% set r = carros_rentabilidade %}
-  <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:500;">
-    Rentabilidade estimada — {{ r.nome }} · aluguel semanal {{ r.aluguel_semanal|int|brl }} · {{ r.pct_investidor }}% ao investidor
-  </div>
-  <section class="card" style="padding:0;overflow:hidden;">
-    <div style="padding:14px 18px;border-bottom:0.5px solid rgba(23,33,28,.08);font-size:13px;font-weight:700;color:#D97706;">{{ r.nome|upper }}</div>
-    {% set rows_rent = [
-      ("Aluguel semanal",                                          r.aluguel_semanal|brl,        ""),
-      ("Renda bruta semanal (" ~ r.pct_investidor ~ "%)",         r.bruta_semanal|brl,           ""),
-      ("Renda bruta mensal",                                       r.bruta_mensal|brl,            "bold"),
-      ("Seguro mensal (R$ " ~ r.seguro_anual|brl ~ "/ano ÷ 12)", "− " ~ r.seguro_mensal|brl,    "neg"),
-      ("Manutenção mensal",                                        "− " ~ r.manutencao|brl,       "neg"),
-      ("Depreciação mensal (" ~ r.depreciacao_pct ~ "% a.a.)",   "− " ~ r.depreciacao_mes|brl,   "neg"),
-      ("Renda líquida mensal",                                     r.liquida_mensal|brl,           "pos bold"),
-      ("Margem líquida",                                           r.margem|string ~ "%",          "pct"),
-      ("Retorno real a.a.",                                        r.retorno_aa|string ~ "%",      "pct"),
-      ("Ocupação de equilíbrio",                                   r.oc_eq_pct|string ~ "% (" ~ r.oc_eq_sem|string ~ " sem.)", ""),
-      ("Payback",                                                  r.payback|string ~ " meses",   ""),
-      ("vs CDI (" ~ r.cdi_aa_pct ~ "% a.a.)",                   "+" ~ r.vs_cdi|string ~ " p.p.", "pos"),
-      ("vs Poupança (" ~ r.poupanca_aa_pct ~ "% a.a.)",         "+" ~ r.vs_poupanca|string ~ " p.p.", "pos"),
-    ] %}
-    {% for label, val, cls in rows_rent %}
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:0.5px solid rgba(23,33,28,.05);font-size:13px;">
-      <span style="color:var(--muted);">{{ label }}</span>
-      <span style="font-weight:{{ '700' if 'bold' in cls else '500' }};color:{{ '#16A34A' if 'pos' in cls else ('#DC2626' if 'neg' in cls else ('#6366F1' if 'pct' in cls else 'var(--text)')) }};">{{ val }}</span>
-    </div>
-    {% endfor %}
-  </section>
-  {% endif %}
-</div>
-</div>{# /tab-retorno_mensal carros #}
-
 {# ══ CLIENTES — CARROS ══ #}
 <div id="tab-clientes" class="dtab-content {{ 'ativo' if tab == 'clientes' }}">
 <div style="padding-top:4px;">
@@ -1610,7 +1292,6 @@ function toggleAcordDb(btn){
 <div id="tab-pnl"            class="dtab-content {{ 'ativo' if tab == 'pnl' }}"><div class="vazio" style="padding:48px 0;">Em breve — P&L de carros</div></div>
 <div id="tab-saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}"><div class="vazio" style="padding:48px 0;">Em breve — Créditos kWh de carros</div></div>
 <div id="tab-dre"            class="dtab-content {{ 'ativo' if tab == 'dre' }}"><div class="vazio" style="padding:48px 0;">Em breve — DRE de carros</div></div>
-<div id="tab-socios"         class="dtab-content {{ 'ativo' if tab == 'socios' }}"><div class="vazio" style="padding:48px 0;">Em breve — Sócios de carros</div></div>
 
 {% endif %}{# /filtrado carro #}
 
@@ -1902,7 +1583,6 @@ function toggleAcordDb(btn){
 .kpi-card { background:#fff; border:0.5px solid rgba(23,33,28,0.12); border-radius:15px; padding:18px 19px; display:flex; flex-direction:column; gap:4px; }
 .kpi-label { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
 .kpi-val   { font-size:22px; font-weight:500; color:var(--text); line-height:1.2; letter-spacing:-0.02em; }
-.socios-barra { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--bg3); gap:2px; }
 .input-sm { padding:5px 10px; font-size:13px; border:1px solid var(--border); border-radius:6px; background:#fff; }
 .nb-card { background:#fff; border:0.5px solid rgba(23,33,28,0.12); border-radius:15px; overflow:hidden; }
 .nb-card-header { display:flex; align-items:center; gap:10px; padding:18px 20px 14px; }
@@ -2112,15 +1792,6 @@ function tryInitChartsAdmin(){
       {label:'Poupança',data:bmData.map(function(r){return r.poupanca;}),borderColor:'#9333EA',backgroundColor:'transparent',tension:0.3,pointRadius:2,borderWidth:2,borderDash:[4,3]},
       {label:'IPCA',   data:bmData.map(function(r){return r.ipca;}),   borderColor:'#16A34A',backgroundColor:'transparent',tension:0.3,pointRadius:2,borderWidth:1.5,borderDash:[2,4]}
     ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+fmtBrl(c.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{ticks:{callback:function(v){return fmtBrl(v);},font:{size:10}},grid:{color:'#EEF0EF'}}}}});
-  }
-  // Retorno Mensal
-  var ctxR=document.getElementById('chart-retorno-admin');
-  if(ctxR&&!_adInited['R']&&_visible(ctxR)){
-    _adInited['R']=true;
-    var retorno={{ retorno_mensal|tojson }};
-    var labelsR=retorno.map(function(r){var m=(r.ref_mes_ano||'').slice(0,7);return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4);});
-    var valsR=retorno.map(function(r){return r.participacao_lucro||0;});
-    new Chart(ctxR,{type:'bar',data:{labels:labelsR,datasets:[{label:'Participação no resultado',data:valsR,backgroundColor:valsR.map(function(v){return v>=0?'rgba(22,163,74,0.8)':'rgba(220,38,38,0.8)';}),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtBrl(c.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{ticks:{callback:function(v){return fmtBrl(v);},font:{size:10}},grid:{color:'#EEF0EF'}}}}});
   }
   // Energia
   var ctxE=document.getElementById('chart-energia-admin');

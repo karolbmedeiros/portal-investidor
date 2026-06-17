@@ -13,9 +13,11 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 @admin_bp.route("/")
 @requer_admin
 def dashboard():
+    from datetime import date as _date_dre
     from services.usina_service import listar_usinas
     from services.veiculos_service import listar_empresas_veiculos
 
+    _ano_dre_default = _date_dre.today().year
     all_usinas  = listar_usinas()
     all_carros  = listar_empresas_veiculos()
 
@@ -276,7 +278,7 @@ def dashboard():
             lancamentos_carros = []
 
         _tab_carro = request.args.get("tab", "visao_geral")
-        if _tab_carro not in ("visao_geral","retorno_mensal","clientes","extrato"):
+        if _tab_carro not in ("visao_geral","clientes","extrato"):
             _tab_carro = "visao_geral"
 
     # Rendimento acumulado — créditos na conta bancária da usina selecionada
@@ -408,7 +410,7 @@ def dashboard():
         )
         leituras_det_data   = leituras_detalhadas(ativo_id)
         saldo_creditos_data = saldo_creditos_da_usina(ativo_id)
-        _valid_tabs = ("visao_geral","socios","clientes","extrato","dre","retorno_mensal","benchmarks","pnl","saldo_creditos")
+        _valid_tabs = ("visao_geral","clientes","extrato","dre","benchmarks","pnl","saldo_creditos")
         tab = request.args.get("tab", "visao_geral")
         if tab not in _valid_tabs:
             tab = "visao_geral"
@@ -416,8 +418,8 @@ def dashboard():
         dre_secoes = dre_valores = dre_lancs = dre_meses = None
         if tab == "dre":
             from services.dre_service import listar_secoes_dre, calcular_dre
-            _dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
-            _dre_mes_fim = request.args.get("dre_mes_fim") or kpi_mes
+            _dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01"
+            _dre_mes_fim = request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06"
             dre_secoes = listar_secoes_dre()
             _dre = calcular_dre(ativo_id, _dre_mes_ini, _dre_mes_fim)
             dre_valores = _dre["valores"]
@@ -489,8 +491,8 @@ def dashboard():
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,
         dre_meses=dre_meses,
-        dre_mes_ini=request.args.get("dre_mes_ini") or kpi_mes or "",
-        dre_mes_fim=request.args.get("dre_mes_fim") or kpi_mes or "",
+        dre_mes_ini=request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01",
+        dre_mes_fim=request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06",
         participacoes=_parts if (ativo_id and ativo_tipo == "usina") else [],
         empresa_carros_sel=empresa_carros_sel,
         valor_liquido_recebido=valor_liquido_recebido,
@@ -524,11 +526,13 @@ def usina_detalhe(usina_id):
     if not usina:
         abort(404)
 
-    tab = request.args.get("tab", "socios")
-    _valid_tabs = ("socios", "clientes", "extrato", "dre",
-                   "retorno_mensal", "benchmarks", "energia", "pnl", "saldo_creditos")
+    _ano_dre_default = date.today().year
+
+    tab = request.args.get("tab", "clientes")
+    _valid_tabs = ("clientes", "extrato", "dre",
+                   "benchmarks", "energia", "pnl", "saldo_creditos")
     if tab not in _valid_tabs:
-        tab = "socios"
+        tab = "clientes"
 
     auto_conciliar_neutros(usina_id)
 
@@ -577,8 +581,8 @@ def usina_detalhe(usina_id):
     categorias  = listar_categorias()
     num_ativos  = sum(1 for c in clientes if c.get("status") == "Ativo")
 
-    retorno_mensal = retorno_mensal_investidor(usina_id) if tab in ("retorno_mensal", "benchmarks") else []
-    rentabilidade  = rentabilidade_investidor(usina_id)  if tab in ("retorno_mensal", "benchmarks") else {}
+    retorno_mensal = retorno_mensal_investidor(usina_id) if tab == "benchmarks" else []
+    rentabilidade  = rentabilidade_investidor(usina_id)  if tab == "benchmarks" else {}
     _bm_rm = retorno_mensal or retorno_mensal_investidor(usina_id)
     _bm_rb = rentabilidade  or rentabilidade_investidor(usina_id)
     benchmarks = comparativo_benchmarks(
@@ -592,8 +596,8 @@ def usina_detalhe(usina_id):
     dre_secoes = dre_valores = dre_lancs = dre_meses = None
     if tab == "dre":
         from services.dre_service import listar_secoes_dre, calcular_dre
-        dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
-        dre_mes_fim = request.args.get("dre_mes_fim") or kpi_mes
+        dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01"
+        dre_mes_fim = request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06"
         dre_secoes   = listar_secoes_dre()
         _dre         = calcular_dre(usina_id, dre_mes_ini, dre_mes_fim)
         dre_valores  = _dre["valores"]
@@ -627,8 +631,8 @@ def usina_detalhe(usina_id):
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,
         dre_meses=dre_meses,
-        dre_mes_ini=request.args.get("dre_mes_ini") or kpi_mes,
-        dre_mes_fim=request.args.get("dre_mes_fim") or kpi_mes,
+        dre_mes_ini=request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01",
+        dre_mes_fim=request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06",
     )
 
 
@@ -856,7 +860,7 @@ def novo_usuario():
         res = auth_service.criar_usuario_admin(username, senha, nome, [], [], tipo="admin")
     else:
         if not permissions:
-            permissions = ["visao_geral", "socios"]
+            permissions = ["visao_geral"]
         res = auth_service.criar_usuario_admin(username, senha, nome, usina_ids, permissions, tipo="investidor")
 
     flash(
