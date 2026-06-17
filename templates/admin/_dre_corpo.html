@@ -64,8 +64,8 @@
   <div class="dre-row-filho" data-parent="{{ s.parent_id }}"
        style="border-bottom:0.5px solid rgba(23,33,28,0.06);">
     <div onclick="dreToggleNaturezas('{{ s.id }}')"
-         style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:10px 20px 10px 44px;cursor:{% if naturezas %}pointer{% else %}default{% endif %};">
-      <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+         style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:10px 20px;cursor:{% if naturezas %}pointer{% else %}default{% endif %};">
+      <div style="display:flex;align-items:center;gap:6px;min-width:0;padding-left:24px;">
         {% if naturezas %}
         <span id="dre-nchevron-{{ s.id }}" style="color:var(--muted);font-size:10px;transition:transform .2s;flex-shrink:0;">▶</span>
         {% endif %}
@@ -83,8 +83,8 @@
     {% if naturezas %}
     <div id="dre-naturezas-{{ s.id }}" style="display:none;background:#FAFAFA;border-top:0.5px solid rgba(23,33,28,0.06);">
       {% for nat in naturezas %}
-      <div style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:8px 20px 8px 64px;border-bottom:0.5px solid rgba(23,33,28,0.04);">
-        <span style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ nat.nome }}">{{ nat.nome }}</span>
+      <div style="display:grid;grid-template-columns:{{ _grid_cols }};align-items:center;padding:8px 20px;border-bottom:0.5px solid rgba(23,33,28,0.04);">
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:48px;" title="{{ nat.nome }}">{{ nat.nome }}</span>
         {% for mes_l in dre_meses %}
         {% set nv = nat.valores.get(mes_l, 0) %}
         {% set np = nat.percentuais.get(mes_l, 0) %}
