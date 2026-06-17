@@ -2541,6 +2541,17 @@ function carregarDre(mes) {
   window.location.href = window.location.pathname + '?ativo_id={{ ativo_id }}&kpi_mes=' + mes + '&tab=dre';
 }
 
+// base.html troca de aba só no client (sem nova requisição). Como o servidor
+// agora busca só os dados da aba ativa (ver portal/routes.py), cada clique
+// precisa de fato recarregar a página para os dados daquela aba chegarem.
+document.addEventListener('click', function (e) {
+  var link = e.target.closest('.dtab-link[data-tab]');
+  if (!link) return;
+  var url = new URL(window.location.href);
+  url.searchParams.set('tab', link.dataset.tab);
+  window.location.href = url.toString();
+});
+
 function exportarDrePdf() {
   var corpo = document.getElementById('dre-corpo');
   if (!corpo) return;
