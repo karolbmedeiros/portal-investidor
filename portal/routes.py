@@ -98,11 +98,9 @@ def home():
     if ativo_id:
         if (ativo_tipo != "carros") and (all_perms or "extrato_bancario" in u_perms or "fluxo_de_caixa" in u_perms): home_tabs.append("extrato")
         if all_perms or "benchmarks"       in u_perms:                                 home_tabs.append("benchmarks")
-        if all_perms or "retorno_mensal"   in u_perms:                                 home_tabs.append("retorno_mensal")
         if all_perms or "energia"          in u_perms or "saldo_creditos" in u_perms:   home_tabs.append("saldo_creditos")
         if all_perms or "pnl"              in u_perms:                                 home_tabs.append("pnl")
         if all_perms or "dre"              in u_perms:                                 home_tabs.append("dre")
-        if all_perms or "socios"           in u_perms:                                 home_tabs.append("socios")
         if all_perms or "clientes"         in u_perms:                                 home_tabs.append("clientes")
 
     tab = request.args.get("tab", "visao_geral")
@@ -400,23 +398,21 @@ def home():
     # Dados visuais — só busca se tiver usina selecionada e permissão
     # (mesmo padrão do admin: todas as abas permitidas são pré-carregadas
     # numa única página, e a troca de aba é só client-side; a DRE é a
-    # exceção que precisa de reload real, ver carregarDre/click handler).
+    # exceção que precisa de reload real, ver click handler no template).
     from services.usina_service import (
         retorno_mensal_investidor, leituras_detalhadas,
         saldo_creditos_da_usina, pnl_da_usina,
-        participacoes_da_usina, clientes_da_usina,
+        clientes_da_usina,
         listar_lancamentos, listar_contas_da_usina,
         calcular_kpis, leituras_da_usina, rentabilidade_investidor,
     )
     from services.benchmark_service import comparativo_benchmarks
 
     _is_usina = ativo_tipo == "usina"
-    retorno_mensal  = retorno_mensal_investidor(ativo_id) if _is_usina and ativo_id and "retorno_mensal" in home_tabs else []
-    rentabilidade   = rentabilidade_investidor(ativo_id)  if _is_usina and ativo_id and "retorno_mensal" in home_tabs else {}
     benchmarks_data = {}
     if _is_usina and ativo_id and "benchmarks" in home_tabs:
-        _rb = rentabilidade if rentabilidade else rentabilidade_investidor(ativo_id)
-        _rm = retorno_mensal if retorno_mensal else retorno_mensal_investidor(ativo_id)
+        _rb = rentabilidade_investidor(ativo_id)
+        _rm = retorno_mensal_investidor(ativo_id)
         benchmarks_data = comparativo_benchmarks(
             float(_rb.get("capital") or 0),
             str(_rb.get("data_desembolso") or ""),
@@ -425,7 +421,6 @@ def home():
     leituras_det   = leituras_detalhadas(ativo_id)       if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
     pnl            = pnl_da_usina(ativo_id)              if _is_usina and ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
     saldo_creditos = saldo_creditos_da_usina(ativo_id)   if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
-    participacoes  = participacoes_da_usina(ativo_id)    if _is_usina and ativo_id and "socios"         in home_tabs else []
     clientes       = clientes_da_usina(ativo_id)         if _is_usina and ativo_id and "clientes"       in home_tabs else []
 
     tem_extrato = bool(_is_usina and ativo_id and "extrato" in home_tabs)
@@ -468,8 +463,9 @@ def home():
     dre_mes_ini = dre_mes_fim = ""
     if tem_dre and tab == "dre":
         from services.dre_service import listar_secoes_dre, calcular_dre
-        dre_mes_ini = request.args.get("dre_mes_ini") or kpi_mes
-        dre_mes_fim = request.args.get("dre_mes_fim") or kpi_mes
+        _ano_dre = date.today().year
+        dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre}-01"
+        dre_mes_fim = request.args.get("dre_mes_fim") or f"{_ano_dre}-06"
         dre_secoes  = listar_secoes_dre()
         _dre        = calcular_dre(ativo_id, dre_mes_ini, dre_mes_fim)
         dre_valores = _dre["valores"]
@@ -501,13 +497,10 @@ def home():
         usuario=u,
         tab=tab,
         home_tabs=home_tabs,
-        retorno_mensal=retorno_mensal,
-        rentabilidade=rentabilidade,
         benchmarks=benchmarks_data,
         leituras_det=leituras_det,
         pnl=pnl,
         saldo_creditos=saldo_creditos,
-        participacoes=participacoes,
         clientes=clientes,
         lancamentos=lancamentos,
         contas=contas,
