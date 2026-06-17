@@ -21,9 +21,9 @@
 
 {% set _MESES_DRE = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] %}
 {% set _n_meses = dre_meses|length if dre_meses else 1 %}
-{% set _grid_cols = '240px ' + 'minmax(160px,1fr) ' * _n_meses %}
-{% set _mes_cell = 'display:flex;justify-content:center;align-items:baseline;gap:8px;white-space:nowrap;border-left:1px solid rgba(23,33,28,0.08);padding:0 14px;' %}
-{% set _pct_w = 'min-width:54px;text-align:center;flex-shrink:0;' %}
+{% set _grid_cols = '240px ' + 'minmax(110px,1fr) minmax(64px,auto) ' * _n_meses %}
+{% set _val_cell = 'text-align:center;white-space:nowrap;border-left:1px solid rgba(23,33,28,0.08);padding:0 8px;' %}
+{% set _pct_cell = 'text-align:center;white-space:nowrap;padding:0 8px 0 0;' %}
 
 {% macro fmt_brl(valor) %}{% if valor != 0 %}R$ {{ '{:,.2f}'.format(valor).replace(',','X').replace('.',',').replace('X','.') }}{% else %}—{% endif %}{% endmacro %}
 {% macro fmt_pct(p) %}{{ '%.2f'|format(p)|replace('.', ',') }}%{% endmacro %}
@@ -34,7 +34,7 @@
   <div style="display:grid;grid-template-columns:{{ _grid_cols }};padding:12px 20px;background:#F9FAFB;border-bottom:1px solid var(--border);">
     <div></div>
     {% for mes_l in dre_meses %}
-    <div style="{{ _mes_cell }}font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">
+    <div style="grid-column:span 2;text-align:center;white-space:nowrap;border-left:1px solid rgba(23,33,28,0.08);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;">
       {{ _MESES_DRE[mes_l[5:7]|int] }}/{{ mes_l[2:4] }}
     </div>
     {% endfor %}
@@ -55,10 +55,8 @@
     </div>
     {% for mes_l in dre_meses %}
     {% set valor = valores_mes.get(mes_l, 0) %}
-    <div style="{{ _mes_cell }}">
-      <span style="font-weight:700;font-size:13px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">{{ fmt_brl(valor) }}</span>
-      <span style="{{ _pct_w }}font-size:11px;font-weight:700;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ fmt_pct(pcts_mes.get(mes_l, 0)) }}</span>
-    </div>
+    <div style="{{ _val_cell }}font-weight:700;font-size:13px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">{{ fmt_brl(valor) }}</div>
+    <div style="{{ _pct_cell }}font-size:11px;font-weight:700;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ fmt_pct(pcts_mes.get(mes_l, 0)) }}</div>
     {% endfor %}
   </div>
 
@@ -78,10 +76,8 @@
       </div>
       {% for mes_l in dre_meses %}
       {% set valor = valores_mes.get(mes_l, 0) %}
-      <div style="{{ _mes_cell }}">
-        <span style="font-size:13px;font-weight:500;color:{{ '#EF4444' if valor < 0 else ('var(--muted)' if valor == 0 else 'var(--accent)') }};">{{ fmt_brl(valor) }}</span>
-        <span style="{{ _pct_w }}font-size:11px;font-weight:600;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ fmt_pct(pcts_mes.get(mes_l, 0)) }}</span>
-      </div>
+      <div style="{{ _val_cell }}font-size:13px;font-weight:500;color:{{ '#EF4444' if valor < 0 else ('var(--muted)' if valor == 0 else 'var(--accent)') }};">{{ fmt_brl(valor) }}</div>
+      <div style="{{ _pct_cell }}font-size:11px;font-weight:600;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ fmt_pct(pcts_mes.get(mes_l, 0)) }}</div>
       {% endfor %}
     </div>
     {% if naturezas %}
@@ -92,10 +88,8 @@
         {% for mes_l in dre_meses %}
         {% set nv = nat.valores.get(mes_l, 0) %}
         {% set np = nat.percentuais.get(mes_l, 0) %}
-        <div style="{{ _mes_cell }}">
-          <span style="font-size:12px;color:{{ '#EF4444' if nv < 0 else ('var(--muted)' if nv == 0 else 'var(--text)') }};">{{ fmt_brl(nv) }}</span>
-          <span style="{{ _pct_w }}font-size:11px;color:{{ 'var(--accent)' if np else 'var(--muted)' }};">{{ fmt_pct(np) }}</span>
-        </div>
+        <div style="{{ _val_cell }}font-size:12px;color:{{ '#EF4444' if nv < 0 else ('var(--muted)' if nv == 0 else 'var(--text)') }};">{{ fmt_brl(nv) }}</div>
+        <div style="{{ _pct_cell }}font-size:11px;color:{{ 'var(--accent)' if np else 'var(--muted)' }};">{{ fmt_pct(np) }}</div>
         {% endfor %}
       </div>
       {% endfor %}
@@ -108,10 +102,8 @@
     <span style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">= {{ s.nome }}</span>
     {% for mes_l in dre_meses %}
     {% set valor = valores_mes.get(mes_l, 0) %}
-    <div style="{{ _mes_cell }}">
-      <span style="font-weight:700;font-size:14px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">{{ fmt_brl(valor) }}</span>
-      <span style="{{ _pct_w }}font-size:11px;font-weight:700;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ fmt_pct(pcts_mes.get(mes_l, 0)) }}</span>
-    </div>
+    <div style="{{ _val_cell }}font-weight:700;font-size:14px;color:{{ '#EF4444' if valor < 0 else 'var(--accent)' }};">{{ fmt_brl(valor) }}</div>
+    <div style="{{ _pct_cell }}font-size:11px;font-weight:700;color:{{ 'var(--accent)' if pcts_mes.get(mes_l, 0) else 'var(--muted)' }};">{{ fmt_pct(pcts_mes.get(mes_l, 0)) }}</div>
     {% endfor %}
   </div>
   {% endif %}
