@@ -327,7 +327,7 @@ def dashboard():
     # ── Dados analíticos da usina (tabs inline) ──────────────────────────────
     usina_obj = None
     tab = _tab_carro if ativo_tipo == "carro" else "visao_geral"
-    contas = conta_id = conta_atual = kpis = kpi_mes = pnl_data = clientes_data = categorias = None
+    contas = conta_id = conta_atual = pnl_data = clientes_data = categorias = None
     dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     saldo_inicial = 0.0
     chart_meses = []
@@ -353,7 +353,6 @@ def dashboard():
             chart_fluxo_dates.append(_d)
             chart_fluxo_pts.append(_s)
 
-    leituras_data = []
     lancamentos_data = []
     retorno_mensal_data = []
     rentabilidade_data = {}
@@ -362,10 +361,9 @@ def dashboard():
     saldo_creditos_data = []
 
     if ativo_id and ativo_tipo == "usina":
-        from datetime import date as _date2
         from services.usina_service import (
             clientes_da_usina, listar_contas_da_usina, listar_lancamentos,
-            leituras_da_usina, pnl_da_usina, calcular_kpis, listar_categorias,
+            pnl_da_usina, listar_categorias,
             retorno_mensal_investidor, leituras_detalhadas, saldo_creditos_da_usina,
             auto_conciliar_neutros, rentabilidade_investidor,
         )
@@ -392,14 +390,9 @@ def dashboard():
             l["data_transacao"][:7] for l in lancamentos_data
             if l.get("data_transacao") and not l.get("_neutro")
         })
-        leituras_data   = leituras_da_usina(ativo_id)
         pnl_data        = pnl_da_usina(ativo_id)
         clientes_data   = clientes_da_usina(ativo_id)
         categorias      = listar_categorias()
-        num_ativos      = sum(1 for c in clientes_data if c.get("status") == "Ativo")
-        datas_lanc = [l["data_transacao"][:7] for l in lancamentos_data if l.get("data_transacao")]
-        kpi_mes = request.args.get("kpi_mes") or (max(datas_lanc) if datas_lanc else _date2.today().strftime("%Y-%m"))
-        kpis            = calcular_kpis(ativo_id, kpi_mes, lancamentos_data, leituras_data, pnl_data, num_ativos)
         from services.benchmark_service import comparativo_benchmarks
         retorno_mensal_data = retorno_mensal_investidor(ativo_id)
         rentabilidade_data  = rentabilidade_investidor(ativo_id)
@@ -421,7 +414,7 @@ def dashboard():
             _dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01"
             _dre_mes_fim = request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06"
             dre_secoes = listar_secoes_dre()
-            _dre = calcular_dre(ativo_id, _dre_mes_ini, _dre_mes_fim)
+            _dre = calcular_dre(ativo_id, _dre_mes_ini, _dre_mes_fim, secoes=dre_secoes)
             dre_valores = _dre["valores"]
             dre_lancs   = _dre["lancamentos"]
             dre_meses   = _dre["meses"]
@@ -478,12 +471,9 @@ def dashboard():
         chart_fluxo_dates=chart_fluxo_dates,
         chart_fluxo_pts=chart_fluxo_pts,
         lancamentos=lancamentos_data,
-        leituras=leituras_data,
         pnl=pnl_data or [],
         clientes=clientes_data or [],
         categorias=categorias or [],
-        kpis=kpis or {},
-        kpi_mes=kpi_mes or "",
         retorno_mensal=retorno_mensal_data,
         rentabilidade=rentabilidade_data,
         benchmarks=benchmarks_data,
@@ -508,6 +498,43 @@ def dashboard():
         lancamentos_carros=lancamentos_carros,
         dados_clientes_carros=__import__('services.veiculos_service', fromlist=['dados_clientes_cons']).dados_clientes_cons(),
         naturezas_carros=__import__('services.veiculos_service', fromlist=['listar_naturezas_carros']).listar_naturezas_carros(),
+    )
+
+
+@admin_bp.route("/dre-fragment")
+@requer_admin
+def dre_fragment():
+    """Retorna só o corpo da DRE (tabela) via AJAX, sem recalcular o resto do dashboard.
+
+    Evita que entrar na aba DRE recompute clientes/extrato/benchmarks/P&L/etc.,
+    que é o que tornava o carregamento da DRE lento.
+    """
+    from datetime import date as _date_dre2
+    from services.dre_service import listar_secoes_dre, calcular_dre
+
+    ativo_id   = request.args.get("ativo_id", "")
+    ativo_tipo = request.args.get("ativo_tipo", "usina")
+    conta_id   = request.args.get("conta_id")
+    ano_dre    = _date_dre2.today().year
+    dre_mes_ini = request.args.get("dre_mes_ini") or f"{ano_dre}-01"
+    dre_mes_fim = request.args.get("dre_mes_fim") or f"{ano_dre}-06"
+
+    dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
+    if ativo_id and ativo_tipo == "usina":
+        dre_secoes = listar_secoes_dre()
+        _dre = calcular_dre(ativo_id, dre_mes_ini, dre_mes_fim, secoes=dre_secoes)
+        dre_valores = _dre["valores"]
+        dre_lancs   = _dre["lancamentos"]
+        dre_meses   = _dre["meses"]
+        dre_percentuais = _dre["percentuais"]
+        dre_naturezas   = _dre["naturezas"]
+
+    return render_template(
+        "admin/_dre_corpo.html",
+        ativo_id=ativo_id, ativo_tipo=ativo_tipo, conta_id=conta_id,
+        dre_mes_ini=dre_mes_ini, dre_mes_fim=dre_mes_fim,
+        dre_secoes=dre_secoes, dre_valores=dre_valores, dre_lancs=dre_lancs,
+        dre_meses=dre_meses, dre_percentuais=dre_percentuais, dre_naturezas=dre_naturezas,
     )
 
 
@@ -702,7 +729,7 @@ def usina_documento_excluir(usina_id, doc_id):
 @admin_bp.route("/configuracoes")
 @requer_admin
 def configuracoes():
-    from services.usina_service import listar_usinas, listar_categorias, categorias_em_uso
+    from services.usina_service import listar_usinas, listar_categorias
     from services.veiculos_service import listar_empresas_veiculos, listar_naturezas_carros
     from services.dre_service import listar_secoes_dre, listar_categorias_financeiras
     return render_template(
@@ -711,7 +738,6 @@ def configuracoes():
         usinas=listar_usinas(),
         empresas_veiculos=listar_empresas_veiculos(),
         categorias=listar_categorias(),
-        cats_em_uso=categorias_em_uso(),
         naturezas_carros=listar_naturezas_carros(),
         dre_secoes=listar_secoes_dre(),
         dre_categorias=listar_categorias_financeiras(),
@@ -782,35 +808,6 @@ def dre_vincular_categorias(linha_id):
     categoria_ids = (request.json or {}).get("categoria_ids", [])
     res = vincular_categorias_linha(linha_id, categoria_ids)
     return jsonify(res)
-
-
-@admin_bp.route("/configuracoes/natureza/nova", methods=["POST"])
-@requer_admin
-def natureza_nova():
-    from services.usina_service import criar_categoria
-    nome = request.form.get("nome", "").strip()
-    tipo = request.form.get("tipo", "")
-    if not nome or tipo not in ("receita", "despesa"):
-        flash("Preencha nome e tipo.", "erro")
-        return redirect(url_for("admin.configuracoes") + "#naturezas")
-    res = criar_categoria(nome, tipo)
-    flash("Natureza criada." if res["ok"] else f"Erro: {res.get('erro')}", "sucesso" if res["ok"] else "erro")
-    return redirect(url_for("admin.configuracoes") + "#naturezas")
-
-
-@admin_bp.route("/configuracoes/natureza/<cat_id>/excluir", methods=["POST"])
-@requer_admin
-def natureza_excluir(cat_id):
-    from services.usina_service import deletar_categoria
-    res = deletar_categoria(cat_id)
-    if not res["ok"]:
-        if res.get("em_uso"):
-            flash("Esta natureza está vinculada a lançamentos e não pode ser excluída.", "erro")
-        else:
-            flash(f"Erro: {res.get('erro')}", "erro")
-    else:
-        flash("Natureza removida.", "sucesso")
-    return redirect(url_for("admin.configuracoes") + "#naturezas")
 
 
 @admin_bp.route("/configuracoes/upload-planilha", methods=["POST"])

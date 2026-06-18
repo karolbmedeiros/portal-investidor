@@ -146,7 +146,7 @@ def _meses_intervalo(mes_inicio: str, mes_fim: str) -> list:
     return meses
 
 
-def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
+def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str, secoes: list = None) -> dict:
     """
     Retorna {"meses": [...], "valores": {secao_id: {mes: float}},
               "percentuais": {secao_id: {mes: float}},
@@ -155,6 +155,9 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
     mes_inicio / mes_fim no formato YYYY-MM — uma coluna por mês do intervalo.
     "percentuais" e os percentuais de "naturezas" são sempre em relação ao
     valor da seção "RECEITA OPERACIONAL BRUTA" no mesmo mês (base = 100%).
+
+    `secoes`, se informado (ex.: já obtido via listar_secoes_dre() pelo
+    chamador para renderizar a estrutura), evita repetir a mesma consulta.
     """
     from services.usina_service import listar_lancamentos, listar_contas_da_usina
 
@@ -199,7 +202,7 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str) -> dict:
             "valor": contrib,
         })
 
-    secoes = listar_secoes_dre()
+    secoes = secoes if secoes is not None else listar_secoes_dre()
 
     valor_por_secao: dict = {}      # secao_id -> {mes: valor}
     lancs_por_secao: dict = {}      # secao_id -> {mes: [...]}

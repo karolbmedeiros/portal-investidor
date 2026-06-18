@@ -387,63 +387,50 @@
     <div id="cfg-naturezas" class="cfg-tab" style="display:none;">
       <div class="cfg-section-title">Naturezas financeiras</div>
       <p style="font-size:12px;color:var(--muted);margin:4px 0 20px;">
-        Código <strong>01</strong> = Entrada (receita) · Código <strong>02</strong> = Saída (despesa)
+        Somente visualização — naturezas são cadastradas diretamente no banco de dados (tabela
+        <code>categorias_financeiras</code>).
       </p>
 
+      {% set receitas = categorias | selectattr('tipo', 'equalto', 'receita') | list %}
+      {% set despesas  = categorias | selectattr('tipo', 'equalto', 'despesa') | list %}
+
+      <div class="cfg-section-title" style="margin-bottom:8px;font-size:12px;">Receitas</div>
       <div class="tabela-wrap" style="margin-bottom:24px;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
-            <tr>
-              <th class="nat-th">Cód.</th>
-              <th class="nat-th">Nome</th>
-              <th class="nat-th">Tipo</th>
-              <th class="nat-th"></th>
-            </tr>
+            <tr><th class="nat-th">Cód.</th><th class="nat-th">Nome</th></tr>
           </thead>
           <tbody>
-            {% for cat in categorias %}
-            {% set cod = '01' if cat.tipo == 'receita' else '02' %}
-            {% set em_uso = cat.id in cats_em_uso %}
+            {% for cat in receitas %}
             <tr style="border-bottom:0.5px solid rgba(23,33,28,0.07);">
-              <td class="nat-td">
-                <span class="cod-badge {{ 'cod-01' if cod == '01' else 'cod-02' }}">{{ cod }}</span>
-              </td>
+              <td class="nat-td"><span class="cod-badge cod-01">01</span></td>
               <td class="nat-td" style="font-weight:500;color:#111827;">{{ cat.nome }}</td>
-              <td class="nat-td" style="color:var(--muted);">{{ 'Entrada' if cat.tipo == 'receita' else 'Saída' }}</td>
-              <td class="nat-td" style="text-align:right;">
-                <form method="POST" action="{{ url_for('admin.natureza_excluir', cat_id=cat.id) }}"
-                      onsubmit="return confirmarExclusaoNatureza(this, '{{ cat.nome }}', {{ 'true' if em_uso else 'false' }});">
-                  <button type="submit" class="btn btn-danger btn-sm" style="font-size:11px;padding:3px 10px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3h6v3"/></svg>
-                    Excluir
-                  </button>
-                </form>
-              </td>
             </tr>
+            {% else %}
+            <tr><td class="nat-td" colspan="2" style="color:var(--muted);">Nenhuma receita cadastrada.</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
 
-      <div class="cfg-section-title" style="margin-bottom:12px;">Adicionar natureza</div>
-      <form method="POST" action="{{ url_for('admin.natureza_nova') }}"
-            style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;max-width:560px;">
-        <div class="form-group" style="margin:0;flex:1;min-width:200px;">
-          <label>Nome</label>
-          <input type="text" name="nome" placeholder="Ex: Distribuição de Lucros" required />
-        </div>
-        <div class="form-group" style="margin:0;min-width:160px;">
-          <label>Tipo</label>
-          <select name="tipo">
-            <option value="receita">01 — Entrada</option>
-            <option value="despesa">02 — Saída</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary btn-sm" style="height:38px;white-space:nowrap;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-          Adicionar
-        </button>
-      </form>
+      <div class="cfg-section-title" style="margin-bottom:8px;font-size:12px;">Despesas</div>
+      <div class="tabela-wrap" style="margin-bottom:24px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr><th class="nat-th">Cód.</th><th class="nat-th">Nome</th></tr>
+          </thead>
+          <tbody>
+            {% for cat in despesas %}
+            <tr style="border-bottom:0.5px solid rgba(23,33,28,0.07);">
+              <td class="nat-td"><span class="cod-badge cod-02">02</span></td>
+              <td class="nat-td" style="font-weight:500;color:#111827;">{{ cat.nome }}</td>
+            </tr>
+            {% else %}
+            <tr><td class="nat-td" colspan="2" style="color:var(--muted);">Nenhuma despesa cadastrada.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
       {# ── Naturezas de carros ── #}
       <div id="naturezas-carros" style="margin-top:36px;padding-top:28px;border-top:0.5px solid var(--border);">
@@ -855,14 +842,6 @@ function cfgTab(id, btn) {
 
 function toggleAcesso(id) {
   document.getElementById('acesso-' + id).classList.toggle('aberto');
-}
-
-function confirmarExclusaoNatureza(form, nome, emUso) {
-  if (emUso) {
-    alert('A natureza "' + nome + '" está vinculada a lançamentos existentes e não pode ser excluída.');
-    return false;
-  }
-  return confirm('Excluir a natureza "' + nome + '"?');
 }
 
 // Restaurar aba pelo hash

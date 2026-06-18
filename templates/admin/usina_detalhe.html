@@ -878,6 +878,21 @@ details[open] .nb-consolidado-summary::before { transform:rotate(90deg); }
 </style>
 
 <script>
+function dreToggleFilhos(catId) {
+  var filhos = document.querySelectorAll('.dre-row-filho[data-parent="' + catId + '"]');
+  var chevron = document.getElementById('dre-chevron-' + catId);
+  var oculto = filhos.length && filhos[0].style.display === 'none';
+  filhos.forEach(function(f){ f.style.display = oculto ? '' : 'none'; });
+  if (chevron) chevron.style.transform = oculto ? '' : 'rotate(-90deg)';
+}
+function dreToggleNaturezas(linhaId) {
+  var el = document.getElementById('dre-naturezas-' + linhaId);
+  var chev = document.getElementById('dre-nchevron-' + linhaId);
+  if (!el) return;
+  var aberto = el.style.display !== 'none';
+  el.style.display = aberto ? 'none' : '';
+  if (chev) chev.style.transform = aberto ? '' : 'rotate(90deg)';
+}
 /* ── Dados dos gráficos (server-rendered) ── */
 const _SALDO_INI     = {{ saldo_inicial }};
 const _MESES         = {{ chart_meses | tojson }};

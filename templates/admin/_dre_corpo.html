@@ -113,24 +113,6 @@
 </div>
 </div>
 
-<script>
-function dreToggleFilhos(catId) {
-  var filhos = document.querySelectorAll('.dre-row-filho[data-parent="' + catId + '"]');
-  var chevron = document.getElementById('dre-chevron-' + catId);
-  var oculto = filhos.length && filhos[0].style.display === 'none';
-  filhos.forEach(function(f){ f.style.display = oculto ? '' : 'none'; });
-  if (chevron) chevron.style.transform = oculto ? '' : 'rotate(-90deg)';
-}
-function dreToggleNaturezas(linhaId) {
-  var el = document.getElementById('dre-naturezas-' + linhaId);
-  var chev = document.getElementById('dre-nchevron-' + linhaId);
-  if (!el) return;
-  var aberto = el.style.display !== 'none';
-  el.style.display = aberto ? 'none' : '';
-  if (chev) chev.style.transform = aberto ? '' : 'rotate(90deg)';
-}
-</script>
-
 {% else %}
 <div style="padding:48px;text-align:center;color:var(--muted);font-size:13px;">
   Nenhuma categoria DRE configurada.<br>

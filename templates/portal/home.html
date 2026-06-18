@@ -2153,14 +2153,58 @@ function tryInitExtrato() {
   }
 }
 
-// Igual ao admin: as outras abas trocam só no client (base.html), mas a
-// DRE precisa de reload real para o servidor calcular dre_secoes/valores/lancs.
+// A DRE carrega via AJAX (só o corpo da tabela), sem recalcular o resto da
+// home — evita que entrar na aba DRE recompute clientes/extrato/benchmarks/etc.
+function dreToggleFilhos(catId) {
+  var filhos = document.querySelectorAll('.dre-row-filho[data-parent="' + catId + '"]');
+  var chevron = document.getElementById('dre-chevron-' + catId);
+  var oculto = filhos.length && filhos[0].style.display === 'none';
+  filhos.forEach(function(f){ f.style.display = oculto ? '' : 'none'; });
+  if (chevron) chevron.style.transform = oculto ? '' : 'rotate(-90deg)';
+}
+function dreToggleNaturezas(linhaId) {
+  var el = document.getElementById('dre-naturezas-' + linhaId);
+  var chev = document.getElementById('dre-nchevron-' + linhaId);
+  if (!el) return;
+  var aberto = el.style.display !== 'none';
+  el.style.display = aberto ? 'none' : '';
+  if (chev) chev.style.transform = aberto ? '' : 'rotate(90deg)';
+}
+var _dreAtivoId   = {{ ativo_id|tojson }};
+var _dreContaId   = {{ conta_id|tojson }};
+var _dreMesIni    = {{ dre_mes_ini|tojson }};
+var _dreMesFim    = {{ dre_mes_fim|tojson }};
+var _dreCarregada = {{ 'true' if tab == 'dre' else 'false' }};
+function _carregarDrePortal(params) {
+  var corpo = document.getElementById('dre-corpo');
+  if (!corpo) return;
+  var url = new URL('{{ url_for("portal.dre_fragment") }}', window.location.origin);
+  Object.keys(params).forEach(function (k) { if (params[k]) url.searchParams.set(k, params[k]); });
+  fetch(url).then(function (r) { return r.text(); }).then(function (html) {
+    corpo.innerHTML = html;
+    if (params.dre_mes_ini) _dreMesIni = params.dre_mes_ini;
+    if (params.dre_mes_fim) _dreMesFim = params.dre_mes_fim;
+  });
+}
 document.addEventListener('click', function (e) {
   var link = e.target.closest('.dtab-link[data-tab="dre"]');
   if (!link) return;
-  var url = new URL(window.location.href);
-  url.searchParams.set('tab', 'dre');
-  window.location.href = url.toString();
+  if (!_dreCarregada) {
+    _dreCarregada = true;
+    _carregarDrePortal({ ativo_id: _dreAtivoId, conta_id: _dreContaId, dre_mes_ini: _dreMesIni, dre_mes_fim: _dreMesFim });
+  }
+});
+document.addEventListener('submit', function (e) {
+  var form = e.target.closest('#dre-corpo form');
+  if (!form) return;
+  e.preventDefault();
+  var fd = new FormData(form);
+  _carregarDrePortal({
+    ativo_id: fd.get('ativo_id') || _dreAtivoId,
+    conta_id: fd.get('conta_id') || _dreContaId,
+    dre_mes_ini: fd.get('dre_mes_ini'),
+    dre_mes_fim: fd.get('dre_mes_fim'),
+  });
 });
 
 function exportarDrePdf() {

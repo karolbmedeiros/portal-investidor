@@ -584,44 +584,6 @@ def listar_categorias() -> list:
         return []
 
 
-def categorias_em_uso() -> set:
-    """Returns set of categoria_ids referenced by at least one lancamento."""
-    try:
-        sb = get_service_client()
-        res = (
-            sb.table("lancamentos_bancarios")
-            .select("categoria_id")
-            .not_.is_("categoria_id", "null")
-            .execute()
-        )
-        return {r["categoria_id"] for r in (res.data or [])}
-    except Exception:
-        return set()
-
-
-def criar_categoria(nome: str, tipo: str) -> dict:
-    try:
-        sb = get_service_client()
-        sb.table("categorias_financeiras").insert({
-            "nome": nome.strip(),
-            "tipo": tipo,
-            "ativo": True,
-        }).execute()
-        return {"ok": True}
-    except Exception as e:
-        return {"ok": False, "erro": str(e)}
-
-
-def deletar_categoria(cat_id: str) -> dict:
-    em_uso = categorias_em_uso()
-    if cat_id in em_uso:
-        return {"ok": False, "em_uso": True}
-    try:
-        sb = get_service_client()
-        sb.table("categorias_financeiras").update({"ativo": False}).eq("id", cat_id).execute()
-        return {"ok": True}
-    except Exception as e:
-        return {"ok": False, "erro": str(e)}
 
 
 def _conta_bancaria_da_usina(usina_id: str) -> Optional[str]:

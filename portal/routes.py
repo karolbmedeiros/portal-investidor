@@ -467,7 +467,7 @@ def home():
         dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre}-01"
         dre_mes_fim = request.args.get("dre_mes_fim") or f"{_ano_dre}-06"
         dre_secoes  = listar_secoes_dre()
-        _dre        = calcular_dre(ativo_id, dre_mes_ini, dre_mes_fim)
+        _dre        = calcular_dre(ativo_id, dre_mes_ini, dre_mes_fim, secoes=dre_secoes)
         dre_valores = _dre["valores"]
         dre_lancs   = _dre["lancamentos"]
         dre_meses   = _dre["meses"]
@@ -526,6 +526,43 @@ def home():
         dre_mes_fim=dre_mes_fim,
         dados_clientes_carros=__import__('services.veiculos_service', fromlist=['dados_clientes_cons']).dados_clientes_cons(),
         naturezas_carros=__import__('services.veiculos_service', fromlist=['listar_naturezas_carros']).listar_naturezas_carros(),
+    )
+
+
+@portal_bp.route("/dre-fragment")
+@requer_login
+def dre_fragment():
+    """Retorna só o corpo da DRE via AJAX, sem recalcular o resto da home.
+
+    Evita que entrar na aba DRE recompute clientes/extrato/benchmarks/P&L/etc.,
+    que é o que tornava o carregamento da DRE lento.
+    """
+    from datetime import date
+    from services.dre_service import listar_secoes_dre, calcular_dre
+
+    u = usuario_logado()
+    usina_ids = u.get("usina_ids", [])
+    u_perms   = u.get("permissions", [])
+    all_perms = "all" in u_perms
+
+    ativo_id = request.args.get("ativo_id", "")
+    if not ativo_id or ativo_id not in usina_ids or not (all_perms or "dre" in u_perms):
+        abort(403)
+
+    conta_id = request.args.get("conta_id")
+    ano_dre  = date.today().year
+    dre_mes_ini = request.args.get("dre_mes_ini") or f"{ano_dre}-01"
+    dre_mes_fim = request.args.get("dre_mes_fim") or f"{ano_dre}-06"
+
+    dre_secoes = listar_secoes_dre()
+    _dre = calcular_dre(ativo_id, dre_mes_ini, dre_mes_fim, secoes=dre_secoes)
+
+    return render_template(
+        "admin/_dre_corpo.html",
+        ativo_id=ativo_id, ativo_tipo="usina", conta_id=conta_id,
+        dre_mes_ini=dre_mes_ini, dre_mes_fim=dre_mes_fim,
+        dre_secoes=dre_secoes, dre_valores=_dre["valores"], dre_lancs=_dre["lancamentos"],
+        dre_meses=_dre["meses"], dre_percentuais=_dre["percentuais"], dre_naturezas=_dre["naturezas"],
     )
 
 
