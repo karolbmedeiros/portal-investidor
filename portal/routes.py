@@ -99,7 +99,6 @@ def home():
         if (ativo_tipo != "carros") and (all_perms or "extrato_bancario" in u_perms or "fluxo_de_caixa" in u_perms): home_tabs.append("extrato")
         if all_perms or "benchmarks"       in u_perms:                                 home_tabs.append("benchmarks")
         if all_perms or "energia"          in u_perms or "saldo_creditos" in u_perms:   home_tabs.append("saldo_creditos")
-        if all_perms or "pnl"              in u_perms:                                 home_tabs.append("pnl")
         if all_perms or "dre"              in u_perms:                                 home_tabs.append("dre")
         if all_perms or "clientes"         in u_perms:                                 home_tabs.append("clientes")
 
@@ -419,7 +418,7 @@ def home():
             _rm,
         )
     leituras_det   = leituras_detalhadas(ativo_id)       if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
-    pnl            = pnl_da_usina(ativo_id)              if _is_usina and ativo_id and ("pnl" in home_tabs or "dre" in home_tabs) else []
+    pnl            = pnl_da_usina(ativo_id)              if _is_usina and ativo_id and ("extrato" in home_tabs or "dre" in home_tabs) else []
     saldo_creditos = saldo_creditos_da_usina(ativo_id)   if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
     clientes       = clientes_da_usina(ativo_id)         if _is_usina and ativo_id and "clientes"       in home_tabs else []
 

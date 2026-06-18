@@ -403,7 +403,7 @@ def dashboard():
         )
         leituras_det_data   = leituras_detalhadas(ativo_id)
         saldo_creditos_data = saldo_creditos_da_usina(ativo_id)
-        _valid_tabs = ("visao_geral","clientes","extrato","dre","benchmarks","pnl","saldo_creditos")
+        _valid_tabs = ("visao_geral","clientes","extrato","dre","benchmarks","saldo_creditos")
         tab = request.args.get("tab", "visao_geral")
         if tab not in _valid_tabs:
             tab = "visao_geral"

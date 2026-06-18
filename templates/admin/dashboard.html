@@ -108,7 +108,6 @@
   <a href="#" data-tab="visao_geral"    class="dtab-link {{ 'ativo' if tab == 'visao_geral' }}">Visão Geral</a>
   <a href="#" data-tab="extrato"        class="dtab-link {{ 'ativo' if tab == 'extrato' }}">Fluxo de Caixa</a>
   <a href="#" data-tab="benchmarks"     class="dtab-link {{ 'ativo' if tab == 'benchmarks' }}">Benchmarks</a>
-  <a href="#" data-tab="pnl"            class="dtab-link {{ 'ativo' if tab == 'pnl' }}">P&L</a>
   <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
   <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
@@ -118,7 +117,6 @@
   <a href="#" data-tab="visao_geral"    class="dtab-link {{ 'ativo' if tab == 'visao_geral' }}">Visão Geral</a>
   <a href="#" data-tab="extrato"        class="dtab-link {{ 'ativo' if tab == 'extrato' }}">Fluxo de Caixa</a>
   <a href="#" data-tab="benchmarks"     class="dtab-link {{ 'ativo' if tab == 'benchmarks' }}">Benchmarks</a>
-  <a href="#" data-tab="pnl"            class="dtab-link {{ 'ativo' if tab == 'pnl' }}">P&L</a>
   <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
   <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
@@ -694,9 +692,31 @@
   </div>
 </div>
 <div class="nb-resultado-titulo">Resultado Operacional</div>
+<div style="display:flex;gap:14px;flex-wrap:nowrap;margin-bottom:20px;">
+  <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+    <div class="db-mc-label">Receita bruta</div>
+    <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" id="fc-pnl-receita" style="color:#16A34A;">—</span></div>
+    <div class="db-mc-sub fc-pnl-mes-lbl">—</div>
+  </div>
+  <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+    <div class="db-mc-label">Total despesas</div>
+    <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" id="fc-pnl-despesas" style="color:#DC2626;">—</span></div>
+    <div class="db-mc-sub fc-pnl-mes-lbl">—</div>
+  </div>
+  <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+    <div class="db-mc-label">Resultado líquido</div>
+    <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" id="fc-pnl-resultado">—</span></div>
+    <div class="db-mc-sub fc-pnl-mes-lbl">—</div>
+  </div>
+  <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+    <div class="db-mc-label">Margem líquida</div>
+    <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" id="fc-pnl-margem">—</span></div>
+    <div class="db-mc-sub fc-pnl-mes-lbl">—</div>
+  </div>
+</div>
 <div class="nb-resultado">
-  <div class="nb-card"><div class="nb-res-label">Evolução mensal</div><div style="position:relative;height:220px;"><canvas id="chart-mensal"></canvas></div></div>
-  <div class="nb-card"><div class="nb-res-label">Classificação <span id="chart-cat-mes-label">—</span></div><div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;"><canvas id="chart-cat"></canvas></div></div>
+  <div class="nb-card"><div class="nb-res-label">Receita vs Despesas</div><div style="position:relative;height:220px;"><canvas id="chart-pnl-bar-admin"></canvas></div></div>
+  <div class="nb-card"><div class="nb-res-label">Composição de despesas</div><div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;"><canvas id="chart-pnl-pie-admin"></canvas></div></div>
 </div>
 <div class="nb-card nb-panel" style="margin-bottom:24px;">
   <div class="nb-panel-header" style="background:var(--bg2);cursor:pointer;" onclick="toggleConsolidado()">
@@ -797,47 +817,6 @@
 </div>
 
 {# ══════════════════════════════════════════════ ENERGIA ═══ #}
-
-{# ══════════════════════════════════════════════ P&L ═══ #}
-<div id="tab-pnl" class="dtab-content {{ 'ativo' if tab == 'pnl' }}">
-  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
-  {% if pnl %}
-    {% set _ult = pnl[0] %}
-    {% set _ult_mes_pnl = _ult.ref_mes_ano[:7] if _ult.ref_mes_ano else '' %}
-    {% set _ult_lbl_pnl = _ma[_ult_mes_pnl[5:7]|int] ~ '/' ~ _ult_mes_pnl[:4] if _ult_mes_pnl else '—' %}
-    <div style="display:flex;gap:14px;flex-wrap:nowrap;margin-bottom:20px;">
-      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
-        <div class="db-mc-label">Receita bruta</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#16A34A;">{{ (_ult.receita_bruta or 0)|brl }}</span></div>
-        <div class="db-mc-sub">{{ _ult_lbl_pnl }}</div>
-      </div>
-      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
-        <div class="db-mc-label">Total despesas</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#DC2626;">{{ (_ult.total_despesas or 0)|brl }}</span></div>
-        <div class="db-mc-sub">{{ _ult_lbl_pnl }}</div>
-      </div>
-      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
-        <div class="db-mc-label">Resultado líquido</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if (_ult.resultado_liquido or 0)>=0 else '#DC2626' }};">{{ (_ult.resultado_liquido or 0)|brl }}</span></div>
-        <div class="db-mc-sub">{{ _ult_lbl_pnl }}</div>
-      </div>
-      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
-        <div class="db-mc-label">Margem líquida</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if (_ult.margem_liquida or 0)>=0 else '#DC2626' }};">{{ ((_ult.margem_liquida or 0)*100)|round(1) }}%</span></div>
-        <div class="db-mc-sub">{{ _ult_lbl_pnl }}</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-      <section class="card"><div class="db-chart-title" style="margin-bottom:12px;">Receita vs Despesas</div><div style="position:relative;height:220px;"><canvas id="chart-pnl-bar-admin"></canvas></div></section>
-      <section class="card"><div class="db-chart-title" style="margin-bottom:12px;">Composição de despesas</div><div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;"><canvas id="chart-pnl-pie-admin"></canvas></div></section>
-    </div>
-    <section class="card"><table class="db-fat-table"><thead><tr><th>Mês</th><th>Receita bruta</th><th>Despesas</th><th>Resultado</th><th>Margem</th><th>kWh fat.</th></tr></thead><tbody>
-      {% for p in pnl %}{% set _ms = p.ref_mes_ano[:7] if p.ref_mes_ano else '' %}
-      <tr><td style="font-weight:500;white-space:nowrap;">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td><td style="font-weight:600;color:#16A34A;">{{ (p.receita_bruta or 0)|brl }}</td><td style="color:#DC2626;">{{ (p.total_despesas or 0)|brl }}</td><td style="font-weight:700;color:{{ '#16A34A' if (p.resultado_liquido or 0)>=0 else '#DC2626' }};">{{ (p.resultado_liquido or 0)|brl }}</td><td>{{ ((p.margem_liquida or 0)*100)|round(1) }}%</td><td class="text-muted">{{ (p.kwh_faturado or 0)|round(0)|int }}</td></tr>
-      {% endfor %}
-    </tbody></table></section>
-  {% else %}<div class="vazio">Sem dados de P&L.</div>{% endif %}
-</div>
 
 {# ══════════════════════════════════════════════ CRÉDITOS kWh ═══ #}
 <div id="tab-saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}">
@@ -1289,7 +1268,6 @@ function toggleAcordDb(btn){
 {% else %}<div class="vazio">Nenhum lancamento encontrado.</div>{% endif %}
 </div>{# /tab-extrato carros #}
 <div id="tab-benchmarks"     class="dtab-content {{ 'ativo' if tab == 'benchmarks' }}"><div class="vazio" style="padding:48px 0;">Em breve — Benchmarks de carros</div></div>
-<div id="tab-pnl"            class="dtab-content {{ 'ativo' if tab == 'pnl' }}"><div class="vazio" style="padding:48px 0;">Em breve — P&L de carros</div></div>
 <div id="tab-saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}"><div class="vazio" style="padding:48px 0;">Em breve — Créditos kWh de carros</div></div>
 <div id="tab-dre"            class="dtab-content {{ 'ativo' if tab == 'dre' }}"><div class="vazio" style="padding:48px 0;">Em breve — DRE de carros</div></div>
 
@@ -1717,7 +1695,8 @@ const _MESES       = {{ chart_meses | tojson }};
 const _FLUXO_DATES = {{ chart_fluxo_dates | tojson }};
 const _FLUXO_PTS   = {{ chart_fluxo_pts | tojson }};
 const _MESES_ABREV = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-let _chartsIniciados = false, _chartCat = null, _chartFluxo = null, _fluxoMesIdx = 0;
+let _chartsIniciados = false, _chartFluxo = null, _fluxoMesIdx = 0, _chartPnlPie = null;
+var _PNL_FC = {{ pnl|tojson }};
 
 function _dadosFluxoMes(mes) {
   let saldoAnt = _SALDO_INI;
@@ -1766,15 +1745,49 @@ function filtrarExtrato(){
   const saldoAnt=mes?_dadosFluxoMes(mes).saldoAnt:_SALDO_INI;
   setEl('fluxo-saldo-ini',fmtBrl(saldoAnt));setEl('fluxo-ent',fmtBrl(totEnt));setEl('fluxo-sai',fmtBrl(totSai));
   const res=totEnt-totSai;const elRes=document.getElementById('fluxo-resultado');if(elRes){elRes.textContent=fmtBrl(res);elRes.style.color=res>=0?'#16A34A':'#DC2626';}
-  atualizarPie(mes);
+  atualizarPnlCards(mes);
 }
 function iniciarGraficosExtrato(){
   if(_chartsIniciados)return; _chartsIniciados=true;
   (function(){const ctx=document.getElementById('chart-fluxo');if(!ctx||!_MESES.length)return;_fluxoMesIdx=_MESES.length-1;const mes0=_MESES[_fluxoMesIdx];const{saldoAnt:sa0,dias:d0}=_dadosFluxoMes(mes0);const labels=['Saldo ant.',...d0.map(p=>{const pt=p.d.split('-');return pt[2]+'/'+_MESES_ABREV[parseInt(pt[1])];})];const data=[sa0,...d0.map(p=>p.v)];const rawDates=['',...d0.map(p=>p.d)];_chartFluxo=new Chart(ctx,{type:'line',data:{labels,datasets:[{data,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.07)',fill:true,tension:0.3,pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#1D9E75',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>{const rd=_chartFluxo._rawDates&&_chartFluxo._rawDates[items[0].dataIndex];return rd||'Saldo anterior';},label:c=>'Saldo: '+fmtBrl(c.parsed.y)}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0}},y:{min:0,ticks:{callback:v=>fmtBrl(v),font:{size:10},stepSize:4000},grid:{color:'#EEF0EF'}}}}});_chartFluxo._rawDates=rawDates;if(_MESES.length)_sincronizarFluxo(_MESES[_fluxoMesIdx]);})();
-  (function(){const ctx=document.getElementById('chart-mensal');if(!ctx||!_MESES.length)return;const labels=_MESES.map(m=>_MESES_ABREV[parseInt(m.slice(5))]+'/'+m.slice(0,4));const ent={},sai={};_MESES.forEach(m=>{ent[m]=0;sai[m]=0;});document.querySelectorAll('.ext-row-ent').forEach(r=>{if(ent[r.dataset.mes]!==undefined)ent[r.dataset.mes]+=parseFloat(r.dataset.valor||0);});document.querySelectorAll('.ext-row-sai').forEach(r=>{if(sai[r.dataset.mes]!==undefined)sai[r.dataset.mes]+=parseFloat(r.dataset.valor||0);});new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Receitas',data:_MESES.map(m=>ent[m]),backgroundColor:'#16A34A'},{label:'Custos e Despesas',data:_MESES.map(m=>sai[m]),backgroundColor:'#DC2626'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBrl(c.parsed.y)}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{ticks:{callback:v=>fmtBrl(v),font:{size:10}},grid:{color:'#EEF0EF'}}}}});})();
-  atualizarPie('');
+  iniciarChartPnlBar();
+  atualizarPnlCards('');
 }
-function atualizarPie(mes){const ctx=document.getElementById('chart-cat');if(!ctx)return;const cats={};const CORES=['#E8621A','#2563EB','#16A34A','#9333EA','#EAB308','#EC4899','#06B6D4','#F97316'];document.querySelectorAll('.ext-row-ent,.ext-row-sai').forEach(r=>{if(mes&&r.dataset.mes!==mes)return;const desc=r.querySelector('.nb-item-cat')?.textContent?.trim()||'—';cats[desc]=(cats[desc]||0)+parseFloat(r.dataset.valor||0);});const labels=Object.keys(cats);const data=labels.map(k=>cats[k]);const cores=labels.map((_,i)=>CORES[i%CORES.length]);const mesStr=mes?(_MESES_ABREV[parseInt(mes.slice(5))]+'/'+mes.slice(0,4)):'Total';const el=document.getElementById('chart-cat-mes-label');if(el)el.textContent=mesStr;if(_chartCat){_chartCat.destroy();_chartCat=null;}if(!labels.length)return;_chartCat=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:cores,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:c=>c.label+': '+fmtBrl(c.parsed)}}}}});}
+function _pnlMesLabelFmt(m){return _MESES_ABREV[parseInt(m.slice(5))]+'/'+m.slice(0,4);}
+function iniciarChartPnlBar(){
+  const ctx=document.getElementById('chart-pnl-bar-admin');
+  if(!ctx||!_PNL_FC.length)return;
+  const rev=_PNL_FC.slice().reverse();
+  new Chart(ctx,{type:'bar',data:{labels:rev.map(p=>_pnlMesLabelFmt((p.ref_mes_ano||'').slice(0,7))),datasets:[
+    {label:'Receita',data:rev.map(p=>p.receita_bruta||0),backgroundColor:'rgba(22,163,74,0.8)',borderRadius:3},
+    {label:'Despesas',data:rev.map(p=>p.total_despesas||0),backgroundColor:'rgba(220,38,38,0.8)',borderRadius:3},
+    {label:'Resultado',data:rev.map(p=>p.resultado_liquido||0),backgroundColor:rev.map(p=>(p.resultado_liquido||0)>=0?'rgba(29,158,117,0.6)':'rgba(239,68,68,0.6)'),type:'line',tension:0.3,pointRadius:3,borderWidth:2,borderColor:'#1D9E75',fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBrl(c.parsed.y)}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{ticks:{callback:v=>fmtBrl(v),font:{size:10}},grid:{color:'#EEF0EF'}}}}});
+}
+function atualizarPnlCards(mes){
+  if(!_PNL_FC.length)return;
+  const rec=(mes&&_PNL_FC.find(p=>(p.ref_mes_ano||'').slice(0,7)===mes))||_PNL_FC[0];
+  if(!rec)return;
+  const lbl=rec.ref_mes_ano?_pnlMesLabelFmt(rec.ref_mes_ano.slice(0,7)):'—';
+  const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setEl('fc-pnl-receita',fmtBrl(rec.receita_bruta||0));
+  setEl('fc-pnl-despesas',fmtBrl(rec.total_despesas||0));
+  const resEl=document.getElementById('fc-pnl-resultado');
+  if(resEl){resEl.textContent=fmtBrl(rec.resultado_liquido||0);resEl.style.color=(rec.resultado_liquido||0)>=0?'#16A34A':'#DC2626';}
+  const margEl=document.getElementById('fc-pnl-margem');
+  if(margEl){margEl.textContent=((rec.margem_liquida||0)*100).toFixed(1)+'%';margEl.style.color=(rec.margem_liquida||0)>=0?'#16A34A':'#DC2626';}
+  document.querySelectorAll('.fc-pnl-mes-lbl').forEach(el=>{el.textContent=lbl;});
+  const ctxPP=document.getElementById('chart-pnl-pie-admin');
+  if(ctxPP){
+    const NOMES=['Empréstimo','Aluguel','Contabilidade','Impostos','COSERN','Taxa admin.','Seguro','Outros'];
+    const KEYS=['custo_emprestimo','custo_aluguel','custo_contabilidade','custo_impostos','custo_cosern','custo_taxa_admin','custo_seguro','custo_outros'];
+    const CORES=['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6','#EC4899','#94A3B8'];
+    const vPie=[],nPie=[],cPie=[];
+    KEYS.forEach((k,i)=>{const v=rec[k]||0;if(v>0){vPie.push(v);nPie.push(NOMES[i]);cPie.push(CORES[i]);}});
+    if(_chartPnlPie){_chartPnlPie.destroy();_chartPnlPie=null;}
+    if(vPie.length)_chartPnlPie=new Chart(ctxPP,{type:'doughnut',data:{labels:nPie,datasets:[{data:vPie,backgroundColor:cPie,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:c=>c.label+': '+fmtBrl(c.parsed)}}}}});
+  }
+}
 function exportarDrePdf(){const corpo=document.getElementById('dre-corpo').innerHTML;const w=window.open('','_blank');w.document.write('<html><head><title>DRE</title><style>body{font-family:system-ui,sans-serif;padding:32px;max-width:700px;margin:auto;}.dre-section-header{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;border-bottom:2px solid #E5E7EB;padding:8px 0 4px;margin-top:16px;}.dre-row{display:flex;justify-content:space-between;padding:6px 8px;font-size:13px;}.dre-row.total{font-weight:700;border-top:1px solid #E5E7EB;background:#F7F8FA;}.dre-row.result{font-weight:800;font-size:15px;color:#E8510A;border:1px solid #E8510A;border-radius:4px;padding:8px;}.dre-val{font-weight:700;}</style></head><body>'+corpo+'</body></html>');w.document.close();setTimeout(()=>{w.print();},400);}
 var _adInited={};
 function _visible(el){return el&&el.offsetParent!==null;}
@@ -1801,24 +1814,6 @@ function tryInitChartsAdmin(){
     var mesMap={};leituras.forEach(function(l){var m=(l.ref_mes_ano||'').slice(0,7);if(!mesMap[m])mesMap[m]={comp:0,cons:0};mesMap[m].comp+=l.kwh_compensado||0;mesMap[m].cons+=l.kwh_consumido||0;});
     var meses=Object.keys(mesMap).sort();
     new Chart(ctxE,{type:'bar',data:{labels:meses.map(function(m){return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4);}),datasets:[{label:'Compensado (kWh)',data:meses.map(function(m){return mesMap[m].comp;}),backgroundColor:'rgba(29,158,117,0.8)',borderRadius:3},{label:'Consumido (kWh)',data:meses.map(function(m){return mesMap[m].cons;}),backgroundColor:'rgba(148,163,184,0.5)',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#EEF0EF'},ticks:{font:{size:10}}}}}});
-  }
-  // P&L bar
-  var ctxPB=document.getElementById('chart-pnl-bar-admin');
-  if(ctxPB&&!_adInited['PB']&&_visible(ctxPB)){
-    _adInited['PB']=true;
-    var pnlData={{ pnl|tojson }};var rev=pnlData.slice().reverse();
-    new Chart(ctxPB,{type:'bar',data:{labels:rev.map(function(p){var m=(p.ref_mes_ano||'').slice(0,7);return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4);}),datasets:[{label:'Receita',data:rev.map(function(p){return p.receita_bruta||0;}),backgroundColor:'rgba(22,163,74,0.8)',borderRadius:3},{label:'Despesas',data:rev.map(function(p){return p.total_despesas||0;}),backgroundColor:'rgba(220,38,38,0.8)',borderRadius:3},{label:'Resultado',data:rev.map(function(p){return p.resultado_liquido||0;}),backgroundColor:rev.map(function(p){return(p.resultado_liquido||0)>=0?'rgba(29,158,117,0.6)':'rgba(239,68,68,0.6)';}),type:'line',tension:0.3,pointRadius:3,borderWidth:2,borderColor:'#1D9E75',fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+fmtBrl(c.parsed.y);}}}},scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{ticks:{callback:function(v){return fmtBrl(v);},font:{size:10}},grid:{color:'#EEF0EF'}}}}});
-  }
-  // P&L pie
-  var ctxPP=document.getElementById('chart-pnl-pie-admin');
-  if(ctxPP&&!_adInited['PP']&&_visible(ctxPP)){
-    _adInited['PP']=true;
-    var pnlPie={{ pnl|tojson }};var ult=pnlPie[0]||{};
-    var NOMES=['Empréstimo','Aluguel','Contabilidade','Impostos','COSERN','Taxa admin.','Seguro','Outros'];
-    var KEYS=['custo_emprestimo','custo_aluguel','custo_contabilidade','custo_impostos','custo_cosern','custo_taxa_admin','custo_seguro','custo_outros'];
-    var CORES=['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6','#EC4899','#94A3B8'];
-    var vPie=[],nPie=[],cPie=[];KEYS.forEach(function(k,i){var v=ult[k]||0;if(v>0){vPie.push(v);nPie.push(NOMES[i]);cPie.push(CORES[i]);}});
-    if(vPie.length){new Chart(ctxPP,{type:'doughnut',data:{labels:nPie,datasets:[{data:vPie,backgroundColor:cPie,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:function(c){return c.label+': '+fmtBrl(c.parsed);}}}}}});}
   }
 }
 window.tryInitChartsAdmin = tryInitChartsAdmin;

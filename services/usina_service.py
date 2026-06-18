@@ -712,6 +712,7 @@ def listar_lancamentos(usina_id: str, conta_id: Optional[str] = None) -> list:
             sb.table("lancamentos_bancarios")
             .select("*, categorias_financeiras(id, nome, tipo)")
             .eq("conta_bancaria_id", conta_id)
+            .is_("deleted_at", "null")
             .order("data_transacao", desc=True)
             .limit(500)
             .execute()

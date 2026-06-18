@@ -89,7 +89,6 @@
   'visao_geral': 'Visão Geral',
   'extrato': 'Fluxo de Caixa',
   'benchmarks': 'Benchmarks',
-  'pnl': 'P&L',
   'saldo_creditos': 'Créditos kWh',
   'clientes': 'Clientes',
   'dre': 'DRE'
@@ -492,68 +491,6 @@
   {% endif %}
 </div>
 </div>{# /tab-benchmarks #}
-
-<div id="tab-pnl" data-tab="pnl" class="dtab-content {{ 'ativo' if tab == 'pnl' }}">
-<div style="padding-top:4px;">
-  {% set _ma = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
-  {% if pnl %}
-    {% set _ult = pnl[0] %}
-    {% set _ma_pnl = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] %}
-    {% set _ult_mes = _ult.ref_mes_ano[:7] if _ult.ref_mes_ano else '' %}
-    {% set _ult_label = _ma_pnl[_ult_mes[5:7]|int] ~ '/' ~ _ult_mes[:4] if _ult_mes else '—' %}
-    <div style="display:flex;gap:14px;flex-wrap:nowrap;margin-bottom:20px;">
-      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
-        <div class="db-mc-label">Receita bruta</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#16A34A;">{{ (_ult.receita_bruta or 0)|brl }}</span></div>
-        <div class="db-mc-sub">{{ _ult_label }}</div>
-      </div>
-      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
-        <div class="db-mc-label">Total despesas</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:#DC2626;">{{ (_ult.total_despesas or 0)|brl }}</span></div>
-        <div class="db-mc-sub">{{ _ult_label }}</div>
-      </div>
-      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
-        <div class="db-mc-label">Resultado líquido</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if (_ult.resultado_liquido or 0)>=0 else '#DC2626' }};">{{ (_ult.resultado_liquido or 0)|brl }}</span></div>
-        <div class="db-mc-sub">{{ _ult_label }}</div>
-      </div>
-      <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
-        <div class="db-mc-label">Margem líquida</div>
-        <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" style="color:{{ '#16A34A' if (_ult.margem_liquida or 0)>=0 else '#DC2626' }};">{{ ((_ult.margem_liquida or 0)*100)|round(1) }}%</span></div>
-        <div class="db-mc-sub">{{ _ult_label }}</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-      <section class="card">
-        <div class="db-chart-title" style="margin-bottom:12px;">Receita vs Despesas</div>
-        <div style="position:relative;height:220px;"><canvas id="chart-pnl-bar-home"></canvas></div>
-      </section>
-      <section class="card">
-        <div class="db-chart-title" style="margin-bottom:12px;">Composição de despesas (último mês)</div>
-        <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;"><canvas id="chart-pnl-pie-home"></canvas></div>
-      </section>
-    </div>
-    <section class="card">
-      <table class="db-fat-table">
-        <thead><tr><th>Mês</th><th>Receita bruta</th><th>Despesas</th><th>Resultado</th><th>Margem</th><th>kWh fat.</th></tr></thead>
-        <tbody>
-          {% for p in pnl %}
-          {% set _ms = p.ref_mes_ano[:7] if p.ref_mes_ano else '' %}
-          <tr>
-            <td style="font-weight:500;white-space:nowrap;">{{ _ma[_ms[5:7]|int] if _ms else '—' }}/{{ _ms[:4] if _ms else '—' }}</td>
-            <td style="font-weight:600;color:#16A34A;">{{ (p.receita_bruta or 0)|brl }}</td>
-            <td style="color:#DC2626;">{{ (p.total_despesas or 0)|brl }}</td>
-            <td style="font-weight:700;color:{{ '#16A34A' if (p.resultado_liquido or 0)>=0 else '#DC2626' }};">{{ (p.resultado_liquido or 0)|brl }}</td>
-            <td>{{ ((p.margem_liquida or 0)*100)|round(1) }}%</td>
-            <td class="text-muted">{{ (p.kwh_faturado or 0)|round(0)|int }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-  {% else %}<div class="vazio">Sem dados de P&L para esta usina.</div>{% endif %}
-</div>
-</div>{# /tab-pnl #}
 
 <div id="tab-saldo_creditos" data-tab="saldo_creditos" class="dtab-content {{ 'ativo' if tab == 'saldo_creditos' }}">
 <div style="padding-top:4px;">
@@ -1060,15 +997,37 @@ function toggleAcordI(btn){
 </div>{# /nb-lancamentos #}
 
 <div class="nb-resultado-titulo">Resultado Operacional</div>
+<div style="display:flex;gap:14px;flex-wrap:nowrap;margin-bottom:20px;">
+  <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+    <div class="db-mc-label">Receita bruta</div>
+    <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" id="fc-pnl-receita" style="color:#16A34A;">—</span></div>
+    <div class="db-mc-sub fc-pnl-mes-lbl">—</div>
+  </div>
+  <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+    <div class="db-mc-label">Total despesas</div>
+    <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" id="fc-pnl-despesas" style="color:#DC2626;">—</span></div>
+    <div class="db-mc-sub fc-pnl-mes-lbl">—</div>
+  </div>
+  <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+    <div class="db-mc-label">Resultado líquido</div>
+    <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" id="fc-pnl-resultado">—</span></div>
+    <div class="db-mc-sub fc-pnl-mes-lbl">—</div>
+  </div>
+  <div class="db-metric-card" style="flex:1 1 0;min-width:0;padding:18px 20px;">
+    <div class="db-mc-label">Margem líquida</div>
+    <div class="db-mc-value-row" style="margin-top:8px;"><span class="db-mc-value db-mc-value--lg" id="fc-pnl-margem">—</span></div>
+    <div class="db-mc-sub fc-pnl-mes-lbl">—</div>
+  </div>
+</div>
 <div class="nb-resultado">
   <div class="nb-card">
-    <div class="nb-res-label">Evolução mensal</div>
-    <div style="position:relative;height:220px;"><canvas id="chart-mensal"></canvas></div>
+    <div class="nb-res-label">Receita vs Despesas</div>
+    <div style="position:relative;height:220px;"><canvas id="chart-pnl-bar-home"></canvas></div>
   </div>
   <div class="nb-card">
-    <div class="nb-res-label">Classificação <span id="chart-cat-mes-label">—</span></div>
+    <div class="nb-res-label">Composição de despesas</div>
     <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center;">
-      <canvas id="chart-cat"></canvas>
+      <canvas id="chart-pnl-pie-home"></canvas>
     </div>
   </div>
 </div>
@@ -1822,52 +1781,6 @@ document.addEventListener('click', function (e) {
       });
     }
 
-    // P&L bar
-    var ctxPB = document.getElementById('chart-pnl-bar-home');
-    if (ctxPB && !_inited['PB'] && visible(ctxPB)) {
-      _inited['PB'] = true;
-      var pnlData = {{ pnl | tojson }};
-      var rev = pnlData.slice().reverse();
-      new Chart(ctxPB, {
-        type: 'bar',
-        data: { labels: rev.map(function(p) { var m=(p.ref_mes_ano||'').slice(0,7); return MA[parseInt(m.slice(5))]+'/'+m.slice(0,4); }),
-          datasets: [
-            { label: 'Receita',   data: rev.map(function(p) { return p.receita_bruta    || 0; }), backgroundColor: 'rgba(22,163,74,0.8)',  borderRadius: 3 },
-            { label: 'Despesas',  data: rev.map(function(p) { return p.total_despesas   || 0; }), backgroundColor: 'rgba(220,38,38,0.8)',  borderRadius: 3 },
-            { label: 'Resultado', data: rev.map(function(p) { return p.resultado_liquido|| 0; }),
-              backgroundColor: rev.map(function(p) { return (p.resultado_liquido||0)>=0?'rgba(29,158,117,0.6)':'rgba(239,68,68,0.6)'; }),
-              type: 'line', tension: 0.3, pointRadius: 3, borderWidth: 2, borderColor: '#1D9E75', fill: false }
-          ] },
-        options: { responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
-            tooltip: { callbacks: { label: function(c) { return c.dataset.label+': '+fmtBrl(c.parsed.y); } } } },
-          scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                    y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
-      });
-    }
-
-    // P&L pie
-    var ctxPP = document.getElementById('chart-pnl-pie-home');
-    if (ctxPP && !_inited['PP'] && visible(ctxPP)) {
-      _inited['PP'] = true;
-      var pnlPie = {{ pnl | tojson }};
-      var ult  = pnlPie[0] || {};
-      var NOMES = ['Empréstimo','Aluguel','Contabilidade','Impostos','COSERN','Taxa admin.','Seguro','Outros'];
-      var KEYS  = ['custo_emprestimo','custo_aluguel','custo_contabilidade','custo_impostos','custo_cosern','custo_taxa_admin','custo_seguro','custo_outros'];
-      var CORES = ['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6','#EC4899','#94A3B8'];
-      var vPie = [], nPie = [], cPie = [];
-      KEYS.forEach(function(k, i) { var v = ult[k]||0; if (v > 0) { vPie.push(v); nPie.push(NOMES[i]); cPie.push(CORES[i]); } });
-      if (vPie.length) {
-        new Chart(ctxPP, {
-          type: 'doughnut',
-          data: { labels: nPie, datasets: [{ data: vPie, backgroundColor: cPie, borderWidth: 2 }] },
-          options: { responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
-              tooltip: { callbacks: { label: function(c) { return c.label+': '+fmtBrl(c.parsed); } } } } }
-        });
-      }
-    }
-
     // Créditos kWh — kWh compensado por mês + Economia mensal
     var ctxK = document.getElementById('simI-chart-kwh');
     var ctxI = document.getElementById('simI-chart-eco');
@@ -1917,7 +1830,7 @@ var _FLUXO_PTS   = {{ chart_fluxo_pts | default([]) | tojson }};
 var _MESES_ABREV = ['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
 var _chartsExtIniciados = false;
-var _chartCat   = null;
+var _chartPnlPieHome = null;
 var _chartFluxo = null;
 var _fluxoMesIdx = 0;
 var _extratoInited = false;
@@ -2060,34 +1973,63 @@ function filtrarExtrato() {
   var elRes = document.getElementById('fluxo-resultado');
   if (elRes) { elRes.textContent = fmtBrl(res); elRes.style.color = res >= 0 ? '#16A34A' : '#DC2626'; }
 
-  atualizarPie(mes);
+  atualizarPnlCards(mes);
 }
 
-function atualizarPie(mes) {
-  var ctx = document.getElementById('chart-cat');
-  if (!ctx) return;
-  var cats = {}, CORES = ['#E8621A','#2563EB','#16A34A','#9333EA','#EAB308','#EC4899','#06B6D4','#F97316'];
-  document.querySelectorAll('.ext-row-ent, .ext-row-sai').forEach(function(r) {
-    if (mes && r.dataset.mes !== mes) return;
-    var desc = (r.querySelector('.nb-item-cat') || {}).textContent || '—';
-    desc = desc.trim();
-    cats[desc] = (cats[desc] || 0) + parseFloat(r.dataset.valor || 0);
-  });
-  var labels = Object.keys(cats);
-  var data   = labels.map(function(k) { return cats[k]; });
-  var cores  = labels.map(function(_, i) { return CORES[i % CORES.length]; });
-  var mesStr = mes ? (_MESES_ABREV[parseInt(mes.slice(5))] + '/' + mes.slice(0, 4)) : 'Total';
-  var el = document.getElementById('chart-cat-mes-label');
-  if (el) el.textContent = mesStr;
-  if (_chartCat) { _chartCat.destroy(); _chartCat = null; }
-  if (!labels.length) return;
-  _chartCat = new Chart(ctx, {
-    type: 'doughnut',
-    data: { labels: labels, datasets: [{ data: data, backgroundColor: cores, borderWidth: 2 }] },
+var _PNL_HOME = {{ pnl|tojson }};
+function _pnlMesLabelFmt(m) { return _MESES_ABREV[parseInt(m.slice(5))] + '/' + m.slice(0, 4); }
+function iniciarChartPnlBar() {
+  var ctx = document.getElementById('chart-pnl-bar-home');
+  if (!ctx || !_PNL_HOME.length) return;
+  var rev = _PNL_HOME.slice().reverse();
+  new Chart(ctx, {
+    type: 'bar',
+    data: { labels: rev.map(function(p) { return _pnlMesLabelFmt((p.ref_mes_ano || '').slice(0, 7)); }),
+      datasets: [
+        { label: 'Receita',   data: rev.map(function(p) { return p.receita_bruta || 0; }), backgroundColor: 'rgba(22,163,74,0.8)', borderRadius: 3 },
+        { label: 'Despesas',  data: rev.map(function(p) { return p.total_despesas || 0; }), backgroundColor: 'rgba(220,38,38,0.8)', borderRadius: 3 },
+        { label: 'Resultado', data: rev.map(function(p) { return p.resultado_liquido || 0; }),
+          backgroundColor: rev.map(function(p) { return (p.resultado_liquido || 0) >= 0 ? 'rgba(29,158,117,0.6)' : 'rgba(239,68,68,0.6)'; }),
+          type: 'line', tension: 0.3, pointRadius: 3, borderWidth: 2, borderColor: '#1D9E75', fill: false }
+      ] },
     options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
-        tooltip: { callbacks: { label: function(c) { return c.label + ': ' + fmtBrl(c.parsed); } } } } }
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: function(c) { return c.dataset.label + ': ' + fmtBrl(c.parsed.y); } } } },
+      scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
   });
+}
+function atualizarPnlCards(mes) {
+  if (!_PNL_HOME.length) return;
+  var rec = (mes && _PNL_HOME.find(function(p) { return (p.ref_mes_ano || '').slice(0, 7) === mes; })) || _PNL_HOME[0];
+  if (!rec) return;
+  var lbl = rec.ref_mes_ano ? _pnlMesLabelFmt(rec.ref_mes_ano.slice(0, 7)) : '—';
+  function set(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+  set('fc-pnl-receita', fmtBrl(rec.receita_bruta || 0));
+  set('fc-pnl-despesas', fmtBrl(rec.total_despesas || 0));
+  var resEl = document.getElementById('fc-pnl-resultado');
+  if (resEl) { resEl.textContent = fmtBrl(rec.resultado_liquido || 0); resEl.style.color = (rec.resultado_liquido || 0) >= 0 ? '#16A34A' : '#DC2626'; }
+  var margEl = document.getElementById('fc-pnl-margem');
+  if (margEl) { margEl.textContent = ((rec.margem_liquida || 0) * 100).toFixed(1) + '%'; margEl.style.color = (rec.margem_liquida || 0) >= 0 ? '#16A34A' : '#DC2626'; }
+  document.querySelectorAll('.fc-pnl-mes-lbl').forEach(function(el) { el.textContent = lbl; });
+  var ctxPP = document.getElementById('chart-pnl-pie-home');
+  if (ctxPP) {
+    var NOMES = ['Empréstimo','Aluguel','Contabilidade','Impostos','COSERN','Taxa admin.','Seguro','Outros'];
+    var KEYS  = ['custo_emprestimo','custo_aluguel','custo_contabilidade','custo_impostos','custo_cosern','custo_taxa_admin','custo_seguro','custo_outros'];
+    var CORES = ['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6','#EC4899','#94A3B8'];
+    var vPie = [], nPie = [], cPie = [];
+    KEYS.forEach(function(k, i) { var v = rec[k] || 0; if (v > 0) { vPie.push(v); nPie.push(NOMES[i]); cPie.push(CORES[i]); } });
+    if (_chartPnlPieHome) { _chartPnlPieHome.destroy(); _chartPnlPieHome = null; }
+    if (vPie.length) {
+      _chartPnlPieHome = new Chart(ctxPP, {
+        type: 'doughnut',
+        data: { labels: nPie, datasets: [{ data: vPie, backgroundColor: cPie, borderWidth: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+            tooltip: { callbacks: { label: function(c) { return c.label + ': ' + fmtBrl(c.parsed); } } } } }
+      });
+    }
+  }
 }
 
 function iniciarGraficosExtrato() {
@@ -2115,27 +2057,8 @@ function iniciarGraficosExtrato() {
     atualizarNavFluxo();
   })();
 
-  (function() {
-    var ctx = document.getElementById('chart-mensal');
-    if (!ctx || !_MESES_EXT.length) return;
-    var labels = _MESES_EXT.map(function(m) { return _MESES_ABREV[parseInt(m.slice(5))] + '/' + m.slice(0, 4); });
-    var ent = {}, sai = {};
-    _MESES_EXT.forEach(function(m) { ent[m] = 0; sai[m] = 0; });
-    document.querySelectorAll('.ext-row-ent').forEach(function(r) { if (ent[r.dataset.mes] !== undefined) ent[r.dataset.mes] += parseFloat(r.dataset.valor || 0); });
-    document.querySelectorAll('.ext-row-sai').forEach(function(r) { if (sai[r.dataset.mes] !== undefined) sai[r.dataset.mes] += parseFloat(r.dataset.valor || 0); });
-    new Chart(ctx, {
-      type: 'bar',
-      data: { labels: labels, datasets: [
-        { label: 'Receitas', data: _MESES_EXT.map(function(m) { return ent[m]; }), backgroundColor: '#16A34A' },
-        { label: 'Custos e Despesas', data: _MESES_EXT.map(function(m) { return sai[m]; }), backgroundColor: '#DC2626' }
-      ] },
-      options: { responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } }, tooltip: { callbacks: { label: function(c) { return c.dataset.label + ': ' + fmtBrl(c.parsed.y); } } } },
-        scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } }, y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
-    });
-  })();
-
-  atualizarPie('');
+  iniciarChartPnlBar();
+  atualizarPnlCards('');
 }
 
 function tryInitExtrato() {
