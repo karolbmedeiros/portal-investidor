@@ -425,6 +425,16 @@ def home():
     tem_extrato = bool(_is_usina and ativo_id and "extrato" in home_tabs)
     tem_dre     = bool(_is_usina and ativo_id and "dre"     in home_tabs)
     contas        = listar_contas_da_usina(ativo_id) if (tem_extrato or tem_dre) else []
+
+    # Conta extra somente visual (não entra na seleção/lançamentos) — LT LOCAÇÕES
+    conta_extra_visual = None
+    if tem_extrato and ativo_id == "2b71ffc3-3009-4004-b2b1-1947af343fd0":
+        conta_extra_visual = {
+            "nome":      "BNB CONTA RESERVA FIF",
+            "saldo":     13901.75,
+            "ref_mes":   "Jun/2026",
+        }
+
     conta_id      = request.args.get("conta_id") or (contas[0]["id"] if contas else None)
     conta_atual   = next((c for c in contas if c["id"] == conta_id), contas[0] if contas else None)
     saldo_inicial = float(conta_atual["saldo_inicial"] or 0) if conta_atual else 0.0
@@ -506,6 +516,7 @@ def home():
         lancamentos=lancamentos,
         contas=contas,
         conta_id=conta_id,
+        conta_extra_visual=conta_extra_visual,
         saldo_inicial=saldo_inicial,
         chart_fluxo_dates=chart_fluxo_dates,
         chart_fluxo_pts=chart_fluxo_pts,

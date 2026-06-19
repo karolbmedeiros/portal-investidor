@@ -328,6 +328,7 @@ def dashboard():
     usina_obj = None
     tab = _tab_carro if ativo_tipo == "carro" else "visao_geral"
     contas = conta_id = conta_atual = pnl_data = clientes_data = categorias = None
+    conta_extra_visual = None
     dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     saldo_inicial = 0.0
     chart_meses = []
@@ -370,6 +371,16 @@ def dashboard():
         usina_obj = next((u for u in all_usinas if u["id"] == ativo_id), None)
         auto_conciliar_neutros(ativo_id)
         contas = listar_contas_da_usina(ativo_id)
+
+        # Conta extra somente visual (não entra na seleção/lançamentos) — LT LOCAÇÕES
+        conta_extra_visual = None
+        if ativo_id == "2b71ffc3-3009-4004-b2b1-1947af343fd0":
+            conta_extra_visual = {
+                "nome":      "BNB CONTA RESERVA FIF",
+                "saldo":     13901.75,
+                "ref_mes":   "Jun/2026",
+            }
+
         conta_id = request.args.get("conta_id") or (contas[0]["id"] if contas else None)
         conta_atual = next((c for c in contas if c["id"] == conta_id), contas[0] if contas else None)
         saldo_inicial = float(conta_atual["saldo_inicial"] or 0) if conta_atual else 0.0
@@ -450,6 +461,22 @@ def dashboard():
     except Exception:
         faturas_pendentes = []
 
+    # Visão sem filtro: "Total investido" e "Rendimento acumulado" passam a
+    # mostrar o valor em aberto a receber de carros e de usinas, respectivamente.
+    if not ativo_id:
+        from services.veiculos_service import contas_receber_empresa
+        _total_carros_aberto = 0.0
+        for _emp in all_carros:
+            for _c in contas_receber_empresa(_emp["nome"]):
+                _total_carros_aberto += float(_c.get("valor") or 0)
+        total_investido = round(_total_carros_aberto, 2) if _total_carros_aberto > 0 else None
+
+        _total_usinas_aberto = sum(
+            float(_f.get("valor_final_cobrado") or _f.get("valor_total_cobrado") or 0)
+            for _f in faturas_pendentes
+        )
+        rendimento_total = round(_total_usinas_aberto, 2) if _total_usinas_aberto > 0 else None
+
     return render_template(
         "admin/dashboard.html",
         usinas=usinas,
@@ -466,6 +493,7 @@ def dashboard():
         tab=tab,
         contas=contas or [],
         conta_id=conta_id,
+        conta_extra_visual=conta_extra_visual,
         saldo_inicial=saldo_inicial,
         chart_meses=chart_meses,
         chart_fluxo_dates=chart_fluxo_dates,

@@ -128,9 +128,9 @@
 {% endif %}
 
 <!-- ── Métricas 2×2 + chart ── -->
-<section class="db-top">
+<section class="db-top {{ 'db-top--full' if not filtrado }}">
 
-  <div class="db-metrics">
+  <div class="db-metrics {{ 'db-metrics--full' if not filtrado }}">
 
     {% if ativo_tipo == 'carro' and empresa_carros_sel %}
     {# Card expandido com lista de veículos quando empresa selecionada #}
@@ -212,7 +212,7 @@
 
     <div class="db-metric-card {{ 'db-metric-card--span2' if ativo_tipo == 'usina' }}">
       <div class="db-mc-top">
-        <span class="db-mc-label">Total investido</span>
+        <span class="db-mc-label">{% if filtrado %}Total investido{% else %}A receber · carros{% endif %}</span>
         <span class="db-mc-icon">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"></path><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4"></path></svg>
         </span>
@@ -227,10 +227,10 @@
       <div class="db-mc-sub {% if not total_investido %}text-muted{% endif %}">
         {% if total_investido %}
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M9 12l2 2l4 -4"></path></svg>
-        Capital aportado
+        {% if filtrado %}Capital aportado{% else %}Faturas em aberto{% endif %}
         {% else %}
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#9BA39E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"></path><path d="M12 7v5l3 2"></path></svg>
-        Selecione um ativo
+        {% if filtrado %}Selecione um ativo{% else %}Sem faturas em aberto{% endif %}
         {% endif %}
       </div>
     </div>
@@ -298,7 +298,7 @@
     {% else %}
     <div class="db-metric-card">
       <div class="db-mc-top">
-        <span class="db-mc-label">Rendimento acumulado</span>
+        <span class="db-mc-label">{% if filtrado %}Rendimento acumulado{% else %}A receber · usinas{% endif %}</span>
         <span class="db-mc-icon">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6 -6l4 4l8 -8"></path><path d="M14 7l7 0l0 7"></path></svg>
         </span>
@@ -311,7 +311,11 @@
         {% endif %}
       </div>
       <div class="db-mc-sub text-muted">
-        {% if rendimento_total is not none %}Últ. 6 meses · recebimentos{% else %}Selecione uma usina{% endif %}
+        {% if filtrado %}
+          {% if rendimento_total is not none %}Últ. 6 meses · recebimentos{% else %}Selecione uma usina{% endif %}
+        {% else %}
+          {% if rendimento_total is not none %}Faturas em aberto{% else %}Sem faturas em aberto{% endif %}
+        {% endif %}
       </div>
     </div>
     {% endif %}
@@ -319,11 +323,12 @@
   </div>
 
   <!-- Chart -->
+  {% if filtrado %}
   <div class="db-chart-card">
     <div class="db-chart-header">
       <div>
         <div class="db-chart-title">
-          {% if filtrado %}{{ ativo_selecionado.nome }}{% else %}Evolução do portfólio{% endif %}
+          {{ ativo_selecionado.nome }}
         </div>
         <div class="db-chart-sub">{% if ativo_tipo == 'carro' %}Total recebido por mês{% else %}Últimos 6 meses{% endif %}</div>
       </div>
@@ -419,6 +424,7 @@
       {% endif %}
     </div>
   </div>
+  {% endif %}
 
 </section>
 
@@ -633,6 +639,12 @@
         <div class="nb-conta-saldo {{ 'nb-positivo' if (c.saldo_inicial or 0) >= 0 else 'nb-negativo' }}">{% if c.id == conta_id %}{{ _bal.v|brl }}{% else %}{{ (c.saldo_inicial or 0)|brl }}{% endif %}</div>
       </a>
       {% endfor %}
+      {% if conta_extra_visual %}
+      <div class="nb-conta-item nb-conta-item--visual" title="Apenas visualização">
+        <div class="nb-conta-esq"><div class="nb-conta-nome">{{ conta_extra_visual.nome }}</div><div class="nb-conta-info">{{ conta_extra_visual.ref_mes }} · somente visualização</div></div>
+        <div class="nb-conta-saldo nb-positivo">{{ conta_extra_visual.saldo|brl }}</div>
+      </div>
+      {% endif %}
     </div>
   </div>
   <div class="nb-card nb-fluxo-card">
@@ -1458,6 +1470,7 @@ function toggleAcordDb(btn){
   align-items:stretch; margin-bottom:16px;
 }
 @media(max-width:960px){ .db-top { grid-template-columns:1fr; } }
+.db-top--full { grid-template-columns:1fr; }
 
 /* ── 2×2 metric grid ── */
 .db-metrics {
@@ -1465,6 +1478,25 @@ function toggleAcordDb(btn){
   grid-template-rows: 1fr 1fr;
   gap:12px; align-self:stretch; height:100%;
 }
+
+/* ── Visão sem filtro: grade ocupa a largura toda e cresce proporcionalmente ── */
+.db-metrics--full {
+  grid-template-columns:repeat(4, 1fr);
+  grid-template-rows:1fr;
+  gap:20px;
+}
+.db-metrics--full .db-metric-card { padding:18px 22px; border-radius:16px; gap:10px; }
+.db-metrics--full .db-mc-label { font-size:12px; white-space:nowrap; }
+.db-metrics--full .db-mc-icon { width:36px; height:36px; border-radius:11px; }
+.db-metrics--full .db-mc-icon svg { width:18px; height:18px; }
+.db-metrics--full .db-mc-value-row { flex-wrap:nowrap; }
+.db-metrics--full .db-mc-value { font-size:28px; white-space:nowrap; }
+.db-metrics--full .db-mc-value--lg { font-size:24px; white-space:nowrap; }
+.db-metrics--full .db-mc-unit { font-size:13px; white-space:nowrap; }
+.db-metrics--full .db-mc-sub { font-size:12px; white-space:nowrap; }
+.db-metrics--full .db-mc-sub svg { width:13px; height:13px; }
+@media(max-width:1200px){ .db-metrics--full { grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; } }
+@media(max-width:600px){ .db-metrics--full { grid-template-columns:1fr; } }
 .db-metric-card--usina-big { grid-column: 1; grid-row: 1 / span 2; }
 .db-metric-card--span2 { grid-column: 2; grid-row: 1; }
 .db-metric-card {
@@ -1571,6 +1603,8 @@ function toggleAcordDb(btn){
 .nb-saldo-card .nb-contas-lista { padding:0 12px 8px; display:flex; flex-direction:column; gap:2px; }
 .nb-conta-item { display:flex; justify-content:space-between; align-items:center; padding:10px 8px; border-radius:10px; text-decoration:none; color:var(--text); transition:background .12s; border-bottom:0.5px solid rgba(23,33,28,0.07); }
 .nb-conta-item:hover { background:var(--bg2); } .nb-conta-item.nb-conta-ativo { background:#EAF6F1; }
+.nb-conta-item--visual { cursor:default; opacity:.7; }
+.nb-conta-item--visual:hover { background:none; }
 .nb-conta-nome { font-size:13px; font-weight:500; } .nb-conta-info { font-size:11px; color:var(--muted); margin-top:2px; } .nb-conta-saldo { font-size:13px; font-weight:500; white-space:nowrap; }
 .nb-mes-bar { display:flex; align-items:center; gap:8px; padding:12px 20px; border-top:0.5px solid rgba(23,33,28,0.08); background:var(--bg2); }
 .nb-mes-label { font-size:11px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }

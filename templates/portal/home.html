@@ -852,6 +852,15 @@ function toggleAcordI(btn){
         </div>
       </a>
       {% endfor %}
+      {% if conta_extra_visual %}
+      <div class="nb-conta-item nb-conta-item--visual" title="Apenas visualização">
+        <div class="nb-conta-esq">
+          <div class="nb-conta-nome">{{ conta_extra_visual.nome }}</div>
+          <div class="nb-conta-info">{{ conta_extra_visual.ref_mes }} · somente visualização</div>
+        </div>
+        <div class="nb-conta-saldo nb-positivo">{{ conta_extra_visual.saldo|brl }}</div>
+      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -1465,6 +1474,8 @@ function toggleAcordI(btn){
 .nb-conta-item { display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-radius:10px;text-decoration:none;color:var(--text);transition:background .12s;border-bottom:0.5px solid rgba(23,33,28,0.07); }
 .nb-conta-item:hover { background:var(--bg2); }
 .nb-conta-item.nb-conta-ativo { background:#EAF6F1; }
+.nb-conta-item--visual { cursor:default; opacity:.7; }
+.nb-conta-item--visual:hover { background:none; }
 .nb-conta-nome  { font-size:13px;font-weight:500; }
 .nb-conta-info  { font-size:11px;color:var(--muted);margin-top:2px; }
 .nb-conta-saldo { font-size:13px;font-weight:500;white-space:nowrap;letter-spacing:-0.01em; }
