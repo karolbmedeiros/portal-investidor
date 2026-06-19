@@ -180,7 +180,6 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str, secoes: list = No
                         and l.get("data_transacao")
                         and data_ini <= l["data_transacao"][:10] <= data_fim
                         and not l.get("_neutro")
-                        and not l.get("_rendimento")
                         and l.get("categorias_financeiras")]
 
     # Soma e lista de lançamentos por categoria_id, quebrado por mês

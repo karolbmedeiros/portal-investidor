@@ -218,13 +218,14 @@ def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
     _CAT_CONTAB    = {"873088b5-85ad-4474-9223-9c41f982cff4"}
     _CAT_IMPOSTOS  = {"303b2701-5f8a-4393-ac71-df35d536d946"}
     _CAT_ADMIN     = {"b35c7cda-7285-40ea-8d3a-b54f5966497f"}
-    _CAT_EMPRST    = {"d64de0ff-9ae9-49b5-9709-9910dd3f02cc", "20681d4b-e184-4184-9569-fe2f41e61347",
-                      "24f512b4-b736-4139-975a-12ef9cb212d0", "622be2cb-22a2-4ce1-9034-5b9624ff15cc"}
+    _CAT_EMPRST    = {"24f512b4-b736-4139-975a-12ef9cb212d0", "622be2cb-22a2-4ce1-9034-5b9624ff15cc"}
     _CAT_OUTROS    = {"9c5c82b4-a8be-4996-9a2d-30722a1479e0", "ef112b4c-a28f-4c5c-840b-c1e27cd1dfb4"}
-    # Excluídos de despesas: Repasse Investidor, Aporte, Recebimento de Fatura, Rendimento, Receita de Locação
+    # Excluídos de despesas: Repasse Investidor, Aporte, Recebimento de Fatura, Rendimento, Receita de Locação,
+    # Amortização de empréstimo (é quitação de principal/passivo, não despesa de resultado)
     _CAT_EXCLUIR   = {"269c12d6-bd47-4386-9ea8-8952c50591c6", "e6c37f6a-37af-4ead-b2c6-7fcc0f12a30e",
                       "f2738e97-9f34-436a-b915-88a28c4cfb7d", "7914bbd1-383e-459e-918b-8563ee795c8a",
-                      "e879abc7-4d19-4709-9e77-ea2bb88ba742", "12440b52-0d3c-4c9c-943f-a2408c7ea0ae"}
+                      "e879abc7-4d19-4709-9e77-ea2bb88ba742", "12440b52-0d3c-4c9c-943f-a2408c7ea0ae",
+                      "d64de0ff-9ae9-49b5-9709-9910dd3f02cc", "20681d4b-e184-4184-9569-fe2f41e61347"}
 
     def _custo_col(cat_id: Optional[str]) -> Optional[str]:
         if not cat_id:
