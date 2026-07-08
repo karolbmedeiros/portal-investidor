@@ -101,6 +101,7 @@ def home():
         if all_perms or "energia"          in u_perms or "saldo_creditos" in u_perms:   home_tabs.append("saldo_creditos")
         if all_perms or "dre"              in u_perms:                                 home_tabs.append("dre")
         if all_perms or "clientes"         in u_perms:                                 home_tabs.append("clientes")
+        if all_perms or "financiamento"    in u_perms:                                 home_tabs.append("financiamento")
 
     tab = request.args.get("tab", "visao_geral")
     if tab not in home_tabs:
@@ -404,6 +405,7 @@ def home():
         clientes_da_usina,
         listar_lancamentos, listar_contas_da_usina,
         calcular_kpis, leituras_da_usina, rentabilidade_investidor,
+        financiamentos_da_usina,
     )
     from services.benchmark_service import comparativo_benchmarks
 
@@ -421,6 +423,7 @@ def home():
     pnl            = pnl_da_usina(ativo_id)              if _is_usina and ativo_id and ("extrato" in home_tabs or "dre" in home_tabs) else []
     saldo_creditos = saldo_creditos_da_usina(ativo_id)   if _is_usina and ativo_id and "saldo_creditos" in home_tabs else []
     clientes       = clientes_da_usina(ativo_id)         if _is_usina and ativo_id and "clientes"       in home_tabs else []
+    financiamentos = financiamentos_da_usina(ativo_id)   if _is_usina and ativo_id and "financiamento"  in home_tabs else []
 
     tem_extrato = bool(_is_usina and ativo_id and "extrato" in home_tabs)
     tem_dre     = bool(_is_usina and ativo_id and "dre"     in home_tabs)
@@ -513,6 +516,7 @@ def home():
         pnl=pnl,
         saldo_creditos=saldo_creditos,
         clientes=clientes,
+        financiamentos=financiamentos,
         lancamentos=lancamentos,
         contas=contas,
         conta_id=conta_id,

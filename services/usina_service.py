@@ -501,6 +501,49 @@ def saldo_creditos_da_usina(usina_id: str) -> list:
     return res.data or []
 
 
+def financiamentos_da_usina(usina_id: str) -> list:
+    sb = get_service_client()
+    fin_res = (
+        sb.table("financiamentos")
+        .select("*")
+        .eq("usina_id", usina_id)
+        .order("data_contratacao")
+        .execute()
+    )
+    financiamentos = fin_res.data or []
+    if not financiamentos:
+        return []
+
+    fin_ids = [f["id"] for f in financiamentos]
+    parc_res = (
+        sb.table("financiamento_parcelas")
+        .select("*")
+        .in_("financiamento_id", fin_ids)
+        .order("numero")
+        .execute()
+    )
+    parcelas_por_fin: dict = {}
+    for p in (parc_res.data or []):
+        parcelas_por_fin.setdefault(p["financiamento_id"], []).append(p)
+
+    for f in financiamentos:
+        parcelas = parcelas_por_fin.get(f["id"], [])
+        pagas = [p for p in parcelas if p.get("paga")]
+        abertas = sorted(
+            [p for p in parcelas if not p.get("paga")],
+            key=lambda p: p["data_vencimento"] or ""
+        )
+        f["parcelas"] = parcelas
+        f["parcelas_pagas"] = len(pagas)
+        f["parcelas_total"] = len(parcelas)
+        f["valor_pago_principal"] = round(sum(p.get("valor_principal") or 0 for p in pagas), 2)
+        f["valor_pago_juros"] = round(sum(p.get("valor_juros") or 0 for p in pagas), 2)
+        f["saldo_devedor"] = round(float(f.get("valor_total") or 0) - f["valor_pago_principal"], 2)
+        f["proxima_parcela"] = abertas[0] if abertas else None
+
+    return financiamentos
+
+
 def documentos_da_usina(usina_id: str) -> list:
     sb = get_service_client()
     res = (

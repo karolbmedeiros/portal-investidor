@@ -578,7 +578,7 @@ def usina_detalhe(usina_id):
         listar_lancamentos, listar_categorias, calcular_kpis,
         clientes_da_usina, auto_conciliar_neutros, listar_contas_da_usina,
         retorno_mensal_investidor, leituras_detalhadas, saldo_creditos_da_usina,
-        rentabilidade_investidor,
+        rentabilidade_investidor, financiamentos_da_usina,
     )
     from services.benchmark_service import comparativo_benchmarks
     usina = buscar_usina(usina_id)
@@ -588,7 +588,7 @@ def usina_detalhe(usina_id):
     _ano_dre_default = date.today().year
 
     tab = request.args.get("tab", "clientes")
-    _valid_tabs = ("clientes", "extrato", "dre",
+    _valid_tabs = ("clientes", "financiamento", "extrato", "dre",
                    "benchmarks", "energia", "pnl", "saldo_creditos")
     if tab not in _valid_tabs:
         tab = "clientes"
@@ -651,6 +651,7 @@ def usina_detalhe(usina_id):
     ) if tab == "benchmarks" else {}
     leituras_det   = leituras_detalhadas(usina_id)       if tab == "energia"        else []
     saldo_creditos = saldo_creditos_da_usina(usina_id)   if tab == "saldo_creditos" else []
+    financiamentos = financiamentos_da_usina(usina_id)   if tab == "financiamento"  else []
 
     dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     if tab == "dre":
@@ -688,6 +689,7 @@ def usina_detalhe(usina_id):
         benchmarks=benchmarks,
         leituras_det=leituras_det,
         saldo_creditos=saldo_creditos,
+        financiamentos=financiamentos,
         dre_secoes=dre_secoes,
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,

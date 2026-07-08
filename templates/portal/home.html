@@ -91,7 +91,8 @@
   'benchmarks': 'Benchmarks',
   'saldo_creditos': 'Créditos kWh',
   'clientes': 'Clientes',
-  'dre': 'DRE'
+  'dre': 'DRE',
+  'financiamento': 'Financiamento'
 } %}
 {% set _perms = usuario.permissions if usuario else [] %}
 {% set _all   = 'all' in _perms %}
@@ -201,35 +202,9 @@
     </div>
     {% endif %}
 
-    {# Card: Total Investido #}
-    <div class="db-metric-card {{ 'db-metric-card--span2' if filtrado }}">
-      <div class="db-mc-top">
-        <span class="db-mc-label">Total investido</span>
-        <span class="db-mc-icon">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"/><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4"/></svg>
-        </span>
-      </div>
-      <div class="db-mc-value-row">
-        {% if total_investido %}
-          <span class="db-mc-value db-mc-value--lg">{{ total_investido|brl }}</span>
-        {% else %}
-          <span class="db-mc-value db-mc-value--lg text-muted">—</span>
-        {% endif %}
-      </div>
-      <div class="db-mc-sub {% if not total_investido %}text-muted{% endif %}">
-        {% if total_investido %}
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></svg>
-        Capital aportado
-        {% else %}
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#9BA39E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 2"/></svg>
-        Sem dados cadastrados
-        {% endif %}
-      </div>
-    </div>
-
     {# Card: Rendimento Acumulado (usinas) / Valor Líquido Recebido (carros) #}
     {% if ativo_tipo == 'carros' %}
-    <div class="db-metric-card" id="card-vlr" style="cursor:pointer;" onclick="document.getElementById('modal-motoristas').style.display='flex'">
+    <div class="db-metric-card db-metric-card--usina-big" id="card-vlr" style="cursor:pointer;grid-column:2;" onclick="document.getElementById('modal-motoristas').style.display='flex'">
       <div class="db-mc-top">
         <span class="db-mc-label">Valor líquido recebido</span>
         <span class="db-mc-icon" style="background:#FEF3C7;">
@@ -253,7 +228,7 @@
       </div>
     </div>
     {% else %}
-    <div class="db-metric-card">
+    <div class="db-metric-card db-metric-card--usina-big" style="grid-column:2;">
       <div class="db-mc-top">
         <span class="db-mc-label">Rendimento acumulado</span>
         <span class="db-mc-icon">
@@ -795,6 +770,96 @@ function toggleAcordI(btn){
   {% endif %}
 
 {% endif %}{# fim if ativo_tipo == 'carros' #}
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════════ FINANCIAMENTO ═══ #}
+{% if 'financiamento' in home_tabs %}
+<div id="tab-financiamento" data-tab="financiamento" class="dtab-content {{ 'ativo' if tab == 'financiamento' }}">
+  {% if financiamentos %}
+    {% for f in financiamentos %}
+    <section class="card" style="margin-bottom:24px;padding:20px;">
+      <div class="flex-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-weight:600;font-size:14px;">{{ f.descricao or f.banco }}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+            {{ f.banco }} · contratado em {{ f.data_contratacao|fmtdata }}
+            {% if not f.ativo %}<span class="badge badge-muted" style="margin-left:6px;">Encerrado</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Valor financiado</div>
+          <div class="kpi-val">{{ f.valor_total|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Principal pago</div>
+          <div class="kpi-val" style="color:var(--green);">{{ f.valor_pago_principal|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Saldo devedor</div>
+          <div class="kpi-val">{{ f.saldo_devedor|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Parcelas pagas</div>
+          <div class="kpi-val">{{ f.parcelas_pagas }} / {{ f.parcelas_total }}</div>
+        </div>
+        {% if f.proxima_parcela %}
+        <div class="kpi-card" style="flex:0 0 auto;min-width:170px;">
+          <div class="kpi-label">Próxima parcela</div>
+          <div class="kpi-val">{{ f.proxima_parcela.valor_principal|brl }}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+            venc. {{ f.proxima_parcela.data_vencimento|fmtdata }}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if f.observacoes %}
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5;">{{ f.observacoes }}</div>
+      {% endif %}
+
+      {% if f.parcelas %}
+      <div class="tabela-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Parcela</th>
+              <th>Vencimento</th>
+              <th>Principal</th>
+              <th>Juros</th>
+              <th>Status</th>
+              <th>Pagamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in f.parcelas %}
+            <tr>
+              <td>{{ p.numero if p.numero > 0 else 'carência' }}</td>
+              <td class="text-muted text-sm">{{ p.data_vencimento|fmtdata }}</td>
+              <td>{{ p.valor_principal|brl }}</td>
+              <td class="text-muted">{{ p.valor_juros|brl }}</td>
+              <td>
+                <span class="badge {{ 'badge-verde' if p.paga else 'badge-muted' }}">
+                  {{ 'Paga' if p.paga else 'Em aberto' }}
+                </span>
+              </td>
+              <td class="text-muted text-sm">
+                {% if p.data_pagamento %}{{ p.data_pagamento|fmtdata }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+  {% else %}
+  <div class="vazio">Nenhum financiamento cadastrado para esta usina.</div>
+  {% endif %}
 </div>
 {% endif %}
 

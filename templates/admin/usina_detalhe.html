@@ -27,10 +27,10 @@
 
 {# ── Barra de tabs in-page ── #}
 {% set _tab_labels = {
-  'clientes': 'Clientes', 'extrato': 'Fluxo de Caixa', 'dre': 'DRE',
+  'clientes': 'Clientes', 'financiamento': 'Financiamento', 'extrato': 'Fluxo de Caixa', 'dre': 'DRE',
   'energia': 'Energia', 'pnl': 'P&L', 'saldo_creditos': 'Créditos kWh'
 } %}
-{% set _all_tabs = ['clientes','extrato','dre','energia','pnl','saldo_creditos'] %}
+{% set _all_tabs = ['clientes','financiamento','extrato','dre','energia','pnl','saldo_creditos'] %}
 <div class="dtab-bar">
   <a href="{{ url_for('admin.dashboard', ativo_id=usina.id, ativo_tipo='usina') }}"
      class="dtab-link">Visão Geral</a>
@@ -119,6 +119,94 @@
   </div>
   {% else %}
   <div class="vazio">Nenhum contrato cadastrado para esta usina.</div>
+  {% endif %}
+</div>
+
+{# ══════════════════════════════════════════════ FINANCIAMENTO ═══ #}
+<div id="tab-financiamento" class="dtab-content {{ 'ativo' if tab == 'financiamento' }}">
+  {% if financiamentos %}
+    {% for f in financiamentos %}
+    <section class="card" style="margin-bottom:24px;padding:20px;">
+      <div class="flex-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-weight:600;font-size:14px;">{{ f.descricao or f.banco }}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+            {{ f.banco }} · contratado em {{ f.data_contratacao|fmtdata }}
+            {% if not f.ativo %}<span class="badge badge-muted" style="margin-left:6px;">Encerrado</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Valor financiado</div>
+          <div class="kpi-val">{{ f.valor_total|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Principal pago</div>
+          <div class="kpi-val" style="color:var(--green);">{{ f.valor_pago_principal|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Saldo devedor</div>
+          <div class="kpi-val">{{ f.saldo_devedor|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Parcelas pagas</div>
+          <div class="kpi-val">{{ f.parcelas_pagas }} / {{ f.parcelas_total }}</div>
+        </div>
+        {% if f.proxima_parcela %}
+        <div class="kpi-card" style="flex:0 0 auto;min-width:170px;">
+          <div class="kpi-label">Próxima parcela</div>
+          <div class="kpi-val">{{ f.proxima_parcela.valor_principal|brl }}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+            venc. {{ f.proxima_parcela.data_vencimento|fmtdata }}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if f.observacoes %}
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5;">{{ f.observacoes }}</div>
+      {% endif %}
+
+      {% if f.parcelas %}
+      <div class="tabela-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Parcela</th>
+              <th>Vencimento</th>
+              <th>Principal</th>
+              <th>Juros</th>
+              <th>Status</th>
+              <th>Pagamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in f.parcelas %}
+            <tr>
+              <td>{{ p.numero if p.numero > 0 else 'carência' }}</td>
+              <td class="text-muted text-sm">{{ p.data_vencimento|fmtdata }}</td>
+              <td>{{ p.valor_principal|brl }}</td>
+              <td class="text-muted">{{ p.valor_juros|brl }}</td>
+              <td>
+                <span class="badge {{ 'badge-verde' if p.paga else 'badge-muted' }}">
+                  {{ 'Paga' if p.paga else 'Em aberto' }}
+                </span>
+              </td>
+              <td class="text-muted text-sm">
+                {% if p.data_pagamento %}{{ p.data_pagamento|fmtdata }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+  {% else %}
+  <div class="vazio">Nenhum financiamento cadastrado para esta usina.</div>
   {% endif %}
 </div>
 
