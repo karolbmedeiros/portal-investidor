@@ -360,13 +360,16 @@ def dashboard():
     benchmarks_data = {}
     leituras_det_data = []
     saldo_creditos_data = []
+    financiamentos_data = []
+    contas_pagar_data = None
 
     if ativo_id and ativo_tipo == "usina":
         from services.usina_service import (
             clientes_da_usina, listar_contas_da_usina, listar_lancamentos,
             pnl_da_usina, listar_categorias,
             retorno_mensal_investidor, leituras_detalhadas, saldo_creditos_da_usina,
-            auto_conciliar_neutros, rentabilidade_investidor,
+            auto_conciliar_neutros, rentabilidade_investidor, financiamentos_da_usina,
+            contas_pagar_da_usina,
         )
         usina_obj = next((u for u in all_usinas if u["id"] == ativo_id), None)
         auto_conciliar_neutros(ativo_id)
@@ -414,7 +417,9 @@ def dashboard():
         )
         leituras_det_data   = leituras_detalhadas(ativo_id)
         saldo_creditos_data = saldo_creditos_da_usina(ativo_id)
-        _valid_tabs = ("visao_geral","clientes","extrato","dre","benchmarks","saldo_creditos")
+        financiamentos_data = financiamentos_da_usina(ativo_id)
+        contas_pagar_data   = contas_pagar_da_usina(ativo_id)
+        _valid_tabs = ("visao_geral","clientes","financiamento","extrato","dre","benchmarks","saldo_creditos")
         tab = request.args.get("tab", "visao_geral")
         if tab not in _valid_tabs:
             tab = "visao_geral"
@@ -507,6 +512,8 @@ def dashboard():
         benchmarks=benchmarks_data,
         leituras_det=leituras_det_data,
         saldo_creditos=saldo_creditos_data,
+        financiamentos=financiamentos_data,
+        contas_pagar=contas_pagar_data,
         dre_secoes=dre_secoes,
         dre_valores=dre_valores,
         dre_lancs=dre_lancs,

@@ -183,8 +183,17 @@
             </tr>
           </thead>
           <tbody>
+            {% set _toggle_ns = namespace(emitido=false) %}
             {% for p in f.parcelas %}
-            <tr>
+            {% if p._oculta and not _toggle_ns.emitido %}
+            <tr class="parcela-toggle-row" data-fin="{{ f.id }}" onclick="toggleParcelasOcultas(this)">
+              <td colspan="6" style="text-align:center;cursor:pointer;color:var(--accent2);font-size:12px;font-weight:500;padding:8px;">
+                <span class="parcela-toggle-label">▾ Ver mais {{ f.parcelas_ocultas_count }} parcela{{ 's' if f.parcelas_ocultas_count != 1 }} paga{{ 's' if f.parcelas_ocultas_count != 1 }}</span>
+              </td>
+            </tr>
+            {% set _toggle_ns.emitido = true %}
+            {% endif %}
+            <tr {% if p._oculta %}class="parcela-oculta" data-fin="{{ f.id }}" style="display:none;"{% endif %}>
               <td>{{ p.numero if p.numero > 0 else 'carência' }}</td>
               <td class="text-muted text-sm">{{ p.data_vencimento|fmtdata }}</td>
               <td>{{ p.valor_principal|brl }}</td>
@@ -1074,6 +1083,21 @@ function nbTab(btn, panel, tab) {
   document.querySelectorAll('[' + attr + ']').forEach(function(item) {
     item.style.display = (tab === 'todos' || item.getAttribute(attr) === tab) ? '' : 'none';
   });
+}
+
+function toggleParcelasOcultas(el) {
+  var fin = el.getAttribute('data-fin');
+  var table = el.closest('table');
+  if (!table) return;
+  var rows = table.querySelectorAll('tr.parcela-oculta[data-fin="' + fin + '"]');
+  var oculto = rows.length && rows[0].style.display === 'none';
+  rows.forEach(function(r) { r.style.display = oculto ? 'table-row' : 'none'; });
+  var label = el.querySelector('.parcela-toggle-label');
+  if (label) {
+    label.textContent = oculto
+      ? '▴ Ocultar parcelas pagas'
+      : '▾ Ver mais ' + rows.length + ' parcela' + (rows.length !== 1 ? 's' : '') + ' paga' + (rows.length !== 1 ? 's' : '');
+  }
 }
 
 /* ── Extrato Consolidado toggle ── */

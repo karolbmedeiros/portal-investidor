@@ -541,7 +541,110 @@ def financiamentos_da_usina(usina_id: str) -> list:
         f["saldo_devedor"] = round(float(f.get("valor_total") or 0) - f["valor_pago_principal"], 2)
         f["proxima_parcela"] = abertas[0] if abertas else None
 
+        # Oculta parcelas pagas "do meio" atrás de um toggle — mantém visíveis
+        # a(s) parcela(s) de carência (numero <= 0) e a última paga (a mais
+        # recente), que é a que muda a cada novo pagamento.
+        pagas_numeradas = [p for p in pagas if (p.get("numero") or 0) > 0]
+        ocultar_ids = {p["id"] for p in pagas_numeradas[:-1]} if len(pagas_numeradas) > 1 else set()
+        for p in parcelas:
+            p["_oculta"] = p["id"] in ocultar_ids
+        f["parcelas_ocultas_count"] = len(ocultar_ids)
+
     return financiamentos
+
+
+def contas_pagar_da_usina(usina_id: str, ref_mes: str = None) -> dict:
+    """Contas a pagar (OpEx) da usina no mês de competência (ref_mes_ano).
+    Replica a lógica de KPIs da página Contas a Pagar do painel financeiro:
+    contas 'renegociada' (viraram parcelas de um acordo de quitação) saem
+    dos totais pra não contar 2x.
+    """
+    sb = get_service_client()
+    if not ref_mes:
+        ref_mes = date.today().strftime("%Y-%m")
+    ano, mes = (int(x) for x in ref_mes.split("-"))
+    prox_ano, prox_mes = (ano + 1, 1) if mes == 12 else (ano, mes + 1)
+    ref_ini = f"{ref_mes}-01"
+    ref_fim = f"{prox_ano:04d}-{prox_mes:02d}-01"
+
+    res = (
+        sb.table("contas_pagar")
+        .select("*")
+        .eq("usina_id", usina_id)
+        .gte("ref_mes_ano", ref_ini)
+        .lt("ref_mes_ano", ref_fim)
+        .execute()
+    )
+    contas = res.data or []
+
+    cat_ids = {c["categoria_id"] for c in contas if c.get("categoria_id")}
+    cat_map = {}
+    if cat_ids:
+        cat_res = sb.table("categorias_financeiras").select("id,nome").in_("id", list(cat_ids)).execute()
+        cat_map = {c["id"]: c["nome"] for c in (cat_res.data or [])}
+
+    # Tenta amarrar contas de repasse COSERN à leitura mensal de origem —
+    # casa pelo valor exato da fatura real (leituras_mensais.valor_fatura_cosern_real).
+    # Só faz sentido pra contas de fornecedor/categoria COSERN; o resto fica em branco.
+    leitura_por_valor = {}
+    contratos_res = (
+        sb.table("contratos").select("id,uc_id").eq("usina_id", usina_id).execute()
+    )
+    contratos = contratos_res.data or []
+    contrato_ids = [c["id"] for c in contratos]
+    if contrato_ids:
+        uc_ids = [c["uc_id"] for c in contratos if c.get("uc_id")]
+        uc_map = {}
+        if uc_ids:
+            uc_res = sb.table("ucs").select("id,codigo_uc").in_("id", uc_ids).execute()
+            uc_map = {u["id"]: u["codigo_uc"] for u in (uc_res.data or [])}
+        contrato_uc = {c["id"]: uc_map.get(c["uc_id"]) for c in contratos}
+
+        leit_res = (
+            sb.table("leituras_mensais")
+            .select("contrato_id,ref_mes_ano,valor_fatura_cosern_real")
+            .in_("contrato_id", contrato_ids)
+            .not_.is_("valor_fatura_cosern_real", "null")
+            .execute()
+        )
+        for l in (leit_res.data or []):
+            v = l.get("valor_fatura_cosern_real")
+            if v is None:
+                continue
+            chave = round(float(v), 2)
+            ref = l.get("ref_mes_ano") or ""
+            leitura_por_valor.setdefault(chave, {
+                "competencia": f"{ref[5:7]}/{ref[:4]}" if len(ref) >= 7 else None,
+                "codigo_uc": contrato_uc.get(l["contrato_id"]),
+            })
+
+    hoje = date.today().isoformat()
+    for c in contas:
+        c["categoria_nome"] = cat_map.get(c.get("categoria_id")) or c.get("categoria") or "Outros"
+        c["atrasada"] = bool(
+            not c.get("renegociada") and c.get("status") != "Pago"
+            and c.get("data_vencimento") and c["data_vencimento"] < hoje
+        )
+        c["leitura_ref"] = None
+        _fornecedor = (c.get("fornecedor") or "").upper()
+        _categoria  = (c.get("categoria_nome") or "").upper()
+        if "COSERN" in _fornecedor or "COSERN" in _categoria:
+            c["leitura_ref"] = leitura_por_valor.get(round(float(c.get("valor") or 0), 2))
+    contas.sort(key=lambda c: c.get("data_pagamento") or c.get("data_vencimento") or "")
+
+    sem_renegociadas = [c for c in contas if not c.get("renegociada")]
+    total  = round(sum(c.get("valor") or 0 for c in sem_renegociadas), 2)
+    aberto = round(sum(c.get("valor") or 0 for c in sem_renegociadas if c.get("status") != "Pago"), 2)
+
+    return {
+        "mes": ref_mes,
+        "itens": contas,
+        "total": total,
+        "aberto": aberto,
+        "pago": round(total - aberto, 2),
+        "n_total": len(sem_renegociadas),
+        "n_pagas": sum(1 for c in sem_renegociadas if c.get("status") == "Pago"),
+    }
 
 
 def documentos_da_usina(usina_id: str) -> list:

@@ -196,6 +196,14 @@
                       <span class="toggle-slider"></span>
                     </span>
                   </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Contas a Pagar</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="contas_pagar"
+                        {{ 'checked' if all_checked or 'contas_pagar' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
+                  </label>
                   <div class="toggle-subgrupo">Dados Visuais</div>
                   <label class="toggle-item">
                     <span class="toggle-item-label">Benchmarks</span>
@@ -355,6 +363,10 @@
                   <label class="toggle-item">
                     <span class="toggle-item-label">Financiamento</span>
                     <span class="toggle"><input type="checkbox" name="permissions" value="financiamento" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Contas a Pagar</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="contas_pagar" /><span class="toggle-slider"></span></span>
                   </label>
                   <div class="toggle-subgrupo">Dados Visuais</div>
                   <label class="toggle-item">

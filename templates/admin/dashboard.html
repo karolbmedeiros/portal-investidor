@@ -111,6 +111,7 @@
   <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
   <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
+  <a href="#" data-tab="financiamento"  class="dtab-link {{ 'ativo' if tab == 'financiamento' }}">Financiamento</a>
 </div>
 {% elif ativo_selecionado.tipo == 'carro' %}
 <div class="dtab-bar" style="margin-bottom:20px;">
@@ -499,6 +500,82 @@
 </section>
 {% endif %}
 
+{# ── Contas a Pagar (usinas) ── #}
+{% if contas_pagar %}
+{% set _cp_meses = ['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'] %}
+<section class="card mt-16">
+  <div class="db-list-header" style="margin-bottom:16px;">
+    <div>
+      <div class="db-list-title">Contas a Pagar</div>
+      <div class="text-muted text-sm">
+        {% if contas_pagar.mes %}{{ _cp_meses[contas_pagar.mes[5:7]|int] }}/{{ contas_pagar.mes[:4] }} · competência{% endif %}
+      </div>
+    </div>
+    <span class="db-badge-ativa" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">
+      {{ contas_pagar.n_pagas }} / {{ contas_pagar.n_total }} paga{{ 's' if contas_pagar.n_total != 1 }}
+    </span>
+  </div>
+
+  {% if not contas_pagar.itens %}
+  <div class="vazio text-sm" style="padding:24px 0;">Nenhuma conta lançada para este mês.</div>
+  {% else %}
+  <div style="overflow-x:auto;">
+    <table class="db-fat-table">
+      <thead>
+        <tr>
+          <th>Categoria</th>
+          <th>Descrição</th>
+          <th>Fornecedor</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th style="text-align:right;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in contas_pagar.itens %}
+        <tr {% if c.renegociada %}style="opacity:.5;"{% endif %}>
+          <td><span class="badge badge-muted" style="font-size:10px;">{{ c.categoria_nome }}</span></td>
+          <td class="text-sm">
+            {{ c.descricao or '—' }}
+            {% if c.leitura_ref %}
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">leitura {{ c.leitura_ref.competencia }} · UC {{ c.leitura_ref.codigo_uc }}</div>
+            {% endif %}
+          </td>
+          <td class="text-muted text-sm">{{ c.fornecedor or '—' }}</td>
+          <td>
+            <span class="text-sm">{{ c.data_vencimento|fmtdata }}</span>
+          </td>
+          <td>
+            {% if c.renegociada %}
+            <span class="badge" style="background:rgba(139,92,246,.1);color:#6D28D9;">Renegociada</span>
+            {% elif c.status == 'Pago' %}
+            <span class="badge badge-verde">Pago</span>
+            {% elif c.atrasada %}
+            <span class="badge badge-vermelho">Atrasada</span>
+            {% else %}
+            <span class="badge badge-muted">Pendente</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;" class="text-sm font-500">{{ c.valor|brl }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right;font-size:12px;color:var(--muted);padding-top:10px;">Em aberto</td>
+          <td style="text-align:right;font-weight:700;padding-top:10px;color:#92400E;">{{ contas_pagar.aberto|brl }}</td>
+        </tr>
+        <tr>
+          <td colspan="5" style="text-align:right;font-size:12px;color:var(--muted);">Total do mês</td>
+          <td style="text-align:right;font-weight:700;">{{ contas_pagar.total|brl }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
 {# ── Contas a Receber (carros) ── #}
 {% if ativo_tipo == 'carro' and faturas_carros %}
 <section class="card mt-16">
@@ -611,6 +688,103 @@
     {% endfor %}
   </tbody></table></div>
   {% else %}<div class="vazio">Nenhum contrato cadastrado.</div>{% endif %}
+</div>
+
+{# ══════════════════════════════════════════════ FINANCIAMENTO ═══ #}
+<div id="tab-financiamento" class="dtab-content {{ 'ativo' if tab == 'financiamento' }}">
+  {% if financiamentos %}
+    {% for f in financiamentos %}
+    <section class="card" style="margin-bottom:24px;padding:20px;">
+      <div class="flex-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-weight:600;font-size:14px;">{{ f.descricao or f.banco }}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+            {{ f.banco }} · contratado em {{ f.data_contratacao|fmtdata }}
+            {% if not f.ativo %}<span class="badge badge-muted" style="margin-left:6px;">Encerrado</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Valor financiado</div>
+          <div class="kpi-val">{{ f.valor_total|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Principal pago</div>
+          <div class="kpi-val" style="color:var(--green);">{{ f.valor_pago_principal|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Saldo devedor</div>
+          <div class="kpi-val">{{ f.saldo_devedor|brl }}</div>
+        </div>
+        <div class="kpi-card" style="flex:0 0 auto;min-width:150px;">
+          <div class="kpi-label">Parcelas pagas</div>
+          <div class="kpi-val">{{ f.parcelas_pagas }} / {{ f.parcelas_total }}</div>
+        </div>
+        {% if f.proxima_parcela %}
+        <div class="kpi-card" style="flex:0 0 auto;min-width:170px;">
+          <div class="kpi-label">Próxima parcela</div>
+          <div class="kpi-val">{{ f.proxima_parcela.valor_principal|brl }}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+            venc. {{ f.proxima_parcela.data_vencimento|fmtdata }}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if f.observacoes %}
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5;">{{ f.observacoes }}</div>
+      {% endif %}
+
+      {% if f.parcelas %}
+      <div class="tabela-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Parcela</th>
+              <th>Vencimento</th>
+              <th>Principal</th>
+              <th>Juros</th>
+              <th>Status</th>
+              <th>Pagamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set _toggle_ns = namespace(emitido=false) %}
+            {% for p in f.parcelas %}
+            {% if p._oculta and not _toggle_ns.emitido %}
+            <tr class="parcela-toggle-row" data-fin="{{ f.id }}" onclick="toggleParcelasOcultas(this)">
+              <td colspan="6" style="text-align:center;cursor:pointer;color:var(--accent2);font-size:12px;font-weight:500;padding:8px;">
+                <span class="parcela-toggle-label">▾ Ver mais {{ f.parcelas_ocultas_count }} parcela{{ 's' if f.parcelas_ocultas_count != 1 }} paga{{ 's' if f.parcelas_ocultas_count != 1 }}</span>
+              </td>
+            </tr>
+            {% set _toggle_ns.emitido = true %}
+            {% endif %}
+            <tr {% if p._oculta %}class="parcela-oculta" data-fin="{{ f.id }}" style="display:none;"{% endif %}>
+              <td>{{ p.numero if p.numero > 0 else 'carência' }}</td>
+              <td class="text-muted text-sm">{{ p.data_vencimento|fmtdata }}</td>
+              <td>{{ p.valor_principal|brl }}</td>
+              <td class="text-muted">{{ p.valor_juros|brl }}</td>
+              <td>
+                <span class="badge {{ 'badge-verde' if p.paga else 'badge-muted' }}">
+                  {{ 'Paga' if p.paga else 'Em aberto' }}
+                </span>
+              </td>
+              <td class="text-muted text-sm">
+                {% if p.data_pagamento %}{{ p.data_pagamento|fmtdata }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+  {% else %}
+  <div class="vazio">Nenhum financiamento cadastrado para esta usina.</div>
+  {% endif %}
 </div>
 
 {# ══════════════════════════════════════════════ EXTRATO ═══ #}
@@ -1748,6 +1922,7 @@ function _sincronizarFluxo(mes) {
 }
 function navFluxo(delta){if(!_MESES.length)return;_sincronizarFluxo(_MESES[Math.max(0,Math.min(_MESES.length-1,_fluxoMesIdx+delta))]);filtrarFluxo();}
 function nbTab(btn,panel,tab){document.querySelectorAll('.nb-tab-btn[data-panel="'+panel+'"]').forEach(b=>b.classList.remove('nb-tab-ativo'));btn.classList.add('nb-tab-ativo');var attr='data-tab-'+panel;document.querySelectorAll('['+attr+']').forEach(item=>{item.style.display=(tab==='todos'||item.getAttribute(attr)===tab)?'':'none';});}
+function toggleParcelasOcultas(el){var fin=el.getAttribute('data-fin');var table=el.closest('table');if(!table)return;var rows=table.querySelectorAll('tr.parcela-oculta[data-fin="'+fin+'"]');var oculto=rows.length&&rows[0].style.display==='none';rows.forEach(function(r){r.style.display=oculto?'table-row':'none';});var label=el.querySelector('.parcela-toggle-label');if(label){label.textContent=oculto?'▴ Ocultar parcelas pagas':'▾ Ver mais '+rows.length+' parcela'+(rows.length!==1?'s':'')+' paga'+(rows.length!==1?'s':'');}}
 function toggleConsolidado(){var body=document.getElementById('consolidado-body'),caret=document.getElementById('consolidado-caret');if(!body)return;var open=body.style.display!=='none';body.style.display=open?'none':'';if(caret)caret.style.transform=open?'':'rotate(180deg)';}
 function abrirConciliarModal(id,desc,valor,tipo){const form=document.getElementById('conciliar-form');form.action='{{ url_for("admin.extrato_conciliar", usina_id=ativo_id, lancamento_id="__ID__") }}'.replace('__ID__',id);document.getElementById('conciliar-info').innerHTML='<strong>'+(tipo==='credito'?'Crédito':'Débito')+'</strong> · R$ '+valor+'<br><span style="color:#6B7280;">'+desc+'</span>';document.getElementById('conciliar-modal').style.display='flex';document.body.style.overflow='hidden';}
 function fecharConciliarModal(){document.getElementById('conciliar-modal').style.display='none';document.body.style.overflow='';}

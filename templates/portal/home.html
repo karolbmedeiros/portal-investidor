@@ -835,8 +835,17 @@ function toggleAcordI(btn){
             </tr>
           </thead>
           <tbody>
+            {% set _toggle_ns = namespace(emitido=false) %}
             {% for p in f.parcelas %}
-            <tr>
+            {% if p._oculta and not _toggle_ns.emitido %}
+            <tr class="parcela-toggle-row" data-fin="{{ f.id }}" onclick="toggleParcelasOcultas(this)">
+              <td colspan="6" style="text-align:center;cursor:pointer;color:var(--accent2);font-size:12px;font-weight:500;padding:8px;">
+                <span class="parcela-toggle-label">▾ Ver mais {{ f.parcelas_ocultas_count }} parcela{{ 's' if f.parcelas_ocultas_count != 1 }} paga{{ 's' if f.parcelas_ocultas_count != 1 }}</span>
+              </td>
+            </tr>
+            {% set _toggle_ns.emitido = true %}
+            {% endif %}
+            <tr {% if p._oculta %}class="parcela-oculta" data-fin="{{ f.id }}" style="display:none;"{% endif %}>
               <td>{{ p.numero if p.numero > 0 else 'carência' }}</td>
               <td class="text-muted text-sm">{{ p.data_vencimento|fmtdata }}</td>
               <td>{{ p.valor_principal|brl }}</td>
@@ -1461,6 +1470,80 @@ function toggleAcordI(btn){
     {% endif %}
   {% endif %}
 </section>
+
+{# ── Contas a Pagar (usinas, com permissão) ── #}
+{% if contas_pagar %}
+{% set _cp_meses = ['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'] %}
+<section class="card mt-16">
+  <div class="db-list-header" style="margin-bottom:16px;">
+    <div>
+      <div class="db-list-title">Contas a Pagar</div>
+      <div class="text-muted text-sm">
+        {% if contas_pagar.mes %}{{ _cp_meses[contas_pagar.mes[5:7]|int] }}/{{ contas_pagar.mes[:4] }} · competência{% endif %}
+      </div>
+    </div>
+    <span class="db-badge-ativa" style="background:#FEF3C7;color:#92400E;border-color:#FDE68A;">
+      {{ contas_pagar.n_pagas }} / {{ contas_pagar.n_total }} paga{{ 's' if contas_pagar.n_total != 1 }}
+    </span>
+  </div>
+
+  {% if not contas_pagar.itens %}
+  <div class="vazio text-sm" style="padding:24px 0;">Nenhuma conta lançada para este mês.</div>
+  {% else %}
+  <div style="overflow-x:auto;">
+    <table class="db-fat-table">
+      <thead>
+        <tr>
+          <th>Categoria</th>
+          <th>Descrição</th>
+          <th>Fornecedor</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th style="text-align:right;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in contas_pagar.itens %}
+        <tr {% if c.renegociada %}style="opacity:.5;"{% endif %}>
+          <td><span class="badge badge-muted" style="font-size:10px;">{{ c.categoria_nome }}</span></td>
+          <td class="text-sm">
+            {{ c.descricao or '—' }}
+            {% if c.leitura_ref %}
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">leitura {{ c.leitura_ref.competencia }} · UC {{ c.leitura_ref.codigo_uc }}</div>
+            {% endif %}
+          </td>
+          <td class="text-muted text-sm">{{ c.fornecedor or '—' }}</td>
+          <td><span class="text-sm">{{ c.data_vencimento|fmtdata }}</span></td>
+          <td>
+            {% if c.renegociada %}
+            <span class="badge" style="background:rgba(139,92,246,.1);color:#6D28D9;">Renegociada</span>
+            {% elif c.status == 'Pago' %}
+            <span class="badge badge-verde">Pago</span>
+            {% elif c.atrasada %}
+            <span class="badge badge-vermelho">Atrasada</span>
+            {% else %}
+            <span class="badge badge-muted">Pendente</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;" class="text-sm font-500">{{ c.valor|brl }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right;font-size:12px;color:var(--muted);padding-top:10px;">Em aberto</td>
+          <td style="text-align:right;font-weight:700;padding-top:10px;color:#92400E;">{{ contas_pagar.aberto|brl }}</td>
+        </tr>
+        <tr>
+          <td colspan="5" style="text-align:right;font-size:12px;color:var(--muted);">Total do mês</td>
+          <td style="text-align:right;font-weight:700;">{{ contas_pagar.total|brl }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
 </div>{# /tab-visao_geral pt2 #}
 
 {# ── Painel lateral: informações do cliente ── #}
@@ -1986,6 +2069,21 @@ function nbTab(btn, panel, tab) {
   document.querySelectorAll('[' + attr + ']').forEach(function(item) {
     item.style.display = (tab === 'todos' || item.getAttribute(attr) === tab) ? '' : 'none';
   });
+}
+
+function toggleParcelasOcultas(el) {
+  var fin = el.getAttribute('data-fin');
+  var table = el.closest('table');
+  if (!table) return;
+  var rows = table.querySelectorAll('tr.parcela-oculta[data-fin="' + fin + '"]');
+  var oculto = rows.length && rows[0].style.display === 'none';
+  rows.forEach(function(r) { r.style.display = oculto ? 'table-row' : 'none'; });
+  var label = el.querySelector('.parcela-toggle-label');
+  if (label) {
+    label.textContent = oculto
+      ? '▴ Ocultar parcelas pagas'
+      : '▾ Ver mais ' + rows.length + ' parcela' + (rows.length !== 1 ? 's' : '') + ' paga' + (rows.length !== 1 ? 's' : '');
+  }
 }
 
 function toggleConsolidado() {
