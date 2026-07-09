@@ -103,6 +103,7 @@ def home():
         if all_perms or "clientes"         in u_perms:                                 home_tabs.append("clientes")
         if all_perms or "financiamento"    in u_perms:                                 home_tabs.append("financiamento")
     ver_contas_pagar = bool(ativo_id and ativo_tipo == "usina" and (all_perms or "contas_pagar" in u_perms))
+    ver_extrato_consolidado = bool(all_perms or "extrato_consolidado" in u_perms)
 
     tab = request.args.get("tab", "visao_geral")
     if tab not in home_tabs:
@@ -521,6 +522,7 @@ def home():
         financiamentos=financiamentos,
         contas_pagar=contas_pagar,
         ver_contas_pagar=ver_contas_pagar,
+        ver_extrato_consolidado=ver_extrato_consolidado,
         lancamentos=lancamentos,
         contas=contas,
         conta_id=conta_id,

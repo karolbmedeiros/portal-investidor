@@ -1115,6 +1115,7 @@ function toggleAcordI(btn){
   </div>
 </div>
 
+{% if ver_extrato_consolidado %}
 <div class="nb-card nb-panel" style="margin-bottom:24px;">
   <div class="nb-panel-header" style="background:var(--bg2);cursor:pointer;" onclick="toggleConsolidado()">
     <span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">Extrato Consolidado</span>
@@ -1164,6 +1165,7 @@ function toggleAcordI(btn){
     </div>
   </div>
 </div>
+{% endif %}
 
 {% else %}
 <div class="vazio">Nenhum lançamento encontrado.</div>
@@ -1264,6 +1266,7 @@ function toggleAcordI(btn){
   </div>
 </div>
 
+{% if ver_extrato_consolidado %}
 <div class="nb-card nb-panel" style="margin-top:16px;margin-bottom:24px;">
   <div class="nb-panel-header" style="background:var(--bg2);">
     <span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">Extrato Consolidado</span>
@@ -1298,6 +1301,7 @@ function toggleAcordI(btn){
     {% endfor %}
   </tbody></table></div>
 </div>
+{% endif %}
 
 {# Modal natureza carros portal — com suporte a rateio #}
 <datalist id="mn-c-sugestoes">

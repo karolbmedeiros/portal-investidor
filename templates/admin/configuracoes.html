@@ -181,6 +181,14 @@
                     </span>
                   </label>
                   <label class="toggle-item">
+                    <span class="toggle-item-label">Extrato Consolidado</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="extrato_consolidado"
+                        {{ 'checked' if all_checked or 'extrato_consolidado' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
+                  </label>
+                  <label class="toggle-item">
                     <span class="toggle-item-label">DRE</span>
                     <span class="toggle">
                       <input type="checkbox" name="permissions" value="dre"
@@ -355,6 +363,10 @@
                   <label class="toggle-item">
                     <span class="toggle-item-label">Fluxo de Caixa</span>
                     <span class="toggle"><input type="checkbox" name="permissions" value="extrato_bancario" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Extrato Consolidado</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="extrato_consolidado" /><span class="toggle-slider"></span></span>
                   </label>
                   <label class="toggle-item">
                     <span class="toggle-item-label">DRE</span>
