@@ -150,8 +150,13 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
     mes_nome = MESES_PT[date.today().month]
     ano = date.today().year
 
+    ultimo_dia_mes_anterior = date(ano, date.today().month, 1) - timedelta(days=1)
+    ref_mes_anterior = ultimo_dia_mes_anterior.strftime("%Y-%m")
+    mes_nome_anterior = MESES_PT[ultimo_dia_mes_anterior.month]
+    ano_mes_anterior = ultimo_dia_mes_anterior.year
+
     fluxo_caixa = _dados_fluxo_caixa(usina_id, ref_mes)
-    energia = _dados_energia_clientes(usina_id, ref_mes)
+    energia = _dados_energia_clientes(usina_id, ref_mes_anterior)
     fin_contas = _dados_financiamento_contas(usina_id)
     documentos = documentos_da_usina(usina_id)
 
@@ -240,7 +245,7 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
         elementos.append(tabela_categorias("Saídas por Categoria", fluxo_caixa["saidas"], fluxo_caixa["total_saidas"], "#c62828"))
 
     # 3. Energia e clientes
-    elementos.append(Paragraph("Energia e Clientes", secao))
+    elementos.append(Paragraph(f"Energia e Clientes ({mes_nome_anterior}/{ano_mes_anterior})", secao))
     elementos.append(tabela_resumo([
         ["Contratos ativos", str(energia["contratos_ativos"])],
         ["Energia compensada no mês", _fmt_kwh(energia["kwh_compensado"])],
