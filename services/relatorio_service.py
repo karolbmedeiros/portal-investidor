@@ -14,7 +14,6 @@ from services.usina_service import (
     contas_pagar_da_usina, documentos_da_usina,
     listar_contas_da_usina, listar_lancamentos, calcular_saldo_usina_em,
 )
-from services.dre_service import listar_secoes_dre, calcular_dre
 from services.supabase_client import get_service_client
 
 MESES_PT = [
@@ -77,31 +76,6 @@ def _dados_fluxo_caixa(usina_id: str, ref_mes: str) -> dict:
         "total_saidas": round(sum(saidas.values()), 2),
         "nao_pago_total": contas_pagar["aberto"],
         "nao_pago_qtd": contas_pagar["n_total"] - contas_pagar["n_pagas"],
-    }
-
-
-def _dados_financeiro(usina_id: str, ref_mes: str) -> dict:
-    secoes = listar_secoes_dre()
-    dre = calcular_dre(usina_id, ref_mes, ref_mes, secoes=secoes)
-    valores = dre["valores"]
-
-    def _secao_id(nome: str):
-        s = next((s for s in secoes if (s.get("nome") or "").strip().upper() == nome), None)
-        return s["id"] if s else None
-
-    id_receita = _secao_id("RECEITA OPERACIONAL BRUTA")
-    id_lucro = _secao_id("LUCRO LÍQUIDO DO EXERCÍCIO")
-
-    receita_total = valores.get(id_receita, {}).get(ref_mes, 0.0) if id_receita else 0.0
-    resultado_liquido = valores.get(id_lucro, {}).get(ref_mes, 0.0) if id_lucro else 0.0
-    despesas_totais = receita_total - resultado_liquido
-    margem = (resultado_liquido / receita_total * 100) if receita_total else 0.0
-
-    return {
-        "receita_total": receita_total,
-        "despesas_totais": despesas_totais,
-        "resultado_liquido": resultado_liquido,
-        "margem": margem,
     }
 
 
@@ -177,7 +151,6 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
     ano = date.today().year
 
     fluxo_caixa = _dados_fluxo_caixa(usina_id, ref_mes)
-    financeiro = _dados_financeiro(usina_id, ref_mes)
     energia = _dados_energia_clientes(usina_id, ref_mes)
     fin_contas = _dados_financiamento_contas(usina_id)
     documentos = documentos_da_usina(usina_id)
@@ -266,16 +239,7 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
         elementos.append(Spacer(1, 8))
         elementos.append(tabela_categorias("Saídas por Categoria", fluxo_caixa["saidas"], fluxo_caixa["total_saidas"], "#c62828"))
 
-    # 3. Resultado Contábil (DRE)
-    elementos.append(Paragraph("Resultado Contábil (DRE do mês)", secao))
-    elementos.append(tabela_resumo([
-        ["Receita total", _fmt_brl(financeiro["receita_total"])],
-        ["Despesas totais", _fmt_brl(financeiro["despesas_totais"])],
-        ["Resultado líquido", _fmt_brl(financeiro["resultado_liquido"])],
-        ["Margem líquida", f"{financeiro['margem']:.1f}%"],
-    ]))
-
-    # 4. Energia e clientes
+    # 3. Energia e clientes
     elementos.append(Paragraph("Energia e Clientes", secao))
     elementos.append(tabela_resumo([
         ["Contratos ativos", str(energia["contratos_ativos"])],
@@ -287,7 +251,7 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
         ["Saldo de créditos acumulado", _fmt_kwh(energia["saldo_creditos"])],
     ]))
 
-    # 5. Financiamento e contas a pagar
+    # 4. Financiamento e contas a pagar
     elementos.append(Paragraph("Financiamento e Contas a Pagar", secao))
     linhas_fin = []
     if fin_contas["tem_financiamento"]:
@@ -313,7 +277,7 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
     ])
     elementos.append(tabela_resumo(linhas_fin))
 
-    # 6. Documentos
+    # 5. Documentos
     elementos.append(Paragraph("Documentos Anexados", secao))
     if documentos:
         linhas_doc = [["Nome", "Data de upload"]] + [
