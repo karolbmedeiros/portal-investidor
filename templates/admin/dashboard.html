@@ -102,6 +102,11 @@
     Limpar filtro
     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg>
   </a>
+  {% if ativo_selecionado.tipo == 'usina' %}
+  <a href="{{ url_for('admin.usina_relatorio_pdf', usina_id=ativo_selecionado.id) }}" class="db-filtro-limpar" style="margin-left:8px;">
+    Gerar Relatório
+  </a>
+  {% endif %}
 </div>
 {% if ativo_selecionado.tipo == 'usina' %}
 <div class="dtab-bar" style="margin-bottom:20px;">

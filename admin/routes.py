@@ -1,6 +1,6 @@
 from flask import (
     Blueprint, render_template, request,
-    redirect, url_for, flash, abort, jsonify,
+    redirect, url_for, flash, abort, jsonify, send_file,
 )
 from middleware.auth_guard import requer_admin
 from services import investidor_service as inv_svc, auth_service
@@ -716,6 +716,20 @@ def usina_editar(usina_id):
     atualizar_usina(usina_id, campos)
     flash("Usina atualizada.", "sucesso")
     return redirect(url_for("admin.usina_detalhe", usina_id=usina_id))
+
+
+@admin_bp.route("/usina/<usina_id>/relatorio.pdf")
+@requer_admin
+def usina_relatorio_pdf(usina_id):
+    from datetime import date
+    from services.usina_service import buscar_usina
+    from services.relatorio_service import gerar_relatorio_usina_pdf
+    usina = buscar_usina(usina_id)
+    if not usina:
+        abort(404)
+    buffer = gerar_relatorio_usina_pdf(usina_id)
+    nome_arquivo = f"relatorio_{usina['nome'].replace(' ', '_')}_{date.today().strftime('%Y-%m')}.pdf"
+    return send_file(buffer, mimetype="application/pdf", as_attachment=True, download_name=nome_arquivo)
 
 
 @admin_bp.route("/usina/<usina_id>/distribuicao/nova", methods=["POST"])
