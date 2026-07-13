@@ -763,6 +763,23 @@ def listar_contas_da_usina(usina_id: str) -> list:
         return []
 
 
+def calcular_saldo_usina_em(usina_id: str, data_ate: str) -> float:
+    """Saldo bancário operacional (soma de todas as contas ativas da usina) até uma
+    data (inclusive), no mesmo critério da aba Extrato: saldo_inicial + Σ(±valor,
+    sinal por 'tipo'), excluindo lançamentos neutros (fundo automático)."""
+    total = 0.0
+    for conta in listar_contas_da_usina(usina_id):
+        acc = float(conta.get("saldo_inicial") or 0)
+        for l in listar_lancamentos(usina_id, conta_id=conta["id"]):
+            data = l.get("data_transacao")
+            if not data or data[:10] > data_ate or l.get("_neutro"):
+                continue
+            v = abs(l.get("valor") or 0)
+            acc += v if l.get("tipo") == "credito" else -v
+        total += acc
+    return round(total, 2)
+
+
 def _nomes_transferencia() -> set:
     """Conjunto de nomes de entidades conhecidas para detectar transferências entre contas.
 

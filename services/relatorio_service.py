@@ -1,6 +1,6 @@
 """Geração de relatório PDF resumido por usina (admin)."""
 import io
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -12,6 +12,7 @@ from services.usina_service import (
     buscar_usina, clientes_da_usina, leituras_detalhadas,
     saldo_creditos_da_usina, financiamentos_da_usina,
     contas_pagar_da_usina, documentos_da_usina,
+    listar_contas_da_usina, listar_lancamentos, calcular_saldo_usina_em,
 )
 from services.dre_service import listar_secoes_dre, calcular_dre
 from services.supabase_client import get_service_client
@@ -39,6 +40,44 @@ def _fmt_data(v) -> str:
 def _fmt_kwh(v: float) -> str:
     s = f"{abs(v or 0):,.0f}".replace(",", ".")
     return f"{s} kWh"
+
+
+def _dados_fluxo_caixa(usina_id: str, ref_mes: str) -> dict:
+    ano, mes = (int(x) for x in ref_mes.split("-"))
+    ultimo_dia_mes_anterior = date(ano, mes, 1) - timedelta(days=1)
+    hoje = date.today()
+
+    saldo_inicio = calcular_saldo_usina_em(usina_id, ultimo_dia_mes_anterior.isoformat())
+    saldo_atual = calcular_saldo_usina_em(usina_id, hoje.isoformat())
+
+    entradas: dict = {}
+    saidas: dict = {}
+    for conta in listar_contas_da_usina(usina_id):
+        for l in listar_lancamentos(usina_id, conta_id=conta["id"]):
+            data = l.get("data_transacao")
+            if not data or data[:7] != ref_mes or l.get("_neutro"):
+                continue
+            cat = l.get("categorias_financeiras") or {}
+            nome_cat = cat.get("nome") or "Sem categoria"
+            v = abs(l.get("valor") or 0)
+            if l.get("tipo") == "credito":
+                entradas[nome_cat] = entradas.get(nome_cat, 0.0) + v
+            else:
+                saidas[nome_cat] = saidas.get(nome_cat, 0.0) + v
+
+    contas_pagar = contas_pagar_da_usina(usina_id, ref_mes)
+
+    return {
+        "saldo_inicio": saldo_inicio,
+        "saldo_atual": saldo_atual,
+        "variacao": round(saldo_atual - saldo_inicio, 2),
+        "entradas": entradas,
+        "saidas": saidas,
+        "total_entradas": round(sum(entradas.values()), 2),
+        "total_saidas": round(sum(saidas.values()), 2),
+        "nao_pago_total": contas_pagar["aberto"],
+        "nao_pago_qtd": contas_pagar["n_total"] - contas_pagar["n_pagas"],
+    }
 
 
 def _dados_financeiro(usina_id: str, ref_mes: str) -> dict:
@@ -137,6 +176,7 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
     mes_nome = MESES_PT[date.today().month]
     ano = date.today().year
 
+    fluxo_caixa = _dados_fluxo_caixa(usina_id, ref_mes)
     financeiro = _dados_financeiro(usina_id, ref_mes)
     energia = _dados_energia_clientes(usina_id, ref_mes)
     fin_contas = _dados_financiamento_contas(usina_id)
@@ -166,6 +206,25 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
         ]))
         return t
 
+    def tabela_categorias(titulo_col: str, valores: dict, total: float, cor_header: str):
+        linhas = [[titulo_col, "Valor"]] + [
+            [k, _fmt_brl(v)] for k, v in sorted(valores.items(), key=lambda x: -x[1])
+        ] + [["Total", _fmt_brl(total)]]
+        t = Table(linhas, colWidths=[11 * cm, 5 * cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(cor_header)),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+            ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.4, colors.HexColor("#e0e0e0")),
+            ("LINEABOVE", (0, -1), (-1, -1), 0.8, colors.black),
+            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        return t
+
     elementos = []
     elementos.append(Paragraph("Relatório de Usina", titulo))
     elementos.append(Paragraph(f"{usina['nome']} &nbsp;&middot;&nbsp; {mes_nome}/{ano}", subtitulo))
@@ -180,8 +239,35 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
         ["Período de referência", f"{mes_nome}/{ano}"],
     ]))
 
-    # 2. Financeiro
-    elementos.append(Paragraph("Financeiro (DRE do mês)", secao))
+    # 2. Fluxo de Caixa do Mês
+    elementos.append(Paragraph("Fluxo de Caixa do Mês", secao))
+    cor_variacao = "#2e7d32" if fluxo_caixa["variacao"] >= 0 else "#c62828"
+    elementos.append(tabela_resumo([
+        ["Saldo no início do mês", _fmt_brl(fluxo_caixa["saldo_inicio"])],
+        ["(+) Entradas do mês", _fmt_brl(fluxo_caixa["total_entradas"])],
+        ["(-) Saídas do mês", _fmt_brl(fluxo_caixa["total_saidas"])],
+        ["(=) Saldo atual", _fmt_brl(fluxo_caixa["saldo_atual"])],
+        [
+            "Variação do saldo no mês",
+            Paragraph(
+                _fmt_brl(fluxo_caixa["variacao"]),
+                ParagraphStyle("variacao", parent=normal, textColor=colors.HexColor(cor_variacao), fontSize=9.5, alignment=2, fontName="Helvetica-Bold"),
+            ),
+        ],
+        [
+            "Ainda não pago (contas em aberto no mês)",
+            f"{_fmt_brl(fluxo_caixa['nao_pago_total'])} ({fluxo_caixa['nao_pago_qtd']} conta(s))",
+        ],
+    ]))
+    if fluxo_caixa["entradas"]:
+        elementos.append(Spacer(1, 8))
+        elementos.append(tabela_categorias("Entradas por Categoria", fluxo_caixa["entradas"], fluxo_caixa["total_entradas"], "#2e7d32"))
+    if fluxo_caixa["saidas"]:
+        elementos.append(Spacer(1, 8))
+        elementos.append(tabela_categorias("Saídas por Categoria", fluxo_caixa["saidas"], fluxo_caixa["total_saidas"], "#c62828"))
+
+    # 3. Resultado Contábil (DRE)
+    elementos.append(Paragraph("Resultado Contábil (DRE do mês)", secao))
     elementos.append(tabela_resumo([
         ["Receita total", _fmt_brl(financeiro["receita_total"])],
         ["Despesas totais", _fmt_brl(financeiro["despesas_totais"])],
@@ -189,7 +275,7 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
         ["Margem líquida", f"{financeiro['margem']:.1f}%"],
     ]))
 
-    # 3. Energia e clientes
+    # 4. Energia e clientes
     elementos.append(Paragraph("Energia e Clientes", secao))
     elementos.append(tabela_resumo([
         ["Contratos ativos", str(energia["contratos_ativos"])],
@@ -201,7 +287,7 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
         ["Saldo de créditos acumulado", _fmt_kwh(energia["saldo_creditos"])],
     ]))
 
-    # 4. Financiamento e contas a pagar
+    # 5. Financiamento e contas a pagar
     elementos.append(Paragraph("Financiamento e Contas a Pagar", secao))
     linhas_fin = []
     if fin_contas["tem_financiamento"]:
@@ -227,7 +313,7 @@ def gerar_relatorio_usina_pdf(usina_id: str) -> io.BytesIO:
     ])
     elementos.append(tabela_resumo(linhas_fin))
 
-    # 5. Documentos
+    # 6. Documentos
     elementos.append(Paragraph("Documentos Anexados", secao))
     if documentos:
         linhas_doc = [["Nome", "Data de upload"]] + [
