@@ -1,3 +1,5 @@
+from datetime import date
+
 from services.supabase_client import get_service_client
 
 
@@ -272,3 +274,9 @@ def calcular_dre(usina_id: str, mes_inicio: str, mes_fim: str, secoes: list = No
         "lancamentos": lancs_por_secao,
         "naturezas": naturezas_por_secao,
     }
+
+
+def periodo_padrao() -> tuple:
+    """Intervalo padrão do DRE: de janeiro até o mês corrente do ano atual."""
+    hoje = date.today()
+    return f"{hoje.year}-01", f"{hoje.year}-{hoje.month:02d}"

@@ -331,15 +331,15 @@ def home():
         except Exception:
             pass
 
-    # Faturas pendentes de carros (lido direto do Excel)
+    # Faturas pendentes de carros (tabela contas_receber_frota)
     faturas_carros = []
     lancamentos_carros = []
     chart_fluxo_carros_dates = []
     chart_fluxo_carros_pts = []
     if ativo_tipo == "carros" and empresa_carros_sel:
         try:
-            from services.veiculos_service import contas_receber_carros_excel
-            faturas_carros = contas_receber_carros_excel(empresa_carros_sel["nome"])
+            from services.veiculos_service import contas_receber_empresa
+            faturas_carros = contas_receber_empresa(empresa_carros_sel["nome"])
         except Exception:
             pass
         try:
@@ -477,10 +477,10 @@ def home():
     dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     dre_mes_ini = dre_mes_fim = ""
     if tem_dre and tab == "dre":
-        from services.dre_service import listar_secoes_dre, calcular_dre
-        _ano_dre = date.today().year
-        dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre}-01"
-        dre_mes_fim = request.args.get("dre_mes_fim") or f"{_ano_dre}-06"
+        from services.dre_service import listar_secoes_dre, calcular_dre, periodo_padrao
+        _dre_ini_pad, _dre_fim_pad = periodo_padrao()
+        dre_mes_ini = request.args.get("dre_mes_ini") or _dre_ini_pad
+        dre_mes_fim = request.args.get("dre_mes_fim") or _dre_fim_pad
         dre_secoes  = listar_secoes_dre()
         _dre        = calcular_dre(ativo_id, dre_mes_ini, dre_mes_fim, secoes=dre_secoes)
         dre_valores = _dre["valores"]
@@ -557,8 +557,7 @@ def dre_fragment():
     Evita que entrar na aba DRE recompute clientes/extrato/benchmarks/P&L/etc.,
     que é o que tornava o carregamento da DRE lento.
     """
-    from datetime import date
-    from services.dre_service import listar_secoes_dre, calcular_dre
+    from services.dre_service import listar_secoes_dre, calcular_dre, periodo_padrao
 
     u = usuario_logado()
     usina_ids = u.get("usina_ids", [])
@@ -570,9 +569,9 @@ def dre_fragment():
         abort(403)
 
     conta_id = request.args.get("conta_id")
-    ano_dre  = date.today().year
-    dre_mes_ini = request.args.get("dre_mes_ini") or f"{ano_dre}-01"
-    dre_mes_fim = request.args.get("dre_mes_fim") or f"{ano_dre}-06"
+    _dre_ini_pad, _dre_fim_pad = periodo_padrao()
+    dre_mes_ini = request.args.get("dre_mes_ini") or _dre_ini_pad
+    dre_mes_fim = request.args.get("dre_mes_fim") or _dre_fim_pad
 
     dre_secoes = listar_secoes_dre()
     _dre = calcular_dre(ativo_id, dre_mes_ini, dre_mes_fim, secoes=dre_secoes)

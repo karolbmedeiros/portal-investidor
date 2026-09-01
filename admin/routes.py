@@ -13,11 +13,11 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 @admin_bp.route("/")
 @requer_admin
 def dashboard():
-    from datetime import date as _date_dre
+    from services.dre_service import periodo_padrao as _periodo_dre_padrao
     from services.usina_service import listar_usinas
     from services.veiculos_service import listar_empresas_veiculos
 
-    _ano_dre_default = _date_dre.today().year
+    _dre_ini_pad, _dre_fim_pad = _periodo_dre_padrao()
     all_usinas  = listar_usinas()
     all_carros  = listar_empresas_veiculos()
 
@@ -233,8 +233,8 @@ def dashboard():
                     "cdi_aa_pct": round(_b["cdi_aa"]*100,1),
                     "poupanca_aa_pct": round(_b["poupanca_aa"]*100,2),
                 }
-                from services.veiculos_service import contas_receber_carros_excel
-                faturas_carros = contas_receber_carros_excel(_emp_c["nome"])
+                from services.veiculos_service import contas_receber_empresa
+                faturas_carros = contas_receber_empresa(_emp_c["nome"])
             except Exception:
                 pass
 
@@ -427,8 +427,8 @@ def dashboard():
         dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
         if tab == "dre":
             from services.dre_service import listar_secoes_dre, calcular_dre
-            _dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01"
-            _dre_mes_fim = request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06"
+            _dre_mes_ini = request.args.get("dre_mes_ini") or _dre_ini_pad
+            _dre_mes_fim = request.args.get("dre_mes_fim") or _dre_fim_pad
             dre_secoes = listar_secoes_dre()
             _dre = calcular_dre(ativo_id, _dre_mes_ini, _dre_mes_fim, secoes=dre_secoes)
             dre_valores = _dre["valores"]
@@ -520,8 +520,8 @@ def dashboard():
         dre_meses=dre_meses,
         dre_percentuais=dre_percentuais,
         dre_naturezas=dre_naturezas,
-        dre_mes_ini=request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01",
-        dre_mes_fim=request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06",
+        dre_mes_ini=request.args.get("dre_mes_ini") or _dre_ini_pad,
+        dre_mes_fim=request.args.get("dre_mes_fim") or _dre_fim_pad,
         participacoes=_parts if (ativo_id and ativo_tipo == "usina") else [],
         empresa_carros_sel=empresa_carros_sel,
         valor_liquido_recebido=valor_liquido_recebido,
@@ -544,15 +544,14 @@ def dre_fragment():
     Evita que entrar na aba DRE recompute clientes/extrato/benchmarks/P&L/etc.,
     que é o que tornava o carregamento da DRE lento.
     """
-    from datetime import date as _date_dre2
-    from services.dre_service import listar_secoes_dre, calcular_dre
+    from services.dre_service import listar_secoes_dre, calcular_dre, periodo_padrao
 
     ativo_id   = request.args.get("ativo_id", "")
     ativo_tipo = request.args.get("ativo_tipo", "usina")
     conta_id   = request.args.get("conta_id")
-    ano_dre    = _date_dre2.today().year
-    dre_mes_ini = request.args.get("dre_mes_ini") or f"{ano_dre}-01"
-    dre_mes_fim = request.args.get("dre_mes_fim") or f"{ano_dre}-06"
+    _dre_ini_pad, _dre_fim_pad = periodo_padrao()
+    dre_mes_ini = request.args.get("dre_mes_ini") or _dre_ini_pad
+    dre_mes_fim = request.args.get("dre_mes_fim") or _dre_fim_pad
 
     dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     if ativo_id and ativo_tipo == "usina":
@@ -588,11 +587,12 @@ def usina_detalhe(usina_id):
         rentabilidade_investidor, financiamentos_da_usina,
     )
     from services.benchmark_service import comparativo_benchmarks
+    from services.dre_service import periodo_padrao
     usina = buscar_usina(usina_id)
     if not usina:
         abort(404)
 
-    _ano_dre_default = date.today().year
+    _dre_ini_pad, _dre_fim_pad = periodo_padrao()
 
     tab = request.args.get("tab", "clientes")
     _valid_tabs = ("clientes", "financiamento", "extrato", "dre",
@@ -663,8 +663,8 @@ def usina_detalhe(usina_id):
     dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
     if tab == "dre":
         from services.dre_service import listar_secoes_dre, calcular_dre
-        dre_mes_ini = request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01"
-        dre_mes_fim = request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06"
+        dre_mes_ini = request.args.get("dre_mes_ini") or _dre_ini_pad
+        dre_mes_fim = request.args.get("dre_mes_fim") or _dre_fim_pad
         dre_secoes   = listar_secoes_dre()
         _dre         = calcular_dre(usina_id, dre_mes_ini, dre_mes_fim)
         dre_valores  = _dre["valores"]
@@ -703,8 +703,8 @@ def usina_detalhe(usina_id):
         dre_meses=dre_meses,
         dre_percentuais=dre_percentuais,
         dre_naturezas=dre_naturezas,
-        dre_mes_ini=request.args.get("dre_mes_ini") or f"{_ano_dre_default}-01",
-        dre_mes_fim=request.args.get("dre_mes_fim") or f"{_ano_dre_default}-06",
+        dre_mes_ini=request.args.get("dre_mes_ini") or _dre_ini_pad,
+        dre_mes_fim=request.args.get("dre_mes_fim") or _dre_fim_pad,
     )
 
 
