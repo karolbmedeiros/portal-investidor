@@ -165,7 +165,9 @@ def home():
                     "valor_semana":  info.get("valor_semana", 0),
                 })
 
-            total_liq = sum(m["valor_pago"] for m in motoristas_recebimentos)
+            # Caução fica de fora: é valor guardado para devolver ao fim do
+            # contrato, não receita da frota.
+            total_liq = sum(m.get("alugueis", m["valor_pago"]) for m in motoristas_recebimentos)
             if total_liq > 0:
                 valor_liquido_recebido = round(total_liq, 2)
 

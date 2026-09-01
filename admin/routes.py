@@ -127,7 +127,9 @@ def dashboard():
                         "valor_locacao": _info.get("valor_locacao", 0.0),
                         "valor_semana":  _info.get("valor_semana", 0),
                     })
-                _total_liq = sum(_m["valor_pago"] for _m in motoristas_recebimentos)
+                # Caução fica de fora: é valor guardado para devolver ao fim do
+                # contrato, não receita da frota.
+                _total_liq = sum(_m.get("alugueis", _m["valor_pago"]) for _m in motoristas_recebimentos)
                 if _total_liq > 0:
                     valor_liquido_recebido = round(_total_liq, 2)
                 _por_placa = recebimentos_da_empresa(_emp_c)
