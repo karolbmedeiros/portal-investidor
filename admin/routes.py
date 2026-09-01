@@ -92,55 +92,51 @@ def dashboard():
                 from datetime import timedelta, date as _date_c
                 _VALOR_SEMANA = {"TSW": 1200, "SSW": 800, "STX": 800}
                 from services.veiculos_service import contratos_por_empresa
-                _contratos = contratos_por_empresa(_emp_c["nome"])
-                _hoje_c      = _date_c.today()
-                _ultima_seg  = _hoje_c - timedelta(days=_hoje_c.weekday())
-                def _contar_seg(ini, ate):
-                    dias = (7 - ini.weekday()) % 7
-                    prim = ini + timedelta(days=dias)
-                    if prim > ate: return 0
-                    ult  = ate - timedelta(days=ate.weekday())
-                    return (ult - prim).days // 7 + 1
-                _pref_emp = {(v.get("placa") or "").replace("-","")[:3].upper()
-                             for v in _emp_c.get("veiculos", [])}
-                _total_liq = 0.0
+                # Valor recebido por motorista sai do extrato da frota. Antes era
+                # estimado (semanas desde o início do contrato x valor semanal),
+                # o que ignorava atraso, adesão e caução.
+                from services.veiculos_service import recebido_por_motorista
                 from datetime import datetime as _dt_c
+                _contratos = contratos_por_empresa(_emp_c["nome"])
+                _info_contrato = {}
                 for _c in _contratos:
-                    _placa_c = str(_c.get("placa") or "").replace("-","").upper()
-                    _pref_c  = _placa_c[:3]
-                    if _pref_c not in _pref_emp: continue
-                    _vsem = _VALOR_SEMANA.get(_pref_c, 0)
-                    _ini_raw = _c.get("inicio") or ""
-                    _ini_dt  = None
+                    _nome_c = (_c.get("cliente") or "").strip().upper()
+                    if not _nome_c:
+                        continue
+                    _ini_dt = None
                     for _fmt in ["%d/%m/%Y", "%Y-%m-%d"]:
-                        try: _ini_dt = _dt_c.strptime(_ini_raw, _fmt).date(); break
-                        except Exception: pass
-                    if not _ini_dt: continue
-                    _nseg = _contar_seg(_ini_dt, _ultima_seg)
-                    _pago = _nseg * _vsem
-                    _total_liq += _pago
-                    motoristas_recebimentos.append({
-                        "cliente":      _c.get("cliente") or "—",
-                        "placa":        _c.get("placa")   or "—",
-                        "inicio":       _ini_dt.strftime("%d/%m/%Y"),
+                        try:
+                            _ini_dt = _dt_c.strptime(_c.get("inicio") or "", _fmt).date()
+                            break
+                        except Exception:
+                            pass
+                    _placa_c = str(_c.get("placa") or "").replace("-", "").upper()
+                    _info_contrato[_nome_c] = {
+                        "placa":         _c.get("placa") or "\u2014",
+                        "inicio":        _ini_dt.strftime("%d/%m/%Y") if _ini_dt else "\u2014",
                         "valor_locacao": float(_c.get("valor_locacao") or 0),
-                        "n_semanas":    _nseg,
-                        "valor_semana": _vsem,
-                        "valor_pago":   _pago,
+                        "valor_semana":  _VALOR_SEMANA.get(_placa_c[:3], 0),
+                    }
+
+                for _m in recebido_por_motorista(_emp_c["nome"]):
+                    _info = _info_contrato.get(_m["cliente"], {})
+                    motoristas_recebimentos.append({
+                        **_m,
+                        "placa":         _info.get("placa", "\u2014"),
+                        "inicio":        _info.get("inicio", "\u2014"),
+                        "valor_locacao": _info.get("valor_locacao", 0.0),
+                        "valor_semana":  _info.get("valor_semana", 0),
                     })
-                motoristas_recebimentos.sort(key=lambda x: -x["valor_pago"])
+                _total_liq = sum(_m["valor_pago"] for _m in motoristas_recebimentos)
                 if _total_liq > 0:
                     valor_liquido_recebido = round(_total_liq, 2)
                 _por_placa = recebimentos_da_empresa(_emp_c)
-                _por_mes_c: dict = {}
-                for _rows in _por_placa.values():
-                    for _row in _rows:
-                        _ym = str(_row.get("data_semana") or "")[:7]
-                        if not _ym: continue
-                        _por_mes_c[_ym] = _por_mes_c.get(_ym, 0.0) + float(_row.get("taxa_valor") or 0) / 0.15
+                # Recebido por mês sai do extrato da conta da frota, não mais de
+                # sob_adm_recebimentos (preenchida à mão, parada em 22/06).
+                from services.veiculos_service import recebido_por_mes
                 recebimentos_por_mes_carros = [
-                    {"mes": _MESES_ADM[int(_ym.split("-")[1]) - 1], "valor": round(_v, 2)}
-                    for _ym, _v in sorted(_por_mes_c.items())
+                    {"mes": _MESES_ADM[int(_r["mes"].split("-")[1]) - 1], "valor": _r["valor"]}
+                    for _r in recebido_por_mes(_emp_c["nome"])
                 ]
                 _sem_ref = max(
                     (_r["data_semana"] for _rs in _por_placa.values() for _r in _rs if _r.get("data_semana")),
@@ -870,7 +866,19 @@ def upload_planilha_carros():
         flash("Selecione um arquivo.", "erro")
         return redirect(url_for("admin.configuracoes") + "#planilhas-carros")
     res = upload_planilha(arquivo.filename, arquivo.read())
-    flash(f"'{arquivo.filename}' atualizado." if res["ok"] else f"Erro: {res.get('erro')}", "sucesso" if res["ok"] else "erro")
+    if not res["ok"]:
+        flash(f"Erro: {res.get('erro')}", "erro")
+        return redirect(url_for("admin.configuracoes") + "#planilhas-carros")
+
+    aviso = f"'{arquivo.filename}' atualizado."
+    # Contas a receber não é lida do Excel em tempo de exibição: a tela usa a
+    # tabela contas_receber_frota, então a planilha precisa ser importada.
+    if "CONTAS-A-RECEBER" in arquivo.filename.upper():
+        from services.veiculos_service import importar_contas_receber_frota
+        imp = importar_contas_receber_frota()
+        aviso += (f" {imp['gravados']} faturas importadas." if imp["ok"]
+                  else f" Falha ao importar: {imp.get('erro')}")
+    flash(aviso, "sucesso")
     return redirect(url_for("admin.configuracoes") + "#planilhas-carros")
 
 
@@ -1190,6 +1198,20 @@ def classificar_lancamento_carro():
     dados = request.get_json(force=True, silent=True) or {}
     resultado = classificar_lancamento_carros(dados.get("id"), dados.get("natureza"), dados.get("splits"))
     return jsonify(resultado)
+
+
+@admin_bp.route("/carros/sincronizar-extratos", methods=["POST"])
+@requer_admin
+def sincronizar_extratos_carros():
+    """Traz para os lançamentos da frota o que foi importado em asaas_extratos.
+
+    Idempotente (dedup por tx_id), então pode ser chamada sempre que um extrato
+    novo for importado no Dashboard-Ativuz.
+    """
+    from flask import jsonify
+    from services.veiculos_service import sincronizar_extratos_asaas
+    frota = (request.get_json(force=True, silent=True) or {}).get("frota")
+    return jsonify(sincronizar_extratos_asaas(frota))
 
 
 # ── Salvar dados do cliente ───────────────────────────────────────────────────

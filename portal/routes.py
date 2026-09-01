@@ -122,9 +122,6 @@ def home():
     if ativo_tipo == "carros" and ativo_id in carros_por_slug:
         try:
             from services.veiculos_service import recebimentos_da_empresa, contratos_por_empresa
-            from datetime import timedelta
-            hoje = date.today()
-
             # Contratos da empresa (lido direto do Excel)
             _VALOR_SEMANA = {"TSW": 1200, "SSW": 800, "STX": 800}
             try:
@@ -132,53 +129,43 @@ def home():
             except Exception:
                 _contratos = []
 
-            # Última segunda-feira (pagamentos já devidos)
-            _ultima_seg = hoje - timedelta(days=hoje.weekday())
+            # Valor recebido por motorista sai do extrato da frota. Antes era
+            # estimado (semanas desde o início do contrato x valor semanal),
+            # o que ignorava atraso, adesão e caução.
+            from services.veiculos_service import recebido_por_motorista
+            from datetime import datetime as _dt
 
-            def _contar_segundas(inicio_dt, ate):
-                dias = (7 - inicio_dt.weekday()) % 7
-                primeira = inicio_dt + timedelta(days=dias)
-                if primeira > ate:
-                    return 0
-                ultima = ate - timedelta(days=ate.weekday())
-                return (ultima - primeira).days // 7 + 1
-
-            _prefixos_empresa = set()
-            for ev in empresa_carros_sel.get("veiculos", []):
-                _prefixos_empresa.add((ev.get("placa") or "").replace("-","")[:3].upper())
-
-            total_liq = 0.0
+            info_contrato = {}
             for c in _contratos:
-                placa = str(c.get("placa") or "").replace("-","").upper()
-                pref = placa[:3]
-                if pref not in _prefixos_empresa:
+                nome_c = (c.get("cliente") or "").strip().upper()
+                if not nome_c:
                     continue
-                valor_sem = _VALOR_SEMANA.get(pref, 0)
-                inicio_raw = c.get("inicio") or ""
                 inicio_dt = None
                 for fmt in ["%d/%m/%Y", "%Y-%m-%d"]:
                     try:
-                        from datetime import datetime as _dt
-                        inicio_dt = _dt.strptime(inicio_raw, fmt).date()
+                        inicio_dt = _dt.strptime(c.get("inicio") or "", fmt).date()
                         break
                     except Exception:
                         pass
-                if not inicio_dt:
-                    continue
-                n_seg = _contar_segundas(inicio_dt, _ultima_seg)
-                pago = n_seg * valor_sem
-                total_liq += pago
-                motoristas_recebimentos.append({
-                    "cliente": c.get("cliente") or "—",
-                    "placa": c.get("placa") or "—",
-                    "inicio": inicio_dt.strftime("%d/%m/%Y") if inicio_dt else "—",
+                placa = str(c.get("placa") or "").replace("-", "").upper()
+                info_contrato[nome_c] = {
+                    "placa":         c.get("placa") or "\u2014",
+                    "inicio":        inicio_dt.strftime("%d/%m/%Y") if inicio_dt else "\u2014",
                     "valor_locacao": float(c.get("valor_locacao") or 0),
-                    "n_semanas": n_seg,
-                    "valor_semana": valor_sem,
-                    "valor_pago": pago,
+                    "valor_semana":  _VALOR_SEMANA.get(placa[:3], 0),
+                }
+
+            for m in recebido_por_motorista(empresa_carros_sel["nome"]):
+                info = info_contrato.get(m["cliente"], {})
+                motoristas_recebimentos.append({
+                    **m,
+                    "placa":         info.get("placa", "\u2014"),
+                    "inicio":        info.get("inicio", "\u2014"),
+                    "valor_locacao": info.get("valor_locacao", 0.0),
+                    "valor_semana":  info.get("valor_semana", 0),
                 })
 
-            motoristas_recebimentos.sort(key=lambda x: -x["valor_pago"])
+            total_liq = sum(m["valor_pago"] for m in motoristas_recebimentos)
             if total_liq > 0:
                 valor_liquido_recebido = round(total_liq, 2)
 
@@ -187,19 +174,13 @@ def home():
             if _ti:
                 total_investido = _ti
 
-            # Recebido bruto por mês (agrupa taxa_valor / 0.15)
             por_placa = recebimentos_da_empresa(empresa_carros_sel)
-            por_mes: dict = {}
-            for rows in por_placa.values():
-                for row in rows:
-                    ym = str(row.get("data_semana") or "")[:7]
-                    if not ym:
-                        continue
-                    v = float(row.get("taxa_valor") or 0) / 0.15
-                    por_mes[ym] = por_mes.get(ym, 0.0) + v
+            # Recebido por mês sai do extrato da conta da frota, não mais de
+            # sob_adm_recebimentos (preenchida à mão, parada em 22/06).
+            from services.veiculos_service import recebido_por_mes
             recebimentos_por_mes_carros = [
-                {"mes": _MESES[int(ym.split("-")[1]) - 1], "valor": round(v, 2)}
-                for ym, v in sorted(por_mes.items())
+                {"mes": _MESES[int(r["mes"].split("-")[1]) - 1], "valor": r["valor"]}
+                for r in recebido_por_mes(empresa_carros_sel["nome"])
             ]
 
             # Status dos veículos (ativo vs vago/manutenção)

@@ -90,7 +90,7 @@ def listar_lancamentos_carros(empresa_nome: str) -> list:
         sb = get_financeiro_client()
         rows = (
             sb.table("lancamentos_bancarios")
-            .select("id,data_transacao,mes_competencia,descricao,descricao_original,valor,tipo,conciliado,observacoes")
+            .select("id,fitid,data_transacao,mes_competencia,descricao,descricao_original,valor,tipo,conciliado,observacoes")
             .eq("conta_bancaria_id", conta_id)
             .order("data_transacao", desc=True)
             .execute()
@@ -170,10 +170,8 @@ def upload_pdf_cliente(ref_id: str, nome_arquivo: str, conteudo: bytes,
     except Exception as e:
         return {"ok": False, "erro": str(e)}
 
-_CONTAS_RECEBER_PATH    = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/CONTAS-A-RECEBER.xlsx"
 _CONTRATOS_LOCACAO_PATH = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/Contratos de Locação.xlsx"
 _STORAGE_BUCKET = "contratos"
-_STORAGE_CONTAS  = "planilhas/CONTAS-A-RECEBER.xlsx"
 _STORAGE_CONTRATOS = "planilhas/Contratos de Locacao.xlsx"
 
 
@@ -266,47 +264,8 @@ def contratos_por_empresa(empresa_nome: str) -> list:
 
 
 def contas_receber_carros_excel(empresa_nome: str) -> list:
-    """Lê CONTAS-A-RECEBER.xlsx diretamente, filtrando pela empresa."""
-    import openpyxl
-    from datetime import date
-
-    unidades = [u for u, e in _UNIDADE_EMPRESA.items() if e == empresa_nome]
-    if not unidades:
-        return []
-
-    try:
-        wb = openpyxl.load_workbook(_planilha_path(_CONTAS_RECEBER_PATH, _STORAGE_CONTAS), data_only=True)
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
-    except Exception as e:
-        print(f"[contas_receber_carros_excel] erro ao abrir arquivo: {e}")
-        return []
-
-    resultado = []
-    hoje = date.today()
-    for r in rows[5:]:
-        if not r[0]:
-            continue
-        unidade = str(r[17] or "").strip()
-        if unidade not in unidades:
-            continue
-        venc = r[3]
-        if hasattr(venc, "date"):
-            venc = venc.date()
-        venc_str = venc.isoformat() if venc else None
-        dias = (venc - hoje).days if venc else None
-        resultado.append({
-            "numero_documento": str(r[9] or ""),
-            "cliente":          str(r[11] or r[12] or ""),
-            "data_vencimento":  venc_str,
-            "valor":            float(r[18] or 0),
-            "situacao":         str(r[13] or ""),
-            "tipo_fatura":      str(r[16] or ""),
-            "dias_vencimento":  dias,
-            "faixa_vencimento": str(r[7] or ""),
-            "unidade":          unidade,
-        })
-    return resultado
+    """Compat: mantido para chamadas antigas. Lê da tabela, não mais do Excel."""
+    return contas_receber_empresa(empresa_nome)
 
 
 _EMPRESA_INFO = {
@@ -467,21 +426,486 @@ def recebimentos_da_empresa(empresa):
 
 
 def contas_receber_empresa(empresa_nome: str) -> list:
-    """Faturas em aberto da empresa na tabela contas_receber_frota."""
-    info = _EMPRESA_INFO.get(empresa_nome, {})
-    unidade = info.get("unidade")
-    if not unidade:
+    """Faturas em aberto da empresa na tabela contas_receber_frota.
+
+    Fonte única de contas a receber de carros — a tabela é alimentada pelo
+    Dashboard-Ativuz a partir da planilha CONTAS-A-RECEBER.xlsx.
+    """
+    from datetime import date, datetime
+
+    unidades = [u for u, e in _UNIDADE_EMPRESA.items() if e == empresa_nome]
+    if not unidades:
         return []
     try:
         sb = get_financeiro_client()
-        res = (
+        # A tabela acumula todos os snapshots (upsert por cliente|vencimento, sem
+        # delete), então faturas já quitadas continuam lá. Só o último lote
+        # importado representa o que está de fato em aberto.
+        ultimo = (
             sb.table("contas_receber_frota")
-            .select("numero_documento,cliente,data_vencimento,valor,situacao,tipo_fatura,dias_vencimento,faixa_vencimento")
-            .eq("unidade", unidade)
+            .select("atualizado_em")
+            .order("atualizado_em", desc=True)
+            .limit(1)
+            .execute()
+            .data
+        )
+        if not ultimo:
+            return []
+        corte = ultimo[0]["atualizado_em"][:10]  # dia da última importação
+
+        rows = (
+            sb.table("contas_receber_frota")
+            .select("numero_documento,cliente,data_vencimento,valor,situacao,"
+                    "tipo_fatura,faixa_vencimento,unidade")
+            .in_("unidade", unidades)
+            .gte("atualizado_em", corte)
             .order("data_vencimento")
             .execute()
+            .data or []
         )
-        return res.data or []
     except Exception as e:
         print(f"[contas_receber_empresa] erro: {e}")
         return []
+
+    hoje = date.today()
+    for r in rows:
+        venc = r.get("data_vencimento")
+        try:
+            r["dias_vencimento"] = (datetime.strptime(venc[:10], "%Y-%m-%d").date() - hoje).days
+        except Exception:
+            r["dias_vencimento"] = None
+        r["valor"] = float(r.get("valor") or 0)
+    return rows
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Extratos Asaas  →  lançamentos da conta da frota
+#
+# A tabela `asaas_extratos` (Supabase 2) é alimentada pelo Dashboard-Ativuz: uma
+# linha por importação de extrato, com as transações num JSON. O portal lê de
+# `lancamentos_bancarios`, uma linha por transação. A sincronização abaixo
+# converte de um formato para o outro, mantendo cada frota na sua conta.
+#
+# Idempotente: `tx_id` da Asaas vira `fitid`, então reimportar o mesmo extrato
+# (ou extratos com períodos sobrepostos) não duplica lançamento.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_EMPRESA_FROTA = {
+    "LUZ DIVINA EMPREENDIMENTOS LTDA":            "luz-divina",
+    "JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA":    "joao-paulo",
+}
+
+_FROTA_CONTA = {
+    "luz-divina": _EMPRESA_CONTA["LUZ DIVINA EMPREENDIMENTOS LTDA"],
+    "joao-paulo": _EMPRESA_CONTA["JOÃO PAULO SERVIÇOS EM CONSULTORIA LTDA"],
+}
+
+# categoria da Asaas → natureza de carros (tabela naturezas_carros).
+# Categoria fora deste mapa entra sem natureza, para classificação manual.
+_CATEGORIA_NATUREZA = {
+    "aluguel":              "Locação",
+    "adesao":               "Locação",
+    "devolucao_aluguel":    "Locação",
+    "caucao":               "Caução",
+    "devolucao_caucao":     "Caução",
+    "repasse_investidor":   "Repasse",
+    "taxa_asaas":           "Taxa ASAAS",
+    "taxa_ativuz":          "Taxa administrativa",
+    "reembolso_manutencao": "Reembolso de Manutenção",
+    "ipva":                 "IPVA",
+}
+
+
+def _data_asaas_iso(valor: str) -> str:
+    """'DD/MM/YYYY' → 'YYYY-MM-DD'. As datas vêm como texto no JSON, então
+    qualquer ordenação precisa da conversão antes."""
+    partes = (valor or "").split("/")
+    if len(partes) != 3:
+        return ""
+    d, m, a = partes
+    return f"{a}-{m.zfill(2)}-{d.zfill(2)}"
+
+
+def transacoes_asaas(frota: str) -> list:
+    """Transações de uma frota, unidas por tx_id entre todos os extratos dela.
+
+    Os extratos têm períodos sobrepostos (a mesma transação aparece em mais de
+    uma importação), por isso a união é por tx_id — vence a carga mais recente.
+    """
+    try:
+        sb = get_financeiro_client()
+        extratos = (
+            sb.table("asaas_extratos")
+            .select("frota,created_at,transacoes")
+            .eq("frota", frota)
+            .order("created_at", desc=False)
+            .execute()
+            .data or []
+        )
+    except Exception as e:
+        print(f"[transacoes_asaas] erro: {e}")
+        return []
+
+    por_tx = {}
+    for ext in extratos:
+        bruto = ext.get("transacoes")
+        itens = json.loads(bruto) if isinstance(bruto, str) else (bruto or [])
+        for item in itens:
+            tx_id = str(item.get("tx_id") or "").strip()
+            if tx_id:
+                por_tx[tx_id] = item          # carga mais recente sobrescreve
+
+    return sorted(por_tx.values(),
+                  key=lambda i: _data_asaas_iso(i.get("data")),
+                  reverse=True)
+
+
+def sincronizar_extratos_asaas(frota: str = None) -> dict:
+    """Copia as transações de `asaas_extratos` para `lancamentos_bancarios`.
+
+    Cada frota vai para a conta bancária dela — luz-divina e joao-paulo nunca
+    se misturam. Só insere o que ainda não existe (comparação por fitid), então
+    pode rodar quantas vezes for preciso.
+    """
+    frotas = [frota] if frota else list(_FROTA_CONTA)
+    sb = get_financeiro_client()
+    resultado = {"ok": True, "frotas": {}}
+
+    for slug in frotas:
+        conta_id = _FROTA_CONTA.get(slug)
+        if not conta_id:
+            resultado["frotas"][slug] = {"erro": "frota desconhecida"}
+            resultado["ok"] = False
+            continue
+
+        transacoes = transacoes_asaas(slug)
+        if not transacoes:
+            resultado["frotas"][slug] = {"total": 0, "inseridos": 0, "existentes": 0}
+            continue
+
+        try:
+            ja_existem = {
+                r["fitid"] for r in (
+                    sb.table("lancamentos_bancarios")
+                    .select("fitid")
+                    .eq("conta_bancaria_id", conta_id)
+                    .not_.is_("fitid", "null")
+                    .execute()
+                    .data or []
+                )
+            }
+        except Exception as e:
+            resultado["frotas"][slug] = {"erro": str(e)}
+            resultado["ok"] = False
+            continue
+
+        novos = []
+        for item in transacoes:
+            tx_id = str(item.get("tx_id") or "").strip()
+            data  = _data_asaas_iso(item.get("data"))
+            if not tx_id or not data or tx_id in ja_existem:
+                continue
+
+            valor     = float(item.get("valor") or 0)
+            descricao = (item.get("descricao") or "").strip()
+            natureza  = _CATEGORIA_NATUREZA.get(item.get("categoria"))
+            novos.append({
+                "conta_bancaria_id":  conta_id,
+                "fitid":              tx_id,
+                "data_transacao":     data,
+                "mes_competencia":    data[:7] + "-01",
+                "descricao":          descricao,
+                "descricao_original": descricao,
+                "valor":              valor,
+                "tipo":               "credito" if valor >= 0 else "debito",
+                "observacoes":        natureza,
+                "conciliado":         bool(natureza),
+            })
+
+        inseridos = 0
+        for i in range(0, len(novos), 200):
+            lote = novos[i:i + 200]
+            try:
+                sb.table("lancamentos_bancarios").insert(lote).execute()
+                inseridos += len(lote)
+            except Exception as e:
+                print(f"[sincronizar_extratos_asaas] {slug} lote {i}: {e}")
+                resultado["ok"] = False
+
+        resultado["frotas"][slug] = {
+            "total":      len(transacoes),
+            "inseridos":  inseridos,
+            "existentes": len(transacoes) - len(novos),
+        }
+
+    return resultado
+
+
+# Naturezas que representam dinheiro entrando pela locação. Repasse fica de
+# fora: é saída para o investidor, não recebimento da frota.
+_NATUREZAS_RECEBIMENTO = ("Locação", "Conveniência", "Juros de Locação (atraso)")
+
+
+def recebido_por_mes(empresa_nome: str) -> list:
+    """Total recebido por mês, direto do extrato da conta da frota.
+
+    Substitui a leitura de `sob_adm_recebimentos`, que era preenchida à mão e
+    parou em 22/06 — e que estimava o recebido dividindo a taxa por 0.15, em vez
+    de usar o valor real do crédito.
+
+    Retorna [{"mes": "2026-07", "valor": 12345.67}, ...] em ordem cronológica.
+    """
+    # Os lançamentos do seed original nunca foram classificados à mão, então a
+    # natureza vem da categoria da Asaas quando `observacoes` está vazio — senão
+    # o gráfico ficaria com meses faltando.
+    frota = _EMPRESA_FROTA.get(empresa_nome)
+    categoria_por_tx = {
+        str(t.get("tx_id")): t.get("categoria")
+        for t in (transacoes_asaas(frota) if frota else [])
+    }
+
+    por_mes: dict = {}
+    for lanc in listar_lancamentos_carros(empresa_nome):
+        natureza = lanc.get("observacoes") or _CATEGORIA_NATUREZA.get(
+            categoria_por_tx.get(str(lanc.get("fitid")))
+        )
+        if natureza not in _NATUREZAS_RECEBIMENTO:
+            continue
+        valor = float(lanc.get("valor") or 0)
+        mes   = (lanc.get("data_transacao") or "")[:7]
+        if valor <= 0 or not mes:
+            continue
+        por_mes[mes] = por_mes.get(mes, 0.0) + valor
+
+    return [{"mes": m, "valor": round(v, 2)} for m, v in sorted(por_mes.items())]
+
+
+_CATEGORIAS_ALUGUEL = ("aluguel", "adesao", "devolucao_aluguel")
+_CATEGORIAS_CAUCAO  = ("caucao", "devolucao_caucao")
+
+# Caução embutida no primeiro crédito, por contrato. Na luz-divina são R$ 3.000
+# por contrato; na joao-paulo a caução não é embutida — vem só das faturas
+# mapeadas em _ASAAS_FATURAS_CAUCAO.
+_CAUCAO_CONTRATO = {
+    "luz-divina": 3000.0,
+    "joao-paulo": 0.0,
+}
+
+# O campo `motorista` do extrato repete a mesma pessoa com grafias diferentes.
+# Chave em minúsculas → nome canônico.
+_ASAAS_ALIAS_MOTORISTA = {
+    "67.009.261 elionilson c. barbosa": "ELIONILSON CORDEIRO BARBOSA",
+}
+
+# Faturas que são caução mas entram no extrato como aluguel, às vezes cobradas
+# por outra empresa. Número da fatura → motorista real.
+_ASAAS_FATURAS_CAUCAO = {
+    "767966354": "ELIONILSON CORDEIRO BARBOSA",   # caução do Polo cobrada via Ativuz
+}
+
+
+def _motorista_canonico(nome: str, descricao: str = "") -> tuple:
+    """(nome canônico, é_caucao) para uma transação.
+
+    Resolve a grafia pelo alias e, se a fatura estiver mapeada como caução,
+    devolve o motorista real dela em vez de quem aparece na cobrança.
+    """
+    import re as _re
+    fatura = _re.search(r"fatura nr\.\s*(\d+)", descricao or "", _re.I)
+    if fatura and fatura.group(1) in _ASAAS_FATURAS_CAUCAO:
+        return _ASAAS_FATURAS_CAUCAO[fatura.group(1)], True
+
+    nome = (nome or "").strip()
+    return _ASAAS_ALIAS_MOTORISTA.get(nome.lower(), nome.upper()), False
+
+
+def _segunda_da_semana(data_iso: str) -> str:
+    """Segunda-feira da semana de uma data ISO — a locação é semanal, então a
+    semana é a unidade de contagem."""
+    from datetime import date as _d, timedelta as _td
+    try:
+        a, m, d = (int(p) for p in data_iso.split("-"))
+        dia = _d(a, m, d)
+        return (dia - _td(days=dia.weekday())).isoformat()
+    except Exception:
+        return ""
+
+
+def recebido_por_motorista(empresa_nome: str) -> list:
+    """Quanto cada motorista pagou, direto do extrato da frota.
+
+    Separa aluguéis de caução e conta as semanas distintas com pagamento de
+    aluguel. Retorna ordenado por total, maior primeiro.
+    """
+    frota = _EMPRESA_FROTA.get(empresa_nome)
+    if not frota:
+        return []
+
+    por_motorista: dict = {}
+    for tx in transacoes_asaas(frota):
+        nome, fatura_caucao = _motorista_canonico(tx.get("motorista"), tx.get("descricao"))
+        if not nome:
+            continue
+        categoria = tx.get("categoria")
+        valor     = float(tx.get("valor") or 0)
+        registro  = por_motorista.setdefault(
+            nome, {"cliente": nome, "alugueis": 0.0, "caucao": 0.0, "semanas": set()}
+        )
+        if fatura_caucao:
+            registro["caucao"] += valor
+        elif categoria in _CATEGORIAS_ALUGUEL:
+            registro["alugueis"] += valor
+            semana = _segunda_da_semana(_data_asaas_iso(tx.get("data")))
+            if semana and valor > 0:
+                registro["semanas"].add(semana)
+        elif categoria in _CATEGORIAS_CAUCAO:
+            registro["caucao"] += valor
+
+    resultado = []
+    for reg in por_motorista.values():
+        # Convênio não é motorista — entra no extrato, mas não na tabela por
+        # motorista (mesma regra de _CONVENIO_KEYWORDS usada no extrato).
+        if any(k in reg["cliente"] for k in _CONVENIO_KEYWORDS):
+            continue
+
+        # A caução raramente vem com categoria própria: na maioria dos contratos
+        # ela está embutida no primeiro crédito, como adesão. Como é valor fixo
+        # por contrato, separa-se do total.
+        embutida   = _CAUCAO_CONTRATO.get(frota, 0.0)
+        bruto      = reg["alugueis"]
+        ja_contada = reg["caucao"]
+        tem_caucao = embutida > 0 and bruto >= embutida
+
+        reg["n_semanas"]  = len(reg.pop("semanas"))
+        reg["alugueis"]   = round(bruto - embutida if tem_caucao else bruto, 2)
+        reg["caucao"]     = round((embutida if tem_caucao else 0) + ja_contada, 2)
+        reg["valor_pago"] = round(reg["alugueis"] + reg["caucao"], 2)
+        resultado.append(reg)
+
+    resultado.sort(key=lambda r: -r["valor_pago"])
+    return resultado
+
+
+_CONTAS_RECEBER_PATH = "/Users/karol/Documents/Dashboard-Ativuz/planilhas/CONTAS-A-RECEBER.xlsx"
+_STORAGE_CONTAS_RECEBER = "planilhas/CONTAS-A-RECEBER.xlsx"
+
+# Colunas da planilha CONTAS-A-RECEBER.xlsx (cabeçalho na linha 5, dados da 6 em diante)
+_COL_CR = {
+    "data_competencia": 2,
+    "data_vencimento":  3,
+    "dias_vencimento":  5,
+    "numero_documento": 9,
+    "cliente":          11,
+    "cliente_razao":    12,
+    "situacao":         13,
+    "tipo_fatura":      16,
+    "unidade":          17,
+    "valor":            18,
+}
+
+
+def _faixa_vencimento(dias) -> str:
+    """Faixa a partir dos dias para o vencimento — a planilha traz um texto
+    próprio ('VENCIDO ENTRE 31 A 90'), mas a tabela usa estas faixas."""
+    try:
+        dias = int(dias)
+    except (TypeError, ValueError):
+        return ""
+    if dias > 0:
+        return "A vencer"
+    if dias == 0:
+        return "Vence hoje"
+    atraso = -dias
+    if atraso <= 7:
+        return "1-7 dias"
+    if atraso <= 15:
+        return "8-15 dias"
+    if atraso <= 30:
+        return "16-30 dias"
+    return "Mais de 30 dias"
+
+
+def _situacao_vencimento(dias) -> str:
+    try:
+        dias = int(dias)
+    except (TypeError, ValueError):
+        return ""
+    return "A VENCER" if dias > 0 else ("HOJE" if dias == 0 else "VENCIDO")
+
+
+def importar_contas_receber_frota(caminho: str = None) -> dict:
+    """Lê CONTAS-A-RECEBER.xlsx e grava um novo snapshot em contas_receber_frota.
+
+    O upsert usa a chave natural da tabela (documento|vencimento), então
+    reimportar a mesma planilha atualiza as linhas em vez de duplicá-las. Faturas
+    que saíram da planilha ficam com o `atualizado_em` antigo e somem da tela,
+    porque `contas_receber_empresa` só considera o último lote.
+    """
+    import openpyxl
+    from datetime import datetime as _dt
+
+    caminho = caminho or _planilha_path(_CONTAS_RECEBER_PATH, _STORAGE_CONTAS_RECEBER)
+    try:
+        ws = openpyxl.load_workbook(caminho, data_only=True).active
+        linhas = [r for r in ws.iter_rows(min_row=6, values_only=True) if any(r)]
+    except Exception as e:
+        return {"ok": False, "erro": f"falha ao ler a planilha: {e}"}
+
+    def _data(valor):
+        if hasattr(valor, "date"):
+            return valor.date().isoformat()
+        texto = str(valor or "")[:10]
+        return texto if len(texto) == 10 else None
+
+    agora = _dt.utcnow().isoformat()
+    registros = []
+    for linha in linhas:
+        def col(nome):
+            indice = _COL_CR[nome]
+            return linha[indice] if indice < len(linha) else None
+
+        vencimento = _data(col("data_vencimento"))
+        if not vencimento:
+            continue
+        dias = col("dias_vencimento")
+        numero  = str(col("numero_documento") or "").strip()
+        cliente = str(col("cliente") or col("cliente_razao") or "").strip()
+        registros.append({
+            # Chave natural usada pela tabela: documento (ou cliente, quando a
+            # fatura não tem número) + vencimento. Garante upsert, não duplicata.
+            "id":               f"{numero or cliente}|{vencimento}",
+            "numero_documento": numero,
+            "cliente":          cliente,
+            "data_competencia": _data(col("data_competencia")),
+            "data_vencimento":  vencimento,
+            "dias_vencimento":  int(dias) if str(dias or "").lstrip("-").isdigit() else None,
+            "faixa_vencimento": _faixa_vencimento(dias),
+            "situacao":         _situacao_vencimento(dias) or str(col("situacao") or "").strip(),
+            "tipo_fatura":      str(col("tipo_fatura") or "").strip(),
+            "unidade":          str(col("unidade") or "").strip(),
+            "valor":            float(col("valor") or 0),
+            "atualizado_em":    agora,
+        })
+
+    if not registros:
+        return {"ok": False, "erro": "planilha sem linhas válidas"}
+
+    # Faturas sem número podem repetir a chave natural (mesmo cliente, mesmo
+    # vencimento). Vence a última, como num upsert linha a linha.
+    por_id = {r["id"]: r for r in registros}
+    colisoes = len(registros) - len(por_id)
+    registros = list(por_id.values())
+
+    sb = get_financeiro_client()
+    inseridos = 0
+    for i in range(0, len(registros), 200):
+        lote = registros[i:i + 200]
+        try:
+            sb.table("contas_receber_frota").upsert(lote).execute()
+            inseridos += len(lote)
+        except Exception as e:
+            return {"ok": False, "erro": str(e), "inseridos": inseridos}
+
+    return {"ok": True, "lidos": len(linhas), "gravados": inseridos,
+            "colisoes_de_chave": colisoes,
+            "total": round(sum(r["valor"] for r in registros), 2)}
