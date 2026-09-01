@@ -155,12 +155,19 @@ def home():
                     "valor_semana":  _VALOR_SEMANA.get(placa[:3], 0),
                 }
 
+            def _br(iso):
+                return f"{iso[8:10]}/{iso[5:7]}/{iso[:4]}" if iso else "\u2014"
+
             for m in recebido_por_motorista(empresa_carros_sel["nome"]):
                 info = info_contrato.get(m["cliente"], {})
                 motoristas_recebimentos.append({
                     **m,
                     "placa":         info.get("placa", "\u2014"),
-                    "inicio":        info.get("inicio", "\u2014"),
+                    # Sem contrato na tabela, o início é o primeiro pagamento.
+                    # O fim é o último recebimento — só faz sentido para quem já
+                    # saiu, e o template só mostra nesse caso.
+                    "inicio":        info.get("inicio") or _br(m.get("primeiro_pagamento")),
+                    "fim":           _br(m.get("ultimo_pagamento")),
                     "valor_locacao": info.get("valor_locacao", 0.0),
                     "valor_semana":  info.get("valor_semana", 0),
                 })

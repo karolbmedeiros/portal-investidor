@@ -258,6 +258,15 @@ def listar_contratos_excel(unidades: list) -> list:
     return resultado
 
 
+# Contratos encerrados. A tabela contratos_locacao não tem campo de
+# encerramento — só `deletado`, que significa contrato excluído e tiraria o
+# registro do histórico —, então o fim de contrato fica aqui até a tabela
+# ganhar um status. (placa normalizada, locatário canônico)
+_CONTRATOS_ENCERRADOS = {
+    ("TSW3I03", "ADRIANO TEOTONIO DA SILVA"),
+}
+
+
 def contratos_por_empresa(empresa_nome: str) -> list:
     """Contrato vigente de cada veículo da empresa, da tabela contratos_locacao.
 
@@ -288,6 +297,9 @@ def contratos_por_empresa(empresa_nome: str) -> list:
     for linha in linhas:
         placa = _norm(linha.get("veiculo_placa"))
         if not placa or _PREFIXO_EMPRESA.get(placa[:3], (None,))[0] != empresa_nome:
+            continue
+        if (placa, _alias_motorista(linha.get("locatario_nome"))) in _CONTRATOS_ENCERRADOS:
+            vigente.pop(placa, None)      # encerrou e ninguém assumiu: veículo vago
             continue
         vigente[placa] = linha            # ordem crescente: fica o mais recente
 
@@ -809,7 +821,8 @@ def recebido_por_motorista(empresa_nome: str) -> list:
     """Quanto cada motorista pagou, direto do extrato da frota.
 
     Separa aluguéis de caução e conta as semanas distintas com pagamento de
-    aluguel. Retorna ordenado por total, maior primeiro.
+    aluguel. `ultimo_pagamento` é o fim de fato do contrato de quem já saiu.
+    Retorna ordenado por total, maior primeiro.
     """
     frota = _EMPRESA_FROTA.get(empresa_nome)
     if not frota:
@@ -823,8 +836,13 @@ def recebido_por_motorista(empresa_nome: str) -> list:
         categoria = tx.get("categoria")
         valor     = float(tx.get("valor") or 0)
         registro  = por_motorista.setdefault(
-            nome, {"cliente": nome, "alugueis": 0.0, "caucao": 0.0, "semanas": set()}
+            nome, {"cliente": nome, "alugueis": 0.0, "caucao": 0.0,
+                   "semanas": set(), "pagamentos": []}
         )
+        data_iso = _data_asaas_iso(tx.get("data"))
+        if valor > 0 and data_iso and categoria in _CATEGORIAS_ALUGUEL + _CATEGORIAS_CAUCAO:
+            registro["pagamentos"].append(data_iso)
+
         if fatura_caucao:
             registro["caucao"] += valor
         elif categoria in _CATEGORIAS_ALUGUEL:
@@ -850,6 +868,9 @@ def recebido_por_motorista(empresa_nome: str) -> list:
         ja_contada = reg["caucao"]
         tem_caucao = embutida > 0 and bruto >= embutida
 
+        pagamentos = sorted(reg.pop("pagamentos"))
+        reg["primeiro_pagamento"] = pagamentos[0]  if pagamentos else None
+        reg["ultimo_pagamento"]   = pagamentos[-1] if pagamentos else None
         reg["n_semanas"]  = len(reg.pop("semanas"))
         reg["alugueis"]   = round(bruto - embutida if tem_caucao else bruto, 2)
         reg["caucao"]     = round((embutida if tem_caucao else 0) + ja_contada, 2)

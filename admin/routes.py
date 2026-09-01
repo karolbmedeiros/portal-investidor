@@ -118,12 +118,19 @@ def dashboard():
                         "valor_semana":  _VALOR_SEMANA.get(_placa_c[:3], 0),
                     }
 
+                def _br(_iso):
+                    return f"{_iso[8:10]}/{_iso[5:7]}/{_iso[:4]}" if _iso else "\u2014"
+
                 for _m in recebido_por_motorista(_emp_c["nome"]):
                     _info = _info_contrato.get(_m["cliente"], {})
                     motoristas_recebimentos.append({
                         **_m,
                         "placa":         _info.get("placa", "\u2014"),
-                        "inicio":        _info.get("inicio", "\u2014"),
+                        # Sem contrato na tabela, o início é o primeiro pagamento.
+                        # O fim é o último recebimento — só faz sentido para quem
+                        # já saiu, e o template só mostra nesse caso.
+                        "inicio":        _info.get("inicio") or _br(_m.get("primeiro_pagamento")),
+                        "fim":           _br(_m.get("ultimo_pagamento")),
                         "valor_locacao": _info.get("valor_locacao", 0.0),
                         "valor_semana":  _info.get("valor_semana", 0),
                     })

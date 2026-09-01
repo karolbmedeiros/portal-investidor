@@ -646,6 +646,7 @@
               {% endif %}
             </div>
             {% if m.placa and m.placa != '—' %}<span style="font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.5px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);margin-top:4px;display:inline-block;">{{ m.placa }}</span>{% endif %}
+            {% if m.inicio and m.inicio != '—' %}<div style="font-size:10px; color:var(--muted); margin-top:4px;">{% if m.ativo %}desde {{ m.inicio }}{% else %}{{ m.inicio }} → {{ m.fim }}{% endif %}</div>{% endif %}
           </div>
           <div style="text-align:right;">
             <div style="font-size:15px; font-weight:700; color:{% if not m.ativo %}var(--muted){% else %}#D97706{% endif %};">{{ m.valor_pago|brl }}</div>
