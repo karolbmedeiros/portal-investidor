@@ -201,11 +201,14 @@ def home():
                     (c.get("cliente") for c in _contratos if _norm_placa(c.get("placa", "")) == _norm_placa(v["placa"])),
                     None,
                 )
+                # Ativo = tem contrato vigente. Antes dependia da última semana
+                # em sob_adm_recebimentos, que parou de ser alimentada — todo
+                # veículo acabava caindo como inativo.
                 _tem_contrato = locatario is not None
                 carros_veiculos_status.append({
                     "placa":          v["placa"],
                     "modelo":         v.get("modelo") or "—",
-                    "ativo":          bool(_tem_contrato and ultima and _semana_ref and ultima == _semana_ref),
+                    "ativo":          _tem_contrato,
                     "locatario":      locatario if _tem_contrato else None,
                     "em_manutencao":  not _tem_contrato,
                     "ultima_semana":  ultima,

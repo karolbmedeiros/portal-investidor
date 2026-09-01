@@ -259,8 +259,65 @@ def listar_contratos_excel(unidades: list) -> list:
 
 
 def contratos_por_empresa(empresa_nome: str) -> list:
+    """Contrato vigente de cada veículo da empresa, da tabela contratos_locacao.
+
+    Antes vinha de Contratos de Locação.xlsx, que envelhece no storage — ela
+    ainda dava TSW-3H91 para a locatária anterior, muito depois de o carro ter
+    sido repassado. A tabela é atualizada a cada contrato novo.
+
+    A empresa é determinada pelo prefixo da placa (_PREFIXO_EMPRESA), já que a
+    tabela não guarda a unidade. Uma placa pode ter vários contratos ao longo do
+    tempo; vale o mais recente.
+    """
+    try:
+        sb = get_financeiro_client()
+        linhas = (
+            sb.table("contratos_locacao")
+            .select("locatario_nome,veiculo_placa,veiculo_modelo,contrato_inicio,"
+                    "valor_semanal,criado_em")
+            .eq("deletado", False)
+            .order("criado_em", desc=False)
+            .execute()
+            .data or []
+        )
+    except Exception as e:
+        print(f"[contratos_por_empresa] erro: {e}")
+        return []
+
+    vigente: dict = {}
+    for linha in linhas:
+        placa = _norm(linha.get("veiculo_placa"))
+        if not placa or _PREFIXO_EMPRESA.get(placa[:3], (None,))[0] != empresa_nome:
+            continue
+        vigente[placa] = linha            # ordem crescente: fica o mais recente
+
+    resultado = []
+    # Contratos antigos, anteriores à tabela, só existem na planilha. Entram
+    # apenas para placas que a tabela não cobre — a tabela sempre vence.
     unidades = [u for u, e in _UNIDADE_EMPRESA.items() if e == empresa_nome]
-    return listar_contratos_excel(unidades)
+    for antigo in listar_contratos_excel(unidades):
+        placa = _norm(antigo.get("placa"))
+        if placa and placa not in vigente:
+            antigo["cliente"] = _alias_motorista(antigo.get("cliente"))
+            resultado.append(antigo)
+
+    for placa, linha in vigente.items():
+        valor = str(linha.get("valor_semanal") or "0").replace(".", "").replace(",", ".")
+        try:
+            valor = float(valor)
+        except ValueError:
+            valor = 0.0
+        resultado.append({
+            "cliente":       _alias_motorista(linha.get("locatario_nome")),
+            "placa":         placa,
+            "placa_fmt":     str(linha.get("veiculo_placa") or "").strip().upper(),
+            "modelo":        str(linha.get("veiculo_modelo") or "").strip(),
+            "inicio":        str(linha.get("contrato_inicio") or "").strip(),
+            "unidade":       _EMPRESA_INFO.get(empresa_nome, {}).get("unidade", ""),
+            "situacao":      "EM ANDAMENTO",
+            "valor_locacao": valor,
+        })
+    return resultado
 
 
 def contas_receber_carros_excel(empresa_nome: str) -> list:
@@ -695,7 +752,15 @@ _CAUCAO_CONTRATO = {
 # Chave em minúsculas → nome canônico.
 _ASAAS_ALIAS_MOTORISTA = {
     "67.009.261 elionilson c. barbosa": "ELIONILSON CORDEIRO BARBOSA",
+    "tenielle glauciana souza da silva": "TANIELLE GLAUCIANA SOUZA DA SILVA",
 }
+
+
+def _alias_motorista(nome: str) -> str:
+    """Nome canônico do motorista. Aplicado ao extrato e ao contrato, senão a
+    mesma pessoa não casa entre as duas fontes."""
+    nome = (nome or "").strip()
+    return _ASAAS_ALIAS_MOTORISTA.get(nome.lower(), nome.upper())
 
 # Faturas que são caução mas entram no extrato como aluguel, às vezes cobradas
 # por outra empresa. Número da fatura → motorista real.
@@ -703,20 +768,29 @@ _ASAAS_FATURAS_CAUCAO = {
     "767966354": "ELIONILSON CORDEIRO BARBOSA",   # caução do Polo cobrada via Ativuz
 }
 
+# Faturas pagas por terceiro: o extrato registra o pagador no lugar do motorista.
+# Número da fatura → motorista real.
+_ASAAS_FATURAS_MOTORISTA = {
+    "894432964": "JOSE PEREIRA JUNIOR",           # paga por Andrier Oliveira Cachina
+}
+
 
 def _motorista_canonico(nome: str, descricao: str = "") -> tuple:
     """(nome canônico, é_caucao) para uma transação.
 
-    Resolve a grafia pelo alias e, se a fatura estiver mapeada como caução,
-    devolve o motorista real dela em vez de quem aparece na cobrança.
+    Resolve a grafia pelo alias e, quando a fatura está mapeada, devolve o
+    motorista real dela em vez de quem aparece na cobrança — seja porque é
+    caução cobrada por outra empresa, seja porque um terceiro pagou.
     """
     import re as _re
     fatura = _re.search(r"fatura nr\.\s*(\d+)", descricao or "", _re.I)
-    if fatura and fatura.group(1) in _ASAAS_FATURAS_CAUCAO:
-        return _ASAAS_FATURAS_CAUCAO[fatura.group(1)], True
+    numero = fatura.group(1) if fatura else None
+    if numero in _ASAAS_FATURAS_CAUCAO:
+        return _ASAAS_FATURAS_CAUCAO[numero], True
+    if numero in _ASAAS_FATURAS_MOTORISTA:
+        return _ASAAS_FATURAS_MOTORISTA[numero], False
 
-    nome = (nome or "").strip()
-    return _ASAAS_ALIAS_MOTORISTA.get(nome.lower(), nome.upper()), False
+    return _alias_motorista(nome), False
 
 
 def _segunda_da_semana(data_iso: str) -> str:

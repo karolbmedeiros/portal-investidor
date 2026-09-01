@@ -149,8 +149,11 @@ def dashboard():
                     _ult  = max((_r["data_semana"] for _r in _recs if _r.get("data_semana")), default=None)
                     _loc  = next((_c.get("cliente") for _c in _contratos
                                   if _norm(_c.get("placa","")) == _norm(_veh["placa"])), None)
+                    # Ativo = tem contrato vigente. Antes dependia da última
+                    # semana em sob_adm_recebimentos, que parou de ser
+                    # alimentada — todo veículo acabava caindo como inativo.
                     _tem_contrato = _loc is not None
-                    _ativo = bool(_tem_contrato and _ult and _sem_ref and _ult == _sem_ref)
+                    _ativo = _tem_contrato
                     carros_veiculos_status.append({
                         "placa":   _veh["placa"],
                         "modelo":  _veh.get("modelo") or "—",
