@@ -220,6 +220,7 @@ def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
     _CAT_ADMIN     = {"b35c7cda-7285-40ea-8d3a-b54f5966497f"}
     _CAT_EMPRST    = {"24f512b4-b736-4139-975a-12ef9cb212d0", "622be2cb-22a2-4ce1-9034-5b9624ff15cc"}
     _CAT_OUTROS    = {"9c5c82b4-a8be-4996-9a2d-30722a1479e0", "ef112b4c-a28f-4c5c-840b-c1e27cd1dfb4"}
+    _CAT_SEGURO    = {"077fdd22-dd6f-4ac8-a0b9-2abbcd9f46a3"}
     # Excluídos de despesas: Repasse Investidor, Aporte, Recebimento de Fatura, Rendimento, Receita de Locação,
     # Amortização de empréstimo (é quitação de principal/passivo, não despesa de resultado)
     _CAT_EXCLUIR   = {"269c12d6-bd47-4386-9ea8-8952c50591c6", "e6c37f6a-37af-4ead-b2c6-7fcc0f12a30e",
@@ -236,11 +237,15 @@ def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
         if cat_id in _CAT_IMPOSTOS: return "custo_impostos"
         if cat_id in _CAT_ADMIN:    return "custo_taxa_admin"
         if cat_id in _CAT_EMPRST:   return "custo_emprestimo"
+        if cat_id in _CAT_SEGURO:   return "custo_seguro"
         if cat_id in _CAT_OUTROS:   return "custo_outros"
         if cat_id in _CAT_EXCLUIR:  return None
         return "custo_outros"  # categorias desconhecidas vão para outros
 
-    # Despesas da view (meses fechados com kwh_faturado, qtd_faturas)
+    # A view traz receita_bruta (faturas do mês), kwh_faturado e qtd_faturas.
+    # total_despesas dela NÃO é usado: ela soma todas as contas a pagar, inclusive
+    # repasse ao investidor (distribuição de lucro, não despesa), e por isso não
+    # fecha com a composição de custos exibida ao lado.
     view_rows = {
         str(r["ref_mes_ano"])[:7]: r
         for r in (sb.table("v_pnl_usina_mensal")
@@ -252,75 +257,66 @@ def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
         if r.get("ref_mes_ano")
     }
 
-    # Receita = créditos bancários de mesma titularidade
     usina_row = (sb.table("usinas")
                    .select("razao_social,nome_fantasia")
                    .eq("id", usina_id).execute().data or [{}])[0]
     razao = (usina_row.get("razao_social") or usina_row.get("nome_fantasia") or "")
-    razao_titular = razao[:8]
-    razao_desc    = razao[:12]
 
-    contas = (sb.from_("contas_bancarias").select("id")
-                .ilike("titular_nome", f"%{razao_titular}%")
-                .execute().data or [])
+    # Despesas: contas a pagar da usina, classificadas por categoria. O total é a
+    # soma das colunas custo_*, então total e composição sempre batem.
+    _COLS_CUSTO = ["custo_emprestimo", "custo_aluguel", "custo_contabilidade",
+                   "custo_impostos", "custo_cosern", "custo_taxa_admin",
+                   "custo_seguro", "custo_outros"]
+    desp_por_mes: dict = {}
+    for cp in (sb.table("contas_pagar")
+                 .select("ref_mes_ano,valor,categoria_id")
+                 .eq("usina_id", usina_id)
+                 .execute().data or []):
+        mes = str(cp.get("ref_mes_ano") or "")[:7]
+        col = _custo_col(cp.get("categoria_id"))
+        if not mes or not col:
+            continue
+        custos = desp_por_mes.setdefault(mes, {c: 0.0 for c in _COLS_CUSTO})
+        custos[col] += abs(float(cp.get("valor") or 0))
 
+    # Receita dos meses que ainda não entraram na view: faturas dos contratos.
+    contratos = (sb.table("contratos").select("id")
+                   .eq("usina_id", usina_id).execute().data or [])
     receita_por_mes: dict = {}
-    # Despesas calculadas dos lançamentos (para meses fora da view)
-    desp_por_mes: dict = {}  # mes → {custo_*: valor}
+    if contratos:
+        for f in (sb.table("faturas")
+                    .select("ref_mes_ano,valor_total_cobrado")
+                    .in_("contrato_id", [c["id"] for c in contratos])
+                    .execute().data or []):
+            mes = str(f.get("ref_mes_ano") or "")[:7]
+            if mes:
+                receita_por_mes[mes] = receita_por_mes.get(mes, 0.0) + float(f.get("valor_total_cobrado") or 0)
 
-    for conta in contas:
-        all_lancs = (sb.table("lancamentos_bancarios")
-                       .select("mes_competencia,data_transacao,valor,tipo,descricao,categoria_id,conciliado")
-                       .eq("conta_bancaria_id", conta["id"])
-                       .eq("conciliado", True)
-                       .execute().data or [])
-        for l in all_lancs:
-            mes = (l.get("mes_competencia") or l.get("data_transacao") or "")[:7]
-            if not mes:
-                continue
-            if l.get("tipo") == "credito":
-                desc = (l.get("descricao") or "").upper()
-                if razao_desc.upper() in desc:
-                    receita_por_mes[mes] = receita_por_mes.get(mes, 0) + abs(l.get("valor") or 0)
-            elif l.get("tipo") == "debito":
-                col = _custo_col(l.get("categoria_id"))
-                if col:
-                    if mes not in desp_por_mes:
-                        desp_por_mes[mes] = {
-                            "custo_emprestimo": 0, "custo_aluguel": 0, "custo_contabilidade": 0,
-                            "custo_impostos": 0, "custo_cosern": 0, "custo_taxa_admin": 0,
-                            "custo_seguro": 0, "custo_outros": 0,
-                        }
-                    desp_por_mes[mes][col] = desp_por_mes[mes].get(col, 0) + abs(l.get("valor") or 0)
+    # Só meses já faturados: um mês em curso, com despesa lançada e nenhuma fatura
+    # emitida ainda, apareceria como prejuízo cheio no card do mês mais recente.
+    todos_meses = sorted(
+        set(view_rows) | {m for m, v in receita_por_mes.items() if v > 0},
+        reverse=True,
+    )[:limite]
 
-    todos_meses = sorted(set(list(view_rows.keys()) + list(receita_por_mes.keys())), reverse=True)[:limite]
     result = []
     for mes in todos_meses:
-        if mes in view_rows:
-            base = dict(view_rows[mes])
-        else:
-            # Mês ainda não na view: calcula despesas dos lançamentos
-            custos = desp_por_mes.get(mes, {})
-            total_desp_lanc = round(sum(custos.values()), 2)
-            base = {
-                "usina_id": usina_id, "usina": razao,
-                "ref_mes_ano": mes + "-01",
-                "total_despesas": total_desp_lanc,
-                "kwh_faturado": 0, "qtd_faturas": 0,
-                "custo_emprestimo":    round(custos.get("custo_emprestimo", 0), 2),
-                "custo_aluguel":       round(custos.get("custo_aluguel", 0), 2),
-                "custo_contabilidade": round(custos.get("custo_contabilidade", 0), 2),
-                "custo_impostos":      round(custos.get("custo_impostos", 0), 2),
-                "custo_cosern":        round(custos.get("custo_cosern", 0), 2),
-                "custo_taxa_admin":    round(custos.get("custo_taxa_admin", 0), 2),
-                "custo_seguro":        0,
-                "custo_outros":        round(custos.get("custo_outros", 0), 2),
-            }
+        base = dict(view_rows.get(mes) or {
+            "usina_id": usina_id, "usina": razao,
+            "ref_mes_ano": mes + "-01", "kwh_faturado": 0, "qtd_faturas": 0,
+        })
+        custos = desp_por_mes.get(mes, {})
+        for col in _COLS_CUSTO:
+            base[col] = round(custos.get(col, 0.0), 2)
+        total_desp = round(sum(base[col] for col in _COLS_CUSTO), 2)
 
-        receita    = round(receita_por_mes.get(mes, 0), 2)
-        total_desp = round(base.get("total_despesas") or 0, 2)
-        resultado  = round(receita - total_desp, 2)
+        receita = round(
+            base.get("receita_bruta") if mes in view_rows else receita_por_mes.get(mes, 0.0),
+            2,
+        )
+        resultado = round(receita - total_desp, 2)
         base["receita_bruta"]     = receita
+        base["total_despesas"]    = total_desp
         base["resultado_liquido"] = resultado
         base["margem_liquida"]    = round(resultado / receita, 4) if receita else None
         result.append(base)
@@ -1203,3 +1199,60 @@ def excluir_documento(doc_id: str) -> dict:
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "erro": str(e)}
+
+
+def recebimentos_por_mes_usina(usina_id: str, meses: int = 6) -> tuple:
+    """Recebimentos da usina a partir das faturas pagas das UCs vinculadas.
+
+    O extrato bancário não serve como fonte: a descrição do crédito traz o nome
+    do cliente pagador (ou nada), a mesma conta recebe locação e faturas de
+    outras usinas, e a conciliação banco↔fatura só existe nos meses recentes.
+
+    Retorna (total, [{"ym": "2026-03", "valor": 9889.52}, ...]) agrupado por
+    ref_mes_ano (competência, para dar série contínua no gráfico). total é None
+    quando não há recebimento na janela.
+    """
+    sb = get_service_client()
+    contratos = (
+        sb.table("contratos").select("id").eq("usina_id", usina_id).execute().data or []
+    )
+    if not contratos:
+        return None, []
+
+    hoje = date.today()
+    m = hoje.month - (meses - 1)
+    inicio = date(hoje.year if m > 0 else hoje.year - 1, m if m > 0 else m + 12, 1)
+
+    faturas = (
+        sb.table("faturas")
+        .select("ref_mes_ano,valor_pago")
+        .in_("contrato_id", [c["id"] for c in contratos])
+        .gte("ref_mes_ano", str(inicio))
+        .execute()
+        .data
+        or []
+    )
+
+    por_mes: dict = {}
+    for f in faturas:
+        valor = float(f.get("valor_pago") or 0)
+        if valor <= 0:
+            continue
+        ym = str(f.get("ref_mes_ano") or "")[:7]
+        if not ym:
+            continue
+        por_mes[ym] = por_mes.get(ym, 0.0) + valor
+
+    total = round(sum(por_mes.values()), 2)
+
+    # Preenche a janela inteira: mês sem fatura paga entra zerado para a série
+    # ficar contínua no gráfico e no detalhamento mês a mês.
+    series = []
+    ano, mes_i = inicio.year, inicio.month
+    for _ in range(meses):
+        ym = f"{ano:04d}-{mes_i:02d}"
+        series.append({"ym": ym, "valor": round(por_mes.get(ym, 0.0), 2)})
+        mes_i += 1
+        if mes_i > 12:
+            mes_i, ano = 1, ano + 1
+    return (total or None), series

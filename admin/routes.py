@@ -289,48 +289,19 @@ def dashboard():
         if _tab_carro not in ("visao_geral","clientes","extrato"):
             _tab_carro = "visao_geral"
 
-    # Rendimento acumulado — créditos na conta bancária da usina selecionada
+    # Rendimento acumulado — faturas pagas das UCs vinculadas à usina
     rendimento_total   = None
     rendimento_meses   = []   # [{"mes": "jan", "valor": 5000.0}, ...]
     if ativo_id and ativo_tipo == "usina":
-        _usina_sel = next((u for u in all_usinas if u["id"] == ativo_id), None)
-        if _usina_sel:
-            from services.supabase_client import get_service_client as _gsc
-            from datetime import date as _date
-            _sb2 = _gsc()
-            _razao = (_usina_sel.get("razao_social") or _usina_sel.get("nome") or "")
-            # Encontra conta bancária pelo titular_nome
-            _contas = _sb2.from_("contas_bancarias") \
-                          .select("id,titular_nome") \
-                          .ilike("titular_nome", f"%{_razao[:8]}%") \
-                          .execute().data or []
-            if _contas:
-                _conta_id = _contas[0]["id"]
-                # Últimos 6 meses de créditos
-                _hoje6 = _date.today()
-                _inicio = _date(_hoje6.year if _hoje6.month > 6 else _hoje6.year - 1,
-                                (_hoje6.month - 6) % 12 or 12, 1)
-                _lanctos = _sb2.from_("lancamentos_bancarios") \
-                               .select("valor,data_transacao") \
-                               .eq("conta_bancaria_id", _conta_id) \
-                               .eq("tipo", "credito") \
-                               .gte("data_transacao", str(_inicio)) \
-                               .ilike("descricao", f"%{_razao[:12]}%") \
-                               .is_("deleted_at", "null") \
-                               .order("data_transacao", desc=False) \
-                               .execute().data or []
-                if _lanctos:
-                    rendimento_total = sum(float(l["valor"]) for l in _lanctos)
-                    # Agrupa por mês
-                    _meses_nomes = ["jan","fev","mar","abr","mai","jun",
-                                    "jul","ago","set","out","nov","dez"]
-                    _por_mes: dict = {}
-                    for _l in _lanctos:
-                        _ym = str(_l["data_transacao"])[:7]
-                        _por_mes[_ym] = _por_mes.get(_ym, 0) + float(_l["valor"])
-                    for _ym, _v in sorted(_por_mes.items()):
-                        _mn = int(_ym.split("-")[1]) - 1
-                        rendimento_meses.append({"mes": _meses_nomes[_mn], "valor": round(_v, 2)})
+        from services.usina_service import recebimentos_por_mes_usina
+        _meses_nomes = ["jan","fev","mar","abr","mai","jun",
+                        "jul","ago","set","out","nov","dez"]
+        rendimento_total, _serie = recebimentos_por_mes_usina(ativo_id)
+        rendimento_meses = [
+            {"mes": _meses_nomes[int(r["ym"].split("-")[1]) - 1],
+             "ano": r["ym"][:4], "valor": r["valor"]}
+            for r in _serie
+        ]
 
     # ── Dados analíticos da usina (tabs inline) ──────────────────────────────
     usina_obj = None

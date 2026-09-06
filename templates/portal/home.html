@@ -228,7 +228,7 @@
       </div>
     </div>
     {% else %}
-    <div class="db-metric-card db-metric-card--usina-big" style="grid-column:2;">
+    <div class="db-metric-card db-metric-card--usina-big" style="grid-column:2;{% if rendimento_meses %} cursor:pointer;{% endif %}"{% if rendimento_meses %} onclick="document.getElementById('modal-rendimento-inv').style.display='flex'"{% endif %}>
       <div class="db-mc-top">
         <span class="db-mc-label">Rendimento acumulado</span>
         <span class="db-mc-icon">
@@ -243,7 +243,7 @@
         {% endif %}
       </div>
       <div class="db-mc-sub text-muted">
-        {% if rendimento_total is not none %}Últ. 6 meses · proporcional à cota{% else %}Sem movimentações{% endif %}
+        {% if rendimento_total is not none %}Últ. 6 meses · ver mês a mês{% else %}Sem movimentações{% endif %}
       </div>
     </div>
     {% endif %}
@@ -400,6 +400,42 @@
     <div style="margin-top:18px; padding-top:14px; border-top:0.5px solid rgba(23,33,28,.08); display:flex; justify-content:space-between; align-items:center;">
       <span style="font-size:13px; color:var(--muted);">Total recebido</span>
       <span style="font-size:16px; font-weight:700; color:#D97706;">{{ _total|brl }}</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+{% if rendimento_meses %}
+<div id="modal-rendimento-inv" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,.45); backdrop-filter:blur(3px);" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--bg); border-radius:18px; padding:28px 28px 24px; width:min(440px,92vw); max-height:80vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.18);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <div>
+        <div style="font-size:15px; font-weight:600;">Rendimento mês a mês</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:2px;">{% if filtrado %}{{ ativo_selecionado.nome }} · {% endif %}últimos 6 meses · proporcional à cota</div>
+      </div>
+      <button onclick="document.getElementById('modal-rendimento-inv').style.display='none'" style="background:none; border:none; cursor:pointer; color:var(--muted); padding:4px;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    {% set _max_r = rendimento_meses|map(attribute='valor')|max %}
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      {% for m in rendimento_meses %}
+      {% set _pct = ((m.valor / _max_r) * 100)|round(1) if _max_r > 0 else 0 %}
+      <div>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:12px; color:var(--muted); text-transform:capitalize;">{{ m.mes }}{% if m.ano %}/{{ m.ano }}{% endif %}</span>
+          <span style="font-size:14px; font-weight:700; color:{% if m.valor > 0 %}var(--green){% else %}var(--muted){% endif %};">{{ m.valor|brl }}</span>
+        </div>
+        <div style="height:6px; border-radius:3px; background:rgba(22,163,74,.10);">
+          <div style="height:100%; width:{{ _pct }}%; background:var(--green); border-radius:3px;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:18px; padding-top:14px; border-top:0.5px solid rgba(23,33,28,.08); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; color:var(--muted);">Total no período</span>
+      <span style="font-size:16px; font-weight:700; color:var(--green);">{{ rendimento_total|brl }}</span>
     </div>
   </div>
 </div>

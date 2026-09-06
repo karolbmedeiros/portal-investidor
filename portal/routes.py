@@ -287,40 +287,23 @@ def home():
         except Exception:
             pass
     else:
-        # Rendimento: créditos nas contas bancárias das usinas × cota
+        # Rendimento: faturas pagas das UCs das usinas × cota
         try:
-            sb   = get_service_client()
-            hoje = date.today()
-            m6   = hoje.month - 6
-            inicio = date(hoje.year if m6 > 0 else hoje.year - 1, m6 if m6 > 0 else m6 + 12, 1)
+            from services.usina_service import recebimentos_por_mes_usina
             por_mes: dict = {}
             total_rend = 0.0
             for us in usinas:
-                razao = (us.get("razao_social") or us.get("nome") or "")
-                razao_busca = razao[:8]
-                razao_desc  = razao[:12]
-                contas = sb.from_("contas_bancarias").select("id") \
-                           .ilike("titular_nome", f"%{razao_busca}%").execute().data or []
                 cota = cotas.get(us["id"], 1.0)
-                for conta in contas:
-                    lanctos = sb.from_("lancamentos_bancarios") \
-                                 .select("valor,data_transacao") \
-                                 .eq("conta_bancaria_id", conta["id"]) \
-                                 .eq("tipo", "credito") \
-                                 .gte("data_transacao", str(inicio)) \
-                                 .ilike("descricao", f"%{razao_desc}%") \
-                                 .is_("deleted_at", "null") \
-                                 .execute().data or []
-                    for l in lanctos:
-                        v = float(l["valor"]) * cota
-                        total_rend += v
-                        ym = str(l["data_transacao"])[:7]
-                        por_mes[ym] = por_mes.get(ym, 0.0) + v
+                _tot, _serie = recebimentos_por_mes_usina(us["id"])
+                for r in _serie:
+                    v = r["valor"] * cota
+                    total_rend += v
+                    por_mes[r["ym"]] = por_mes.get(r["ym"], 0.0) + v
             if total_rend > 0:
                 rendimento_total = round(total_rend, 2)
             for ym, v in sorted(por_mes.items()):
                 mn = int(ym.split("-")[1]) - 1
-                rendimento_meses.append({"mes": _MESES[mn], "valor": round(v, 2)})
+                rendimento_meses.append({"mes": _MESES[mn], "ano": ym[:4], "valor": round(v, 2)})
         except Exception:
             pass
 
