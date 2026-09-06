@@ -24,6 +24,9 @@ _MESES_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
 # meses não entram na lista — nem no admin nem no portal.
 MES_INICIAL = "2026-08"
 
+# O relatório de um mês fica pronto no dia 7 do mês seguinte.
+DIA_PREVISAO = 7
+
 
 def normalizar_tipo(ativo_tipo: str) -> str:
     """O admin usa 'carro' no filtro e o portal usa 'carros'; o modelo usa 'carros'."""
@@ -118,6 +121,22 @@ def buscar_do_mes(ativo_tipo: str, ativo_id: str, mes_referencia: str) -> dict:
         return None
 
 
+def previsao_mes(ym: str) -> str:
+    """Data prevista de disponibilização do relatório de `ym`, em dd/mm/aaaa.
+
+    O relatório fecha no dia DIA_PREVISAO do mês seguinte ao de referência:
+    setembro/2026 sai em 07/10/2026, outubro em 07/11/2026, e assim por diante.
+    """
+    try:
+        ano, mes = int(ym[:4]), int(ym[5:7])
+    except (ValueError, IndexError):
+        return ""
+    mes += 1
+    if mes == 13:
+        mes, ano = 1, ano + 1
+    return f"{DIA_PREVISAO:02d}/{mes:02d}/{ano:04d}"
+
+
 def listar_meses(ativo_tipo: str, ativo_id: str, meses: int = 12) -> list:
     """Janela dos últimos `meses` meses, do mais recente para o mais antigo.
 
@@ -163,6 +182,7 @@ def listar_meses(ativo_tipo: str, ativo_id: str, meses: int = 12) -> list:
     return [{
         "ym":         ym,
         "rotulo":     rotulo_mes(ym),
+        "previsao":   previsao_mes(ym),
         "disponivel": ym in publicados,
         "relatorio":  publicados.get(ym),
     } for ym in ym_list]
