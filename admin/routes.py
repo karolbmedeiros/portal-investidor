@@ -2,11 +2,18 @@ from flask import (
     Blueprint, render_template, request,
     redirect, url_for, flash, abort, jsonify, send_file,
 )
+from concurrent.futures import ThreadPoolExecutor
+
 from middleware.auth_guard import requer_admin
 from services import investidor_service as inv_svc, auth_service
 from services.log_erros import ignorado
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+# Pool reaproveitado entre requisições: as threads sobrevivem, e com elas os
+# clientes Supabase por thread — senão cada requisição pagaria handshake TLS
+# em 10 conexões novas, comendo o ganho da paralelização.
+_POOL = ThreadPoolExecutor(max_workers=12, thread_name_prefix="dashboard")
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -352,8 +359,41 @@ def dashboard():
             contas_pagar_da_usina,
         )
         usina_obj = next((u for u in all_usinas if u["id"] == ativo_id), None)
-        auto_conciliar_neutros(ativo_id)
-        contas = listar_contas_da_usina(ativo_id)
+        auto_conciliar_neutros(ativo_id)   # grava; precisa vir antes das leituras
+
+        # As leituras abaixo são independentes entre si e cada uma custa um
+        # round-trip ao Supabase (~220 ms). Em série somavam ~9 s; em paralelo
+        # custam o tempo da mais lenta. É espera de I/O, o GIL não atrapalha.
+        # copy_current_request_context mantém flask.g/request válidos dentro
+        # das threads — os caches por requisição dependem disso.
+        from flask import copy_current_request_context
+
+        _leituras = {
+            "contas":         lambda: listar_contas_da_usina(ativo_id),
+            "pnl":            lambda: pnl_da_usina(ativo_id),
+            "clientes":       lambda: clientes_da_usina(ativo_id),
+            "categorias":     listar_categorias,
+            "retorno_mensal": lambda: retorno_mensal_investidor(ativo_id),
+            "rentabilidade":  lambda: rentabilidade_investidor(ativo_id),
+            "leituras":       lambda: leituras_detalhadas(ativo_id),
+            "saldo_creditos": lambda: saldo_creditos_da_usina(ativo_id),
+            "financiamentos": lambda: financiamentos_da_usina(ativo_id),
+            "contas_pagar":   lambda: contas_pagar_da_usina(ativo_id),
+        }
+        _futs = {k: _POOL.submit(copy_current_request_context(f))
+                 for k, f in _leituras.items()}
+        _r = {k: f.result() for k, f in _futs.items()}
+
+        contas              = _r["contas"]
+        pnl_data            = _r["pnl"]
+        clientes_data       = _r["clientes"]
+        categorias          = _r["categorias"]
+        retorno_mensal_data = _r["retorno_mensal"]
+        rentabilidade_data  = _r["rentabilidade"]
+        leituras_det_data   = _r["leituras"]
+        saldo_creditos_data = _r["saldo_creditos"]
+        financiamentos_data = _r["financiamentos"]
+        contas_pagar_data   = _r["contas_pagar"]
 
         # Conta extra somente visual (não entra na seleção/lançamentos) — LT LOCAÇÕES
         conta_extra_visual = None
@@ -367,7 +407,17 @@ def dashboard():
         conta_id = request.args.get("conta_id") or (contas[0]["id"] if contas else None)
         conta_atual = next((c for c in contas if c["id"] == conta_id), contas[0] if contas else None)
         saldo_inicial = float(conta_atual["saldo_inicial"] or 0) if conta_atual else 0.0
-        lancamentos_data = listar_lancamentos(ativo_id, conta_id=conta_id)
+        from services.benchmark_service import comparativo_benchmarks
+        _f_lanc = _POOL.submit(copy_current_request_context(
+            lambda: listar_lancamentos(ativo_id, conta_id=conta_id)))
+        _f_bench = _POOL.submit(copy_current_request_context(
+            lambda: comparativo_benchmarks(
+                float(rentabilidade_data.get("capital") or 0),
+                str(rentabilidade_data.get("data_desembolso") or ""),
+                retorno_mensal_data,
+            )))
+        lancamentos_data = _f_lanc.result()
+        benchmarks_data  = _f_bench.result()
         _lanc_op = sorted(
             [l for l in lancamentos_data if l.get("data_transacao") and not l.get("_neutro")],
             key=lambda l: (l["data_transacao"], 0 if l.get("tipo") == "credito" else 1)
@@ -384,21 +434,6 @@ def dashboard():
             l["data_transacao"][:7] for l in lancamentos_data
             if l.get("data_transacao") and not l.get("_neutro")
         })
-        pnl_data        = pnl_da_usina(ativo_id)
-        clientes_data   = clientes_da_usina(ativo_id)
-        categorias      = listar_categorias()
-        from services.benchmark_service import comparativo_benchmarks
-        retorno_mensal_data = retorno_mensal_investidor(ativo_id)
-        rentabilidade_data  = rentabilidade_investidor(ativo_id)
-        benchmarks_data = comparativo_benchmarks(
-            float(rentabilidade_data.get("capital") or 0),
-            str(rentabilidade_data.get("data_desembolso") or ""),
-            retorno_mensal_data,
-        )
-        leituras_det_data   = leituras_detalhadas(ativo_id)
-        saldo_creditos_data = saldo_creditos_da_usina(ativo_id)
-        financiamentos_data = financiamentos_da_usina(ativo_id)
-        contas_pagar_data   = contas_pagar_da_usina(ativo_id)
         _valid_tabs = ("visao_geral","clientes","financiamento","extrato","dre",
                        "benchmarks","saldo_creditos","relatorios")
         tab = request.args.get("tab", "visao_geral")
