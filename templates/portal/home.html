@@ -2253,12 +2253,33 @@ function iniciarChartPnlBar() {
                 y: { ticks: { callback: function(v) { return fmtBrl(v); }, font: { size: 10 } }, grid: { color: '#EEF0EF' } } } }
   });
 }
+function _pnlLimpar(lbl) {
+  // Mês sem P&L: não dá para cair no mês mais recente, que era o que acontecia
+  // — os cards mostravam agosto com o rótulo de agosto enquanto o usuário
+  // tinha pedido setembro, e parecia tela travada. "—" diz a verdade e não se
+  // confunde com R$ 0,00, que significaria mês apurado e sem movimento.
+  ['fc-pnl-receita', 'fc-pnl-despesas', 'fc-pnl-resultado', 'fc-pnl-margem'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = '—'; el.style.color = 'var(--muted)'; }
+  });
+  document.querySelectorAll('.fc-pnl-mes-lbl').forEach(function(el) { el.textContent = lbl; });
+  if (_chartPnlPieHome) { _chartPnlPieHome.destroy(); _chartPnlPieHome = null; }
+}
+
 function atualizarPnlCards(mes) {
   if (!_PNL_HOME.length) return;
-  var rec = (mes && _PNL_HOME.find(function(p) { return (p.ref_mes_ano || '').slice(0, 7) === mes; })) || _PNL_HOME[0];
-  if (!rec) return;
+  var rec = mes ? _PNL_HOME.find(function(p) { return (p.ref_mes_ano || '').slice(0, 7) === mes; })
+                : _PNL_HOME[0];
+  if (!rec) {
+    _pnlLimpar(mes ? _pnlMesLabelFmt(mes) + ' \u00b7 sem apura\u00e7\u00e3o' : '\u2014');
+    return;
+  }
   var lbl = rec.ref_mes_ano ? _pnlMesLabelFmt(rec.ref_mes_ano.slice(0, 7)) : '—';
   function set(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+  var elRec = document.getElementById('fc-pnl-receita');
+  if (elRec) elRec.style.color = '#16A34A';
+  var elDesp = document.getElementById('fc-pnl-despesas');
+  if (elDesp) elDesp.style.color = '#DC2626';
   set('fc-pnl-receita', fmtBrl(rec.receita_bruta || 0));
   set('fc-pnl-despesas', fmtBrl(rec.total_despesas || 0));
   var resEl = document.getElementById('fc-pnl-resultado');
