@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import date, datetime
 from services.supabase_client import get_service_client
+from services.log_erros import ignorado
 
 _CORES = ["#E8621A", "#2563EB", "#16A34A", "#9333EA", "#EAB308", "#EC4899"]
 
@@ -92,7 +93,7 @@ def auto_conciliar_neutros(usina_id: str) -> None:
           .in_("id", ids) \
           .execute()
     except Exception:
-        pass
+        ignorado("conciliação automática de lançamentos neutros")
 
 
 def _nome(u: dict) -> str:
@@ -834,7 +835,7 @@ def _nomes_transferencia() -> set:
             if n:
                 nomes.add(n)
     except Exception:
-        pass
+        ignorado("nomes de contas bancárias para detectar transferências")
     try:
         for row in (sb.table("usinas").select("razao_social,nome_fantasia").execute().data or []):
             for campo in ("razao_social", "nome_fantasia"):
@@ -842,14 +843,14 @@ def _nomes_transferencia() -> set:
                 if n:
                     nomes.add(n)
     except Exception:
-        pass
+        ignorado("nomes de usinas para detectar transferências")
     try:
         for row in (sb.table("investidores").select("nome").execute().data or []):
             n = (row.get("nome") or "").strip().upper()
             if n:
                 nomes.add(n)
     except Exception:
-        pass
+        ignorado("nomes de investidores para detectar transferências")
     if g is not None:
         g._nomes_transferencia_cache = nomes
     return nomes
@@ -1123,7 +1124,7 @@ def importar_extrato(usina_id: str, conteudo: bytes, extensao: str,
             if r.data:
                 ofx_id = r.data[0]["id"]
         except Exception:
-            pass
+            ignorado("registro da importação OFX")
 
     for l in lancamentos:
         fitid = l.get("fitid")
@@ -1150,7 +1151,7 @@ def importar_extrato(usina_id: str, conteudo: bytes, extensao: str,
             sb.table("lancamentos_bancarios").insert(row).execute()
             inseridos += 1
         except Exception:
-            pass
+            ignorado("inserção de lançamento do OFX")
 
     if ofx_id:
         try:
@@ -1159,7 +1160,7 @@ def importar_extrato(usina_id: str, conteudo: bytes, extensao: str,
                 "total_duplicados": duplicados,
             }).eq("id", ofx_id).execute()
         except Exception:
-            pass
+            ignorado("totais da importação OFX")
 
     return {"ok": True, "inseridos": inseridos, "total": len(lancamentos)}
 

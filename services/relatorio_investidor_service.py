@@ -8,6 +8,7 @@ import uuid
 from datetime import date
 
 from services.supabase_client import get_service_client
+from services.log_erros import ignorado
 
 _BUCKET = "relatorios-investidor"
 _TABELA = "relatorios_investidor"
@@ -92,14 +93,14 @@ def publicar(ativo_tipo: str, ativo_id: str, mes_referencia: str, nome_arquivo: 
         try:
             sb.storage.from_(_BUCKET).remove([storage_key])
         except Exception:
-            pass
+            ignorado("remoção do arquivo órfão após falha ao publicar")
         return {"ok": False, "erro": str(e)}
 
     if anterior and anterior.get("storage_key") != storage_key:
         try:
             sb.storage.from_(_BUCKET).remove([anterior["storage_key"]])
         except Exception:
-            pass
+            ignorado("remoção do arquivo substituído do relatório")
 
     return {"ok": True, "substituiu": bool(anterior)}
 
@@ -203,7 +204,7 @@ def remover(rel_id: str) -> dict:
     try:
         sb.storage.from_(_BUCKET).remove([rel["storage_key"]])
     except Exception:
-        pass  # registro sai de qualquer forma; arquivo órfão não expõe nada
+        ignorado("remoção do arquivo do relatório despublicado")
     try:
         sb.table(_TABELA).delete().eq("id", rel_id).execute()
     except Exception as e:

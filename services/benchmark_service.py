@@ -7,6 +7,7 @@ Cache diário no Supabase.
 import requests
 from datetime import date, datetime, timedelta
 from services.supabase_client import get_service_client
+from services.log_erros import ignorado
 
 SERIES_BCB = {
     "cdi":      12,
@@ -60,13 +61,13 @@ def _carregar_cache() -> dict:
                 continue
             mapa[chave] = row
     except Exception:
-        pass
+        ignorado("leitura do cache de benchmarks")
 
     if g is not None:
         try:
             g._benchmark_cache_map = mapa
         except Exception:
-            pass
+            pass   # fora de contexto de requisição: segue sem cache
     return mapa
 
 
@@ -126,7 +127,7 @@ def _agrupar_cdi_mensal(dados: list[dict]) -> dict[str, float]:
             r = float(d["valor"]) / 100
             mensal[mes] = mensal.get(mes, 1.0) * (1 + r)
         except Exception:
-            pass
+            pass   # linha malformada da série; as demais seguem
     return {m: v - 1 for m, v in mensal.items()}
 
 
@@ -138,7 +139,7 @@ def _agrupar_mensal_bcb(dados: list[dict]) -> dict[str, float]:
             mes = dt.strftime("%Y-%m")
             mensal[mes] = float(d["valor"]) / 100
         except Exception:
-            pass
+            pass   # linha malformada da série; as demais seguem
     return mensal
 
 

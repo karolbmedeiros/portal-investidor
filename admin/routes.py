@@ -4,6 +4,7 @@ from flask import (
 )
 from middleware.auth_guard import requer_admin
 from services import investidor_service as inv_svc, auth_service
+from services.log_erros import ignorado
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -109,7 +110,7 @@ def dashboard():
                             _ini_dt = _dt_c.strptime(_c.get("inicio") or "", _fmt).date()
                             break
                         except Exception:
-                            pass
+                            pass   # formato de data que não casou; o laço tenta o próximo
                     _placa_c = str(_c.get("placa") or "").replace("-", "").upper()
                     _info_contrato[_nome_c] = {
                         "placa":         _c.get("placa") or "\u2014",
@@ -244,7 +245,7 @@ def dashboard():
                 from services.veiculos_service import contas_receber_empresa
                 faturas_carros = contas_receber_empresa(_emp_c["nome"])
             except Exception:
-                pass
+                ignorado("bloco de dados de carros do dashboard")
 
         # Lançamentos bancários da empresa de carros
         try:

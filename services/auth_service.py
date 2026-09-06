@@ -1,5 +1,6 @@
 from flask import session
 from services.supabase_client import get_client, get_service_client
+from services.log_erros import ignorado
 
 
 def _role_do_email(email: str) -> str:
@@ -112,7 +113,7 @@ def ler_acesso(user_id: str) -> dict:
                 "usina_ids":   res.data.get("usina_ids") or [],
             }
     except Exception:
-        pass
+        ignorado("leitura do acesso do usuário")
     return vazio
 
 
@@ -157,7 +158,7 @@ def refresh_session_permissions():
             return
         g._perms_lidas = True
     except Exception:
-        pass
+        pass   # fora de contexto de requisição: relê sem memoizar
 
     acesso = ler_acesso(uid)
     session["permissions"] = acesso["permissions"]
@@ -248,7 +249,7 @@ def listar_usuarios_com_acesso() -> list:
                           .execute().data or []):
                 acessos[row["user_id"]] = row
         except Exception:
-            pass
+            ignorado("acessos para a lista de usuários do admin")
 
         resultado = []
         for user in (users or []):

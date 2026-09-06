@@ -4,6 +4,7 @@ from flask import (
 )
 from middleware.auth_guard import requer_login
 from services.auth_service import usuario_logado, is_admin, preview_investidor_id, refresh_session_permissions
+from services.log_erros import ignorado
 
 portal_bp = Blueprint("portal", __name__, url_prefix="/portal")
 
@@ -44,7 +45,7 @@ def home():
             todas_emp = listar_empresas_veiculos()
             empresas_carros = [e for e in todas_emp if e.get("slug") in carros_slugs]
         except Exception:
-            pass
+            ignorado("empresas de carros do investidor")
 
     # Mapa slug→empresa para lookup rápido
     carros_por_slug = {e["slug"]: e for e in empresas_carros}
@@ -150,7 +151,7 @@ def home():
                         inicio_dt = _dt.strptime(c.get("inicio") or "", fmt).date()
                         break
                     except Exception:
-                        pass
+                        pass   # formato de data que não casou; o laço tenta o próximo
                 placa = str(c.get("placa") or "").replace("-", "").upper()
                 info_contrato[nome_c] = {
                     "placa":         c.get("placa") or "\u2014",
@@ -289,7 +290,7 @@ def home():
                 "poupanca_aa_pct":  round(_b["poupanca_aa"] * 100, 2),
             }
         except Exception:
-            pass
+            ignorado("benchmarks do portal")
     else:
         # Rendimento: faturas pagas das UCs das usinas × cota
         try:
@@ -309,7 +310,7 @@ def home():
                 mn = int(ym.split("-")[1]) - 1
                 rendimento_meses.append({"mes": _MESES[mn], "ano": ym[:4], "valor": round(v, 2)})
         except Exception:
-            pass
+            ignorado("rendimento acumulado do investidor")
 
     # Faturas pendentes de carros (tabela contas_receber_frota)
     faturas_carros = []
@@ -321,7 +322,7 @@ def home():
             from services.veiculos_service import contas_receber_empresa
             faturas_carros = contas_receber_empresa(empresa_carros_sel["nome"])
         except Exception:
-            pass
+            ignorado("faturas de carros")
         try:
             import json as _json
             from services.veiculos_service import listar_lancamentos_carros
@@ -351,7 +352,7 @@ def home():
                     chart_fluxo_carros_dates.append(_d)
                     chart_fluxo_carros_pts.append(_s)
         except Exception:
-            pass
+            ignorado("fluxo de caixa de carros")
 
     # Faturas pendentes das usinas visíveis
     faturas_pendentes = []
@@ -376,7 +377,7 @@ def home():
                     f["dias_vencimento"] = 0
                 faturas_pendentes.append(f)
     except Exception:
-        pass
+        ignorado("faturas pendentes das usinas")
 
     # Dados visuais — só busca se tiver usina selecionada e permissão
     # (mesmo padrão do admin: todas as abas permitidas são pré-carregadas

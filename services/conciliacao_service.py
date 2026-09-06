@@ -5,6 +5,7 @@ Tabelas: lancamentos_bancarios, contas_bancarias, categorias_financeiras,
 """
 from typing import Optional
 from services.supabase_client import get_service_client
+from services.log_erros import ignorado
 
 _NEUTRAS = ["RESGATE FUNDOS", "APLICACAO FUNDO", "APLICAÇÃO FUNDO"]
 
@@ -235,7 +236,7 @@ def importar_ofx(conta_id: str, conteudo: bytes, extensao: str,
             }).execute()
             ofx_id = (r.data or [{}])[0].get("id")
         except Exception:
-            pass
+            ignorado("registro da importação OFX")
 
     for l in lancamentos:
         fitid = l.get("fitid")
@@ -263,7 +264,7 @@ def importar_ofx(conta_id: str, conteudo: bytes, extensao: str,
             sb.table("lancamentos_bancarios").insert(row).execute()
             inseridos += 1
         except Exception:
-            pass
+            ignorado("inserção de lançamento do OFX")
 
     if ofx_id:
         try:
@@ -272,6 +273,6 @@ def importar_ofx(conta_id: str, conteudo: bytes, extensao: str,
                 "total_duplicados": duplicados,
             }).eq("id", ofx_id).execute()
         except Exception:
-            pass
+            ignorado("totais da importação OFX")
 
     return {"ok": True, "inseridos": inseridos, "total": len(lancamentos)}

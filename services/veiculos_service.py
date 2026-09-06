@@ -4,6 +4,7 @@ import json
 import os
 from typing import Optional
 from services.supabase_client import get_financeiro_client, get_service_client
+from services.log_erros import ignorado
 
 _CLIENTES_CACHE: Optional[dict] = None
 
@@ -201,7 +202,7 @@ def upload_planilha(filename: str, conteudo: bytes) -> dict:
         try:
             sb.storage.from_(_STORAGE_BUCKET).remove([key])
         except Exception:
-            pass
+            pass   # não havia arquivo anterior para remover
         sb.storage.from_(_STORAGE_BUCKET).upload(key, conteudo, {"content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
         # invalida cache local em /tmp
         tmp = os.path.join("/tmp", filename)
@@ -406,7 +407,7 @@ def listar_empresas_veiculos():
                 "marca":  (c.get("veiculo_marca") or "").strip(),
             }
     except Exception:
-        pass
+        ignorado("modelos e marcas por placa")
 
     semana_atual = max(r["data_semana"] for r in all_recs)
     empresas = {}
