@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, abort, session as _sess
+from flask import (
+    Blueprint, render_template, request, redirect, url_for, abort,
+    send_file, session as _sess,
+)
 from middleware.auth_guard import requer_login
 from services.auth_service import usuario_logado, is_admin, preview_investidor_id, refresh_session_permissions
 
@@ -101,6 +104,7 @@ def home():
         if all_perms or "energia"          in u_perms or "saldo_creditos" in u_perms:   home_tabs.append("saldo_creditos")
         if all_perms or "dre"              in u_perms:                                 home_tabs.append("dre")
         if all_perms or "clientes"         in u_perms:                                 home_tabs.append("clientes")
+        if all_perms or "relatorios"       in u_perms:                                 home_tabs.append("relatorios")
         if all_perms or "financiamento"    in u_perms:                                 home_tabs.append("financiamento")
     ver_contas_pagar = bool(ativo_id and ativo_tipo == "usina" and (all_perms or "contas_pagar" in u_perms))
     ver_extrato_consolidado = bool(all_perms or "extrato_consolidado" in u_perms)
@@ -465,8 +469,16 @@ def home():
         dre_percentuais = _dre["percentuais"]
         dre_naturezas   = _dre["naturezas"]
 
+    # Relatório do Investidor: 12 meses do ativo selecionado. Só leitura —
+    # publicar e remover existem apenas no admin.
+    relatorio_meses = []
+    if "relatorios" in home_tabs and ativo_id:
+        from services.relatorio_investidor_service import listar_meses as _rel_meses
+        relatorio_meses = _rel_meses(ativo_tipo, ativo_id)
+
     return render_template(
         "portal/home.html",
+        relatorio_meses=relatorio_meses,
         usinas=usinas,
         all_usinas=all_usinas,
         ativos=ativos,
@@ -594,6 +606,25 @@ def classificar_lancamento_carro():
     from services.veiculos_service import classificar_lancamento_carros
     dados = _req.get_json() or {}
     return jsonify(classificar_lancamento_carros(dados.get("id"), dados.get("natureza"), dados.get("splits")))
+
+
+@portal_bp.route("/relatorios/<rel_id>/download")
+@requer_login
+def relatorio_download(rel_id):
+    """Serve o arquivo pelo id do relatório: o path do storage nunca sai daqui."""
+    from io import BytesIO
+    from services import relatorio_investidor_service as rel_svc
+    u = usuario_logado()
+    rel = rel_svc.buscar(rel_id)
+    if not rel:
+        abort(404)
+    if not rel_svc.pode_acessar(u, rel["ativo_tipo"], rel["ativo_id"]):
+        abort(403)
+    res = rel_svc.baixar(rel_id)
+    if not res["ok"]:
+        abort(404)
+    return send_file(BytesIO(res["conteudo"]), mimetype=res["mime_type"],
+                     as_attachment=True, download_name=res["nome"])
 
 
 @portal_bp.route("/documentos")

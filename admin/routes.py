@@ -286,7 +286,7 @@ def dashboard():
             lancamentos_carros = []
 
         _tab_carro = request.args.get("tab", "visao_geral")
-        if _tab_carro not in ("visao_geral","clientes","extrato"):
+        if _tab_carro not in ("visao_geral","clientes","extrato","relatorios"):
             _tab_carro = "visao_geral"
 
     # Rendimento acumulado — faturas pagas das UCs vinculadas à usina
@@ -305,7 +305,7 @@ def dashboard():
 
     # ── Dados analíticos da usina (tabs inline) ──────────────────────────────
     usina_obj = None
-    tab = _tab_carro if ativo_tipo == "carro" else "visao_geral"
+    tab = _tab_carro if ativo_tipo == "carro" else request.args.get("tab", "visao_geral")
     contas = conta_id = conta_atual = pnl_data = clientes_data = categorias = None
     conta_extra_visual = None
     dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
@@ -461,8 +461,15 @@ def dashboard():
         )
         rendimento_total = round(_total_usinas_aberto, 2) if _total_usinas_aberto > 0 else None
 
+    # Relatório do Investidor: janela de 12 meses do ativo selecionado
+    relatorio_meses = []
+    if ativo_id and ativo_tipo in ("usina", "carro"):
+        from services.relatorio_investidor_service import listar_meses as _rel_meses
+        relatorio_meses = _rel_meses(ativo_tipo, ativo_id)
+
     return render_template(
         "admin/dashboard.html",
+        relatorio_meses=relatorio_meses,
         usinas=usinas,
         empresas_veiculos=empresas_veiculos,
         ativos=ativos,
@@ -709,6 +716,75 @@ def usina_relatorio_pdf(usina_id):
     buffer = gerar_relatorio_usina_pdf(usina_id)
     nome_arquivo = f"relatorio_{usina['nome'].replace(' ', '_')}_{date.today().strftime('%Y-%m')}.pdf"
     return send_file(buffer, mimetype="application/pdf", as_attachment=True, download_name=nome_arquivo)
+
+
+# ── Relatório do Investidor ───────────────────────────────────────────────────
+# Arquivo mensal (.pdf/.docx) produzido fora do sistema. Só o admin publica;
+# o investidor apenas baixa, pela rota do portal.
+
+def _redirect_aba_relatorios(ativo_tipo, ativo_id):
+    return redirect(url_for("admin.dashboard", ativo_id=ativo_id,
+                            ativo_tipo=ativo_tipo, tab="relatorios"))
+
+
+@admin_bp.route("/relatorios/upload", methods=["POST"])
+@requer_admin
+def relatorio_investidor_upload():
+    from services import relatorio_investidor_service as rel_svc
+    ativo_tipo = request.form.get("ativo_tipo", "usina")
+    ativo_id   = request.form.get("ativo_id", "")
+    mes        = request.form.get("mes_referencia", "")
+    arquivo    = request.files.get("arquivo")
+
+    if not arquivo or not arquivo.filename:
+        flash("Selecione um arquivo .pdf ou .docx.", "erro")
+        return _redirect_aba_relatorios(ativo_tipo, ativo_id)
+
+    u = auth_service.usuario_logado()
+    res = rel_svc.publicar(
+        ativo_tipo, ativo_id, mes, arquivo.filename,
+        arquivo.read(), arquivo.content_type,
+        user_id=u["id"] if u else None,
+    )
+    if res["ok"]:
+        flash(
+            f"Relatório de {rel_svc.rotulo_mes(mes)} "
+            + ("substituído." if res.get("substituiu") else "publicado."),
+            "sucesso",
+        )
+    else:
+        flash(f"Erro: {res['erro']}", "erro")
+    return _redirect_aba_relatorios(ativo_tipo, ativo_id)
+
+
+@admin_bp.route("/relatorios/<rel_id>/excluir", methods=["POST"])
+@requer_admin
+def relatorio_investidor_excluir(rel_id):
+    from services import relatorio_investidor_service as rel_svc
+    rel = rel_svc.buscar(rel_id)
+    if not rel:
+        abort(404)
+    res = rel_svc.remover(rel_id)
+    flash(
+        f"Relatório de {rel_svc.rotulo_mes(rel['mes_referencia'])} removido."
+        if res["ok"] else f"Erro: {res['erro']}",
+        "sucesso" if res["ok"] else "erro",
+    )
+    return _redirect_aba_relatorios(
+        "carro" if rel["ativo_tipo"] == "carros" else "usina", rel["ativo_id"]
+    )
+
+
+@admin_bp.route("/relatorios/<rel_id>/download")
+@requer_admin
+def relatorio_investidor_download(rel_id):
+    from io import BytesIO
+    from services import relatorio_investidor_service as rel_svc
+    res = rel_svc.baixar(rel_id)
+    if not res["ok"]:
+        abort(404)
+    return send_file(BytesIO(res["conteudo"]), mimetype=res["mime_type"],
+                     as_attachment=True, download_name=res["nome"])
 
 
 @admin_bp.route("/usina/<usina_id>/distribuicao/nova", methods=["POST"])

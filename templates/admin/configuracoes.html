@@ -173,6 +173,14 @@
                     </span>
                   </label>
                   <label class="toggle-item">
+                    <span class="toggle-item-label">Relatórios</span>
+                    <span class="toggle">
+                      <input type="checkbox" name="permissions" value="relatorios"
+                        {{ 'checked' if all_checked or 'relatorios' in cur_perms }} />
+                      <span class="toggle-slider"></span>
+                    </span>
+                  </label>
+                  <label class="toggle-item">
                     <span class="toggle-item-label">Fluxo de Caixa</span>
                     <span class="toggle">
                       <input type="checkbox" name="permissions" value="extrato_bancario"
@@ -359,6 +367,10 @@
                   <label class="toggle-item">
                     <span class="toggle-item-label">Clientes</span>
                     <span class="toggle"><input type="checkbox" name="permissions" value="clientes" /><span class="toggle-slider"></span></span>
+                  </label>
+                  <label class="toggle-item">
+                    <span class="toggle-item-label">Relatórios</span>
+                    <span class="toggle"><input type="checkbox" name="permissions" value="relatorios" /><span class="toggle-slider"></span></span>
                   </label>
                   <label class="toggle-item">
                     <span class="toggle-item-label">Fluxo de Caixa</span>

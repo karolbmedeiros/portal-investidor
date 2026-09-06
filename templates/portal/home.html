@@ -91,6 +91,7 @@
   'benchmarks': 'Benchmarks',
   'saldo_creditos': 'Créditos kWh',
   'clientes': 'Clientes',
+  'relatorios': 'Relatórios',
   'dre': 'DRE',
   'financiamento': 'Financiamento'
 } %}
@@ -807,6 +808,43 @@ function toggleAcordI(btn){
   {% endif %}
 
 {% endif %}{# fim if ativo_tipo == 'carros' #}
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════════ RELATÓRIOS ═══ #}
+{# Somente leitura: quem publica é o admin. #}
+{% if 'relatorios' in home_tabs %}
+<div id="tab-relatorios" data-tab="relatorios" class="dtab-content {{ 'ativo' if tab == 'relatorios' }}">
+  {% if ativo_id %}
+  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;">
+    Relatório mensal · últimos 12 meses
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {% for m in relatorio_meses %}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;background:var(--bg);border:0.5px solid var(--border);border-radius:10px;{% if not m.disponivel %}opacity:.65;{% endif %}">
+      <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+        <span style="font-size:13px;font-weight:600;min-width:130px;{% if not m.disponivel %}color:var(--muted);{% endif %}">{{ m.rotulo }}</span>
+        {% if m.disponivel %}
+        <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--green);background:rgba(29,158,117,.10);border:0.5px solid rgba(29,158,117,.25);padding:3px 9px;border-radius:20px;white-space:nowrap;">RELATÓRIO DISPONÍVEL</span>
+        {% else %}
+        <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--muted);background:var(--bg2);border:0.5px solid var(--border);padding:3px 9px;border-radius:20px;white-space:nowrap;">RELATÓRIO INDISPONÍVEL</span>
+        {% endif %}
+      </div>
+      {% if m.disponivel %}
+      <a href="{{ url_for('portal.relatorio_download', rel_id=m.relatorio.id) }}"
+         style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:#fff;background:var(--accent);padding:8px 16px;border-radius:8px;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+        Baixar
+      </a>
+      {% else %}
+      <span style="font-size:12px;color:var(--muted);flex-shrink:0;padding:8px 16px;">Ainda não publicado</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="vazio" style="padding:48px 0;">Selecione um ativo para ver os relatórios.</div>
+  {% endif %}
 </div>
 {% endif %}
 
