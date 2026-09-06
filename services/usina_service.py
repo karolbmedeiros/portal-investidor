@@ -88,8 +88,15 @@ def auto_conciliar_neutros(usina_id: str) -> None:
     if not ids:
         return
     try:
+        # Só marca como conciliado; NÃO apaga a categoria de quem já tem uma.
+        # Apagar custava caro: o aluguel da LOPES entra no BNB como
+        # transferência vinda de outra conta, e a descrição carrega o nome da
+        # própria empresa — então todo crédito novo era classificado como
+        # transferência e perdia o "Receita de Locação", sumindo do rendimento
+        # sem deixar rastro. Neutro de verdade (resgate de fundo) nunca tem
+        # categoria, então para eles nada muda.
         sb.table("lancamentos_bancarios") \
-          .update({"conciliado": True, "categoria_id": None}) \
+          .update({"conciliado": True}) \
           .in_("id", ids) \
           .execute()
     except Exception:
@@ -1276,6 +1283,49 @@ def excluir_documento(doc_id: str) -> dict:
         return {"ok": False, "erro": str(e)}
 
 
+# Usinas cujo rendimento vem do extrato bancário, e não das faturas de UC.
+# Na LOPES o aluguel é recebido em outra conta e chega ao BNB como
+# transferência: a fatura e o crédito são o mesmo dinheiro, então somar as duas
+# fontes contaria em dobro, e a fatura sozinha captura quase nada (R$ 9.960 de
+# R$ 104.554 recebidos). Enquanto isso não virar configuração por usina, fica
+# esta lista — acrescentar outra usina é uma linha.
+_CATEGORIA_LOCACAO = "Receita de Locação"
+_RENDIMENTO_POR_LOCACAO = {
+    "21b540af-08c2-46ae-bccb-63580a064bfe",   # LOPES LOCACOES LTDA
+}
+
+
+def _recebimentos_por_locacao(usina_id: str, inicio: date) -> dict:
+    """{'YYYY-MM': valor} dos créditos categorizados como Receita de Locação."""
+    sb = get_service_client()
+    contas = [c["id"] for c in listar_contas_da_usina(usina_id)]
+    if not contas:
+        return {}
+    try:
+        rows = (
+            sb.table("lancamentos_bancarios")
+            .select("data_transacao, valor, categorias_financeiras(nome)")
+            .in_("conta_bancaria_id", contas)
+            .eq("tipo", "credito")
+            .gte("data_transacao", str(inicio))
+            .is_("deleted_at", "null")
+            .execute()
+        ).data or []
+    except Exception:
+        ignorado("créditos de locação da usina")
+        return {}
+
+    por_mes: dict = {}
+    for r in rows:
+        if ((r.get("categorias_financeiras") or {}).get("nome")) != _CATEGORIA_LOCACAO:
+            continue
+        ym = str(r.get("data_transacao") or "")[:7]
+        valor = float(r.get("valor") or 0)
+        if ym and valor > 0:
+            por_mes[ym] = por_mes.get(ym, 0.0) + valor
+    return por_mes
+
+
 def recebimentos_por_mes_usina(usina_id: str, meses: int = 6) -> tuple:
     """Recebimentos da usina a partir das faturas pagas das UCs vinculadas.
 
@@ -1308,15 +1358,18 @@ def recebimentos_por_mes_usina(usina_id: str, meses: int = 6) -> tuple:
         or []
     )
 
-    por_mes: dict = {}
-    for f in faturas:
-        valor = float(f.get("valor_pago") or 0)
-        if valor <= 0:
-            continue
-        ym = str(f.get("ref_mes_ano") or "")[:7]
-        if not ym:
-            continue
-        por_mes[ym] = por_mes.get(ym, 0.0) + valor
+    if usina_id in _RENDIMENTO_POR_LOCACAO:
+        por_mes = _recebimentos_por_locacao(usina_id, inicio)
+    else:
+        por_mes = {}
+        for f in faturas:
+            valor = float(f.get("valor_pago") or 0)
+            if valor <= 0:
+                continue
+            ym = str(f.get("ref_mes_ano") or "")[:7]
+            if not ym:
+                continue
+            por_mes[ym] = por_mes.get(ym, 0.0) + valor
 
     total = round(sum(por_mes.values()), 2)
 
