@@ -10,7 +10,8 @@
         {{ investidores|length }} cadastrado{{ 's' if investidores|length != 1 }}
       </div>
     </div>
-    <a href="{{ url_for('admin.investidor_novo') }}" class="btn btn-primary">+ Novo investidor</a>
+    {# Cadastro e edição de investidor vivem em Configurações; esta tela é de consulta. #}
+    <a href="{{ url_for('admin.configuracoes') }}" class="btn btn-primary">+ Novo investidor</a>
   </div>
 </div>
 <div class="page-content">
@@ -44,13 +45,8 @@
             <div class="flex gap-8">
               <a href="{{ url_for('admin.preview_portal', investidor_id=inv.id) }}"
                  class="btn btn-ghost btn-sm">Ver portal</a>
-              <a href="{{ url_for('admin.investidor_editar', investidor_id=inv.id) }}"
+              <a href="{{ url_for('admin.configuracoes') }}"
                  class="btn btn-secondary btn-sm">Editar</a>
-              <form method="POST"
-                    action="{{ url_for('admin.reenviar_convite', investidor_id=inv.id) }}"
-                    style="display:inline;">
-                <button type="submit" class="btn btn-ghost btn-sm">Reenviar convite</button>
-              </form>
             </div>
           </td>
         </tr>
@@ -61,7 +57,7 @@
   {% else %}
   <div class="vazio">
     Nenhum investidor cadastrado ainda.<br>
-    <a href="{{ url_for('admin.investidor_novo') }}" class="btn btn-primary"
+    <a href="{{ url_for('admin.configuracoes') }}" class="btn btn-primary"
        style="margin-top:16px;display:inline-flex;">+ Criar primeiro investidor</a>
   </div>
   {% endif %}

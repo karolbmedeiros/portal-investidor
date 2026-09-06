@@ -10,7 +10,8 @@
   <div class="db-list-header" style="margin-bottom:4px;">
     <div class="db-list-title">
       Carros
-      {% set total_veiculos = empresas_veiculos | sum(attribute='veiculos'|length) if empresas_veiculos else 0 %}
+      {# sum(attribute=...) espera o NOME de um atributo; 'veiculos'|length passava o número 8 e estourava #}
+      {% set total_veiculos = empresas_veiculos | map(attribute='veiculos') | map('default', [], true) | map('length') | sum if empresas_veiculos else 0 %}
       <span class="db-list-count">{{ total_veiculos }} veículo{{ 's' if total_veiculos != 1 }}</span>
     </div>
   </div>
