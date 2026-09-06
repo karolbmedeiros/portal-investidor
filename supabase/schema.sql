@@ -184,3 +184,23 @@ create index if not exists idx_relatorios_investidor_ativo
 -- Bucket privado (criado via API do storage neste projeto):
 -- insert into storage.buckets (id, name, public)
 --   values ('relatorios-investidor', 'relatorios-investidor', false);
+
+-- ── Acessos do investidor ─────────────────────────────────────
+-- Permissões de seção e usinas visíveis, que antes moravam no
+-- user_metadata do Auth. Saíram de lá porque a home do portal
+-- precisa reler o acesso a cada carregamento (para uma revogação
+-- valer na hora) e a API admin do Auth custa ~0,7 s por chamada,
+-- contra ~0,2 s de uma consulta comum a esta tabela.
+--
+-- usina_ids é text[] e não uuid[]: guarda uuid de usina e também
+-- slug de empresa de carros, que não tem tabela própria.
+create table if not exists usuario_acessos (
+  user_id     uuid primary key,
+  permissions text[] not null default '{}',
+  usina_ids   text[] not null default '{}',
+  updated_at  timestamptz not null default now()
+);
+
+-- Só o service_role toca nesta tabela; o investidor nunca a lê
+-- direto, sempre através da sessão do servidor.
+alter table usuario_acessos enable row level security;
