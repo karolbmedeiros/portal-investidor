@@ -19,6 +19,11 @@ _MESES_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
              "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
 
+# Primeiro mês com relatório. Antes disso nada foi publicado, então esses
+# meses não entram na lista — nem no admin nem no portal.
+MES_INICIAL = "2026-08"
+
+
 def normalizar_tipo(ativo_tipo: str) -> str:
     """O admin usa 'carro' no filtro e o portal usa 'carros'; o modelo usa 'carros'."""
     return "carros" if str(ativo_tipo or "").startswith("carro") else "usina"
@@ -115,6 +120,9 @@ def buscar_do_mes(ativo_tipo: str, ativo_id: str, mes_referencia: str) -> dict:
 def listar_meses(ativo_tipo: str, ativo_id: str, meses: int = 12) -> list:
     """Janela dos últimos `meses` meses, do mais recente para o mais antigo.
 
+    Nunca vai antes de MES_INICIAL: não houve relatório antes disso, e listar
+    esses meses como "indisponível" sugeriria uma pendência que não existe.
+
     Fonte única das telas do admin e do investidor: cada item traz o estado do
     mês, disponível só quando existe registro publicado.
     """
@@ -126,10 +134,16 @@ def listar_meses(ativo_tipo: str, ativo_id: str, meses: int = 12) -> list:
     ym_list = []
     ano, mes = hoje.year, hoje.month
     for _ in range(meses):
-        ym_list.append(f"{ano:04d}-{mes:02d}")
+        ym = f"{ano:04d}-{mes:02d}"
+        if ym < MES_INICIAL:
+            break
+        ym_list.append(ym)
         mes -= 1
         if mes == 0:
             mes, ano = 12, ano - 1
+
+    if not ym_list:
+        return []
 
     sb = get_service_client()
     try:
