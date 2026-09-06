@@ -985,25 +985,33 @@ def _is_dup_bancario(sb, conta_id: str, data: str, descricao: str,
     entrar os dois; `ja_inseridos` diz quantos desta mesma chave já entraram
     nesta importação, então só é duplicata o que exceder o que o arquivo traz.
     """
+    v = abs(float(valor))
+
     if fitid:
+        # O fitid não é único: o banco reaproveita o mesmo identificador para
+        # lançamentos diferentes no mesmo dia (em 16/07/2026 o 20260716007
+        # aparece em um de R$ 1.466,23 e noutro de R$ 1.976,45). Casar só pelo
+        # fitid descartaria em silêncio um lançamento legítimo cujo id colide
+        # com outro já gravado — por isso o valor entra na comparação.
         res = (
             sb.table("lancamentos_bancarios")
             .select("id")
             .eq("conta_bancaria_id", conta_id)
             .eq("fitid", fitid)
+            .in_("valor", [v, -v])
+            .is_("deleted_at", "null")
             .limit(1)
             .execute()
         )
         if res.data:
             return True
-        # fitid novo não garante lançamento novo — segue para a comparação
-        # por conteúdo abaixo.
+        # fitid novo (ou colidido) não garante lançamento novo — segue para a
+        # comparação por conteúdo abaixo.
 
     # O parser devolve valor sempre positivo (o sinal vai no campo `tipo`), mas
     # a tabela guarda com sinal — débito negativo, sem exceção. Comparar com o
     # valor do arquivo cru fazia esta checagem nunca casar para débitos, que é
     # o que deixou passar as reimportações. Aceita os dois sinais.
-    v = abs(float(valor))
     res = (
         sb.table("lancamentos_bancarios")
         .select("id", count="exact")
