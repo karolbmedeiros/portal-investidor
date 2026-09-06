@@ -356,6 +356,7 @@ def home():
     # Faturas pendentes das usinas visíveis
     faturas_pendentes = []
     try:
+        sb = get_service_client()
         ids_vis = [us["id"] for us in usinas]
         if ids_vis:
             _q = sb.from_("v_faturas_completas") \
