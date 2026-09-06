@@ -971,7 +971,20 @@ def conciliar_lancamento(lancamento_id: str, categoria_id: str,
 
 
 def _is_dup_bancario(sb, conta_id: str, data: str, descricao: str,
-                     valor: float, fitid: Optional[str] = None) -> bool:
+                     valor: float, fitid: Optional[str] = None,
+                     ja_inseridos: int = 0) -> bool:
+    """Diz se este lançamento do arquivo já existe na conta.
+
+    O fitid resolve o caso fácil, mas não pode ser a única prova: o mesmo
+    lançamento vem com fitid diferente quando o período é reexportado pelo
+    banco, e antes disso a função retornava "não é duplicata" e reinseria.
+
+    Quando o fitid não casa, cai na comparação por data + descrição + valor,
+    comparando QUANTIDADE e não existência. Dois lançamentos legítimos iguais
+    no mesmo dia (duas tarifas do mesmo valor, dois PIX iguais) precisam
+    entrar os dois; `ja_inseridos` diz quantos desta mesma chave já entraram
+    nesta importação, então só é duplicata o que exceder o que o arquivo traz.
+    """
     if fitid:
         res = (
             sb.table("lancamentos_bancarios")
@@ -981,18 +994,28 @@ def _is_dup_bancario(sb, conta_id: str, data: str, descricao: str,
             .limit(1)
             .execute()
         )
-        return bool(res.data)
+        if res.data:
+            return True
+        # fitid novo não garante lançamento novo — segue para a comparação
+        # por conteúdo abaixo.
+
+    # O parser devolve valor sempre positivo (o sinal vai no campo `tipo`), mas
+    # a tabela guarda com sinal — débito negativo, sem exceção. Comparar com o
+    # valor do arquivo cru fazia esta checagem nunca casar para débitos, que é
+    # o que deixou passar as reimportações. Aceita os dois sinais.
+    v = abs(float(valor))
     res = (
         sb.table("lancamentos_bancarios")
-        .select("id")
+        .select("id", count="exact")
         .eq("conta_bancaria_id", conta_id)
         .eq("data_transacao", data)
         .eq("descricao_original", descricao)
-        .eq("valor", valor)
-        .limit(1)
+        .in_("valor", [v, -v])
+        .is_("deleted_at", "null")
         .execute()
     )
-    return bool(res.data)
+    existentes = res.count if res.count is not None else len(res.data or [])
+    return existentes > ja_inseridos
 
 
 def _parse_xlsx(conteudo: bytes) -> list:
@@ -1126,10 +1149,16 @@ def importar_extrato(usina_id: str, conteudo: bytes, extensao: str,
         except Exception:
             ignorado("registro da importação OFX")
 
+    # quantos de cada chave já entraram nesta importação, para o arquivo poder
+    # trazer legitimamente dois lançamentos idênticos no mesmo dia
+    ja_inseridos: dict = {}
+
     for l in lancamentos:
         fitid = l.get("fitid")
+        chave = (l["data_transacao"], l["descricao_original"], l["valor"])
         if _is_dup_bancario(sb, conta_id, l["data_transacao"],
-                            l["descricao_original"], l["valor"], fitid):
+                            l["descricao_original"], l["valor"], fitid,
+                            ja_inseridos.get(chave, 0)):
             duplicados += 1
             continue
         try:
@@ -1149,6 +1178,7 @@ def importar_extrato(usina_id: str, conteudo: bytes, extensao: str,
             if ofx_id:
                 row["ofx_importacao_id"] = ofx_id
             sb.table("lancamentos_bancarios").insert(row).execute()
+            ja_inseridos[chave] = ja_inseridos.get(chave, 0) + 1
             inseridos += 1
         except Exception:
             ignorado("inserção de lançamento do OFX")
