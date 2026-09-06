@@ -22,43 +22,77 @@ def _eh_rendimento(l: dict) -> bool:
     return any(kw in desc for kw in _DESCRICOES_RENDIMENTO)
 
 
+def _cache_requisicao(f):
+    """Memoiza uma leitura pelo tempo de uma requisição GET (via flask.g).
+
+    Só vale para GET: em POST o mesmo handler pode gravar e reler no mesmo
+    ciclo, e o cache devolveria dado velho. Fora de contexto de requisição
+    (scripts, testes) a função roda normalmente, sem cache.
+    """
+    import functools
+
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            from flask import g, request, has_request_context
+            if not has_request_context() or request.method != "GET":
+                return f(*args, **kwargs)
+        except Exception:
+            return f(*args, **kwargs)
+
+        cache = getattr(g, "_cache_leituras", None)
+        if cache is None:
+            cache = {}
+            g._cache_leituras = cache
+
+        chave = (f.__name__, args, tuple(sorted(kwargs.items())))
+        try:
+            if chave in cache:
+                return cache[chave]
+        except TypeError:      # argumento não-hasheável
+            return f(*args, **kwargs)
+
+        resultado = f(*args, **kwargs)
+        cache[chave] = resultado
+        return resultado
+
+    return wrapper
+
+
 def auto_conciliar_neutros(usina_id: str) -> None:
     """Marca como conciliado (sem categoria) lançamentos neutros e transferências pendentes."""
     contas = listar_contas_da_usina(usina_id)
     if not contas:
         return
+    conta_ids = [c["id"] for c in contas]
     sb = get_service_client()
+    try:
+        pendentes = (
+            sb.table("lancamentos_bancarios")
+            .select("id, descricao_original, descricao")
+            .in_("conta_bancaria_id", conta_ids)
+            .eq("conciliado", False)
+            .execute()
+        ).data or []
+    except Exception:
+        return
+    if not pendentes:
+        return
+
     nomes = _nomes_transferencia()
-    for conta in contas:
-        conta_id = conta["id"]
-        # fundos e rendimentos informativos
-        for kw in _DESCRICOES_NEUTRAS + _DESCRICOES_RENDIMENTO:
-            try:
-                sb.table("lancamentos_bancarios") \
-                  .update({"conciliado": True, "categoria_id": None}) \
-                  .eq("conta_bancaria_id", conta_id) \
-                  .eq("conciliado", False) \
-                  .ilike("descricao_original", f"%{kw}%") \
-                  .execute()
-            except Exception:
-                pass
-        # transferências entre contas
-        try:
-            pendentes = (
-                sb.table("lancamentos_bancarios")
-                .select("id, descricao_original, descricao")
-                .eq("conta_bancaria_id", conta_id)
-                .eq("conciliado", False)
-                .execute()
-            ).data or []
-            ids_transf = [r["id"] for r in pendentes if _eh_transferencia(r, nomes)]
-            for tid in ids_transf:
-                sb.table("lancamentos_bancarios") \
-                  .update({"conciliado": True, "categoria_id": None}) \
-                  .eq("id", tid) \
-                  .execute()
-        except Exception:
-            pass
+    ids = [
+        r["id"] for r in pendentes
+        if _eh_neutro(r) or _eh_rendimento(r) or _eh_transferencia(r, nomes)
+    ]
+    if not ids:
+        return
+    try:
+        sb.table("lancamentos_bancarios") \
+          .update({"conciliado": True, "categoria_id": None}) \
+          .in_("id", ids) \
+          .execute()
+    except Exception:
+        pass
 
 
 def _nome(u: dict) -> str:
@@ -324,6 +358,7 @@ def pnl_da_usina(usina_id: str, limite: int = 24) -> list:
     return result
 
 
+@_cache_requisicao
 def retorno_mensal_investidor(usina_id: str, investidor_id: str = None) -> list:
     sb = get_service_client()
     q = (
@@ -735,6 +770,7 @@ def _conta_bancaria_da_usina(usina_id: str) -> Optional[str]:
     return contas[0]["id"] if contas else None
 
 
+@_cache_requisicao
 def listar_contas_da_usina(usina_id: str) -> list:
     sb = get_service_client()
     try:

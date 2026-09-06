@@ -30,17 +30,49 @@ def _cache_key(nome: str, desde: str) -> str:
     return f"{nome}_{desde}"
 
 
+def _carregar_cache() -> dict:
+    """Lê a tabela benchmark_cache inteira de uma vez (1 query por requisição).
+
+    Cada índice tem no máximo uma linha (_salvar_cache apaga a anterior), então
+    a tabela é pequena; ler tudo evita 2 queries por série (10 no total).
+    """
+    try:
+        from flask import g
+        if hasattr(g, "_benchmark_cache_map"):
+            return g._benchmark_cache_map
+    except RuntimeError:
+        g = None
+
+    mapa: dict = {}
+    try:
+        rows = (
+            get_service_client()
+            .table("benchmark_cache")
+            .select("indice, dados, data_cache")
+            .execute()
+        ).data or []
+        for row in rows:
+            chave = row.get("indice")
+            if not chave:
+                continue
+            anterior = mapa.get(chave)
+            if anterior and (anterior.get("data_cache") or "") >= (row.get("data_cache") or ""):
+                continue
+            mapa[chave] = row
+    except Exception:
+        pass
+
+    if g is not None:
+        try:
+            g._benchmark_cache_map = mapa
+        except Exception:
+            pass
+    return mapa
+
+
 def _cache_existe_hoje(chave: str) -> bool:
-    sb = get_service_client()
-    res = (
-        sb.table("benchmark_cache")
-        .select("id")
-        .eq("indice", chave)
-        .eq("data_cache", date.today().isoformat())
-        .limit(1)
-        .execute()
-    )
-    return bool(res.data)
+    row = _carregar_cache().get(chave)
+    return bool(row) and row.get("data_cache") == date.today().isoformat()
 
 
 def _salvar_cache(chave: str, dados):
@@ -51,19 +83,14 @@ def _salvar_cache(chave: str, dados):
         "dados":      dados,
         "data_cache": date.today().isoformat(),
     }).execute()
+    _carregar_cache()[chave] = {
+        "indice": chave, "dados": dados, "data_cache": date.today().isoformat(),
+    }
 
 
 def _ler_cache(chave: str):
-    sb = get_service_client()
-    res = (
-        sb.table("benchmark_cache")
-        .select("dados")
-        .eq("indice", chave)
-        .order("data_cache", desc=True)
-        .limit(1)
-        .execute()
-    )
-    return res.data[0]["dados"] if res.data else None
+    row = _carregar_cache().get(chave)
+    return row.get("dados") if row else None
 
 
 # ── BCB ───────────────────────────────────────────────────────────────────────
