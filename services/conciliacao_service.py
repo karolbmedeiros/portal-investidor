@@ -238,10 +238,16 @@ def importar_ofx(conta_id: str, conteudo: bytes, extensao: str,
         except Exception:
             ignorado("registro da importação OFX")
 
+    # quantos de cada chave já entraram nesta importação, para o arquivo poder
+    # trazer legitimamente dois lançamentos idênticos no mesmo dia
+    ja_inseridos: dict = {}
+
     for l in lancamentos:
         fitid = l.get("fitid")
+        chave = (l["data_transacao"], l["descricao_original"], l["valor"])
         if _is_dup_bancario(sb, conta_id, l["data_transacao"],
-                            l["descricao_original"], l["valor"], fitid):
+                            l["descricao_original"], l["valor"], fitid,
+                            ja_inseridos.get(chave, 0)):
             duplicados += 1
             continue
         try:
@@ -262,6 +268,7 @@ def importar_ofx(conta_id: str, conteudo: bytes, extensao: str,
             if ofx_id:
                 row["ofx_importacao_id"] = ofx_id
             sb.table("lancamentos_bancarios").insert(row).execute()
+            ja_inseridos[chave] = ja_inseridos.get(chave, 0) + 1
             inseridos += 1
         except Exception:
             ignorado("inserção de lançamento do OFX")
