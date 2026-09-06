@@ -116,6 +116,7 @@
   <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
   <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
+  <a href="#" data-tab="relatorios"     class="dtab-link {{ 'ativo' if tab == 'relatorios' }}">Relatórios</a>
   <a href="#" data-tab="financiamento"  class="dtab-link {{ 'ativo' if tab == 'financiamento' }}">Financiamento</a>
 </div>
 {% elif ativo_selecionado.tipo == 'carro' %}
@@ -126,6 +127,7 @@
   <a href="#" data-tab="saldo_creditos" class="dtab-link {{ 'ativo' if tab == 'saldo_creditos' }}">Créditos kWh</a>
   <a href="#" data-tab="dre"            class="dtab-link {{ 'ativo' if tab == 'dre' }}">DRE</a>
   <a href="#" data-tab="clientes"       class="dtab-link {{ 'ativo' if tab == 'clientes' }}">Clientes</a>
+  <a href="#" data-tab="relatorios"     class="dtab-link {{ 'ativo' if tab == 'relatorios' }}">Relatórios</a>
 </div>
 {% endif %}
 {% endif %}
@@ -302,7 +304,7 @@
       </div>
     </div>
     {% else %}
-    <div class="db-metric-card">
+    <div class="db-metric-card"{% if filtrado and rendimento_meses %} style="cursor:pointer;" onclick="document.getElementById('modal-rendimento-adm').style.display='flex'"{% endif %}>
       <div class="db-mc-top">
         <span class="db-mc-label">{% if filtrado %}Rendimento acumulado{% else %}A receber · usinas{% endif %}</span>
         <span class="db-mc-icon">
@@ -318,7 +320,7 @@
       </div>
       <div class="db-mc-sub text-muted">
         {% if filtrado %}
-          {% if rendimento_total is not none %}Últ. 6 meses · recebimentos{% else %}Selecione uma usina{% endif %}
+          {% if rendimento_total is not none %}Últ. 6 meses · ver mês a mês{% else %}Selecione uma usina{% endif %}
         {% else %}
           {% if rendimento_total is not none %}Faturas em aberto{% else %}Sem faturas em aberto{% endif %}
         {% endif %}
@@ -662,6 +664,41 @@
     <div style="margin-top:18px; padding-top:14px; border-top:0.5px solid rgba(23,33,28,.08); display:flex; justify-content:space-between; align-items:center;">
       <span style="font-size:13px; color:var(--muted);">Total recebido</span>
       <span style="font-size:16px; font-weight:700; color:#D97706;">{{ _tot_m|brl }}</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if filtrado and rendimento_meses %}
+<div id="modal-rendimento-adm" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,.45); backdrop-filter:blur(3px);" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--bg); border-radius:18px; padding:28px 28px 24px; width:min(440px,92vw); max-height:80vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.18);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <div>
+        <div style="font-size:15px; font-weight:600;">Rendimento mês a mês</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:2px;">{{ ativo_selecionado.nome }} · últimos 6 meses</div>
+      </div>
+      <button onclick="document.getElementById('modal-rendimento-adm').style.display='none'" style="background:none; border:none; cursor:pointer; color:var(--muted); padding:4px;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    {% set _max_r = rendimento_meses|map(attribute='valor')|max %}
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      {% for m in rendimento_meses %}
+      {% set _pct = ((m.valor / _max_r) * 100)|round(1) if _max_r > 0 else 0 %}
+      <div>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:12px; color:var(--muted); text-transform:capitalize;">{{ m.mes }}/{{ m.ano }}</span>
+          <span style="font-size:14px; font-weight:700; color:{% if m.valor > 0 %}var(--green){% else %}var(--muted){% endif %};">{{ m.valor|brl }}</span>
+        </div>
+        <div style="height:6px; border-radius:3px; background:rgba(22,163,74,.10);">
+          <div style="height:100%; width:{{ _pct }}%; background:var(--green); border-radius:3px;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:18px; padding-top:14px; border-top:0.5px solid rgba(23,33,28,.08); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; color:var(--muted);">Total no período</span>
+      <span style="font-size:16px; font-weight:700; color:var(--green);">{{ rendimento_total|brl }}</span>
     </div>
   </div>
 </div>
@@ -1464,6 +1501,76 @@ function toggleAcordDb(btn){
 <div id="tab-dre"            class="dtab-content {{ 'ativo' if tab == 'dre' }}"><div class="vazio" style="padding:48px 0;">Em breve — DRE de carros</div></div>
 
 {% endif %}{# /filtrado carro #}
+
+{# ══════════════════════════════════════════════ RELATÓRIOS ═══ #}
+{# Vale para usina e carro: o arquivo mensal é publicado aqui e o
+   investidor só baixa, pela aba equivalente no portal. #}
+{% if filtrado and ativo_selecionado.tipo in ('usina', 'carro') %}
+<div id="tab-relatorios" class="dtab-content {{ 'ativo' if tab == 'relatorios' }}">
+
+  <form method="POST" action="{{ url_for('admin.relatorio_investidor_upload') }}"
+        enctype="multipart/form-data"
+        style="background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:24px;">
+    <input type="hidden" name="ativo_tipo" value="{{ ativo_selecionado.tipo }}">
+    <input type="hidden" name="ativo_id"   value="{{ ativo_id }}">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Publicar relatório</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">
+      {{ ativo_selecionado.nome }} · arquivo .pdf ou .docx · publicar de novo no mesmo mês substitui o anterior
+    </div>
+    <div style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;">Mês de referência</label>
+        <select name="mes_referencia" required
+                style="font-family:inherit;font-size:13px;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg);color:inherit;min-width:190px;">
+          {% for m in relatorio_meses %}
+          <option value="{{ m.ym }}">{{ m.rotulo }}{% if m.disponivel %} · já publicado{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="flex:1;min-width:220px;">
+        <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;">Arquivo</label>
+        <input type="file" name="arquivo" accept=".pdf,.docx" required
+               style="font-family:inherit;font-size:13px;padding:8px 10px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg);width:100%;">
+      </div>
+      <button type="submit"
+              style="font-family:inherit;font-size:13px;font-weight:500;padding:10px 20px;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;">
+        Publicar
+      </button>
+    </div>
+  </form>
+
+  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;">
+    Últimos 12 meses
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {% for m in relatorio_meses %}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:var(--bg);border:0.5px solid var(--border);border-radius:10px;">
+      <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+        <span style="font-size:13px;font-weight:600;min-width:130px;">{{ m.rotulo }}</span>
+        {% if m.disponivel %}
+        <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--green);background:rgba(29,158,117,.10);border:0.5px solid rgba(29,158,117,.25);padding:3px 9px;border-radius:20px;white-space:nowrap;">RELATÓRIO DISPONÍVEL</span>
+        <span style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.relatorio.nome_arquivo }}</span>
+        {% else %}
+        <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--muted);background:var(--bg2);border:0.5px solid var(--border);padding:3px 9px;border-radius:20px;white-space:nowrap;">RELATÓRIO INDISPONÍVEL</span>
+        {% endif %}
+      </div>
+      {% if m.disponivel %}
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <a href="{{ url_for('admin.relatorio_investidor_download', rel_id=m.relatorio.id) }}"
+           style="font-size:12px;font-weight:500;color:var(--accent);padding:6px 12px;border:0.5px solid var(--border);border-radius:7px;">Baixar</a>
+        <form method="POST" action="{{ url_for('admin.relatorio_investidor_excluir', rel_id=m.relatorio.id) }}"
+              onsubmit="return confirm('Remover o relatório de {{ m.rotulo }}? O mês volta a ficar indisponível para o investidor.')"
+              style="margin:0;">
+          <button type="submit"
+                  style="font-family:inherit;font-size:12px;font-weight:500;color:var(--red);background:none;padding:6px 12px;border:0.5px solid var(--border);border-radius:7px;cursor:pointer;">Remover</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}{# /tab-relatorios #}
 
 {# ── Painel lateral: informações do cliente ── #}
 <div id="painel-cliente" style="position:fixed;top:0;right:-480px;width:460px;height:100vh;background:var(--bg);border-left:0.5px solid var(--border);z-index:500;display:flex;flex-direction:column;transition:right .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.08);">

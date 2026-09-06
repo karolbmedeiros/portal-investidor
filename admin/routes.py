@@ -286,55 +286,26 @@ def dashboard():
             lancamentos_carros = []
 
         _tab_carro = request.args.get("tab", "visao_geral")
-        if _tab_carro not in ("visao_geral","clientes","extrato"):
+        if _tab_carro not in ("visao_geral","clientes","extrato","relatorios"):
             _tab_carro = "visao_geral"
 
-    # Rendimento acumulado — créditos na conta bancária da usina selecionada
+    # Rendimento acumulado — faturas pagas das UCs vinculadas à usina
     rendimento_total   = None
     rendimento_meses   = []   # [{"mes": "jan", "valor": 5000.0}, ...]
     if ativo_id and ativo_tipo == "usina":
-        _usina_sel = next((u for u in all_usinas if u["id"] == ativo_id), None)
-        if _usina_sel:
-            from services.supabase_client import get_service_client as _gsc
-            from datetime import date as _date
-            _sb2 = _gsc()
-            _razao = (_usina_sel.get("razao_social") or _usina_sel.get("nome") or "")
-            # Encontra conta bancária pelo titular_nome
-            _contas = _sb2.from_("contas_bancarias") \
-                          .select("id,titular_nome") \
-                          .ilike("titular_nome", f"%{_razao[:8]}%") \
-                          .execute().data or []
-            if _contas:
-                _conta_id = _contas[0]["id"]
-                # Últimos 6 meses de créditos
-                _hoje6 = _date.today()
-                _inicio = _date(_hoje6.year if _hoje6.month > 6 else _hoje6.year - 1,
-                                (_hoje6.month - 6) % 12 or 12, 1)
-                _lanctos = _sb2.from_("lancamentos_bancarios") \
-                               .select("valor,data_transacao") \
-                               .eq("conta_bancaria_id", _conta_id) \
-                               .eq("tipo", "credito") \
-                               .gte("data_transacao", str(_inicio)) \
-                               .ilike("descricao", f"%{_razao[:12]}%") \
-                               .is_("deleted_at", "null") \
-                               .order("data_transacao", desc=False) \
-                               .execute().data or []
-                if _lanctos:
-                    rendimento_total = sum(float(l["valor"]) for l in _lanctos)
-                    # Agrupa por mês
-                    _meses_nomes = ["jan","fev","mar","abr","mai","jun",
-                                    "jul","ago","set","out","nov","dez"]
-                    _por_mes: dict = {}
-                    for _l in _lanctos:
-                        _ym = str(_l["data_transacao"])[:7]
-                        _por_mes[_ym] = _por_mes.get(_ym, 0) + float(_l["valor"])
-                    for _ym, _v in sorted(_por_mes.items()):
-                        _mn = int(_ym.split("-")[1]) - 1
-                        rendimento_meses.append({"mes": _meses_nomes[_mn], "valor": round(_v, 2)})
+        from services.usina_service import recebimentos_por_mes_usina
+        _meses_nomes = ["jan","fev","mar","abr","mai","jun",
+                        "jul","ago","set","out","nov","dez"]
+        rendimento_total, _serie = recebimentos_por_mes_usina(ativo_id)
+        rendimento_meses = [
+            {"mes": _meses_nomes[int(r["ym"].split("-")[1]) - 1],
+             "ano": r["ym"][:4], "valor": r["valor"]}
+            for r in _serie
+        ]
 
     # ── Dados analíticos da usina (tabs inline) ──────────────────────────────
     usina_obj = None
-    tab = _tab_carro if ativo_tipo == "carro" else "visao_geral"
+    tab = _tab_carro if ativo_tipo == "carro" else request.args.get("tab", "visao_geral")
     contas = conta_id = conta_atual = pnl_data = clientes_data = categorias = None
     conta_extra_visual = None
     dre_secoes = dre_valores = dre_lancs = dre_meses = dre_percentuais = dre_naturezas = None
@@ -427,7 +398,8 @@ def dashboard():
         saldo_creditos_data = saldo_creditos_da_usina(ativo_id)
         financiamentos_data = financiamentos_da_usina(ativo_id)
         contas_pagar_data   = contas_pagar_da_usina(ativo_id)
-        _valid_tabs = ("visao_geral","clientes","financiamento","extrato","dre","benchmarks","saldo_creditos")
+        _valid_tabs = ("visao_geral","clientes","financiamento","extrato","dre",
+                       "benchmarks","saldo_creditos","relatorios")
         tab = request.args.get("tab", "visao_geral")
         if tab not in _valid_tabs:
             tab = "visao_geral"
@@ -490,8 +462,15 @@ def dashboard():
         )
         rendimento_total = round(_total_usinas_aberto, 2) if _total_usinas_aberto > 0 else None
 
+    # Relatório do Investidor: janela de 12 meses do ativo selecionado
+    relatorio_meses = []
+    if ativo_id and ativo_tipo in ("usina", "carro"):
+        from services.relatorio_investidor_service import listar_meses as _rel_meses
+        relatorio_meses = _rel_meses(ativo_tipo, ativo_id)
+
     return render_template(
         "admin/dashboard.html",
+        relatorio_meses=relatorio_meses,
         usinas=usinas,
         empresas_veiculos=empresas_veiculos,
         ativos=ativos,
@@ -738,6 +717,75 @@ def usina_relatorio_pdf(usina_id):
     buffer = gerar_relatorio_usina_pdf(usina_id)
     nome_arquivo = f"relatorio_{usina['nome'].replace(' ', '_')}_{date.today().strftime('%Y-%m')}.pdf"
     return send_file(buffer, mimetype="application/pdf", as_attachment=True, download_name=nome_arquivo)
+
+
+# ── Relatório do Investidor ───────────────────────────────────────────────────
+# Arquivo mensal (.pdf/.docx) produzido fora do sistema. Só o admin publica;
+# o investidor apenas baixa, pela rota do portal.
+
+def _redirect_aba_relatorios(ativo_tipo, ativo_id):
+    return redirect(url_for("admin.dashboard", ativo_id=ativo_id,
+                            ativo_tipo=ativo_tipo, tab="relatorios"))
+
+
+@admin_bp.route("/relatorios/upload", methods=["POST"])
+@requer_admin
+def relatorio_investidor_upload():
+    from services import relatorio_investidor_service as rel_svc
+    ativo_tipo = request.form.get("ativo_tipo", "usina")
+    ativo_id   = request.form.get("ativo_id", "")
+    mes        = request.form.get("mes_referencia", "")
+    arquivo    = request.files.get("arquivo")
+
+    if not arquivo or not arquivo.filename:
+        flash("Selecione um arquivo .pdf ou .docx.", "erro")
+        return _redirect_aba_relatorios(ativo_tipo, ativo_id)
+
+    u = auth_service.usuario_logado()
+    res = rel_svc.publicar(
+        ativo_tipo, ativo_id, mes, arquivo.filename,
+        arquivo.read(), arquivo.content_type,
+        user_id=u["id"] if u else None,
+    )
+    if res["ok"]:
+        flash(
+            f"Relatório de {rel_svc.rotulo_mes(mes)} "
+            + ("substituído." if res.get("substituiu") else "publicado."),
+            "sucesso",
+        )
+    else:
+        flash(f"Erro: {res['erro']}", "erro")
+    return _redirect_aba_relatorios(ativo_tipo, ativo_id)
+
+
+@admin_bp.route("/relatorios/<rel_id>/excluir", methods=["POST"])
+@requer_admin
+def relatorio_investidor_excluir(rel_id):
+    from services import relatorio_investidor_service as rel_svc
+    rel = rel_svc.buscar(rel_id)
+    if not rel:
+        abort(404)
+    res = rel_svc.remover(rel_id)
+    flash(
+        f"Relatório de {rel_svc.rotulo_mes(rel['mes_referencia'])} removido."
+        if res["ok"] else f"Erro: {res['erro']}",
+        "sucesso" if res["ok"] else "erro",
+    )
+    return _redirect_aba_relatorios(
+        "carro" if rel["ativo_tipo"] == "carros" else "usina", rel["ativo_id"]
+    )
+
+
+@admin_bp.route("/relatorios/<rel_id>/download")
+@requer_admin
+def relatorio_investidor_download(rel_id):
+    from io import BytesIO
+    from services import relatorio_investidor_service as rel_svc
+    res = rel_svc.baixar(rel_id)
+    if not res["ok"]:
+        abort(404)
+    return send_file(BytesIO(res["conteudo"]), mimetype=res["mime_type"],
+                     as_attachment=True, download_name=res["nome"])
 
 
 @admin_bp.route("/usina/<usina_id>/distribuicao/nova", methods=["POST"])

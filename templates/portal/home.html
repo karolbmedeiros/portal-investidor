@@ -91,6 +91,7 @@
   'benchmarks': 'Benchmarks',
   'saldo_creditos': 'Créditos kWh',
   'clientes': 'Clientes',
+  'relatorios': 'Relatórios',
   'dre': 'DRE',
   'financiamento': 'Financiamento'
 } %}
@@ -228,7 +229,7 @@
       </div>
     </div>
     {% else %}
-    <div class="db-metric-card db-metric-card--usina-big" style="grid-column:2;">
+    <div class="db-metric-card db-metric-card--usina-big" style="grid-column:2;{% if rendimento_meses %} cursor:pointer;{% endif %}"{% if rendimento_meses %} onclick="document.getElementById('modal-rendimento-inv').style.display='flex'"{% endif %}>
       <div class="db-mc-top">
         <span class="db-mc-label">Rendimento acumulado</span>
         <span class="db-mc-icon">
@@ -243,7 +244,7 @@
         {% endif %}
       </div>
       <div class="db-mc-sub text-muted">
-        {% if rendimento_total is not none %}Últ. 6 meses · proporcional à cota{% else %}Sem movimentações{% endif %}
+        {% if rendimento_total is not none %}Últ. 6 meses · ver mês a mês{% else %}Sem movimentações{% endif %}
       </div>
     </div>
     {% endif %}
@@ -400,6 +401,42 @@
     <div style="margin-top:18px; padding-top:14px; border-top:0.5px solid rgba(23,33,28,.08); display:flex; justify-content:space-between; align-items:center;">
       <span style="font-size:13px; color:var(--muted);">Total recebido</span>
       <span style="font-size:16px; font-weight:700; color:#D97706;">{{ _total|brl }}</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+{% if rendimento_meses %}
+<div id="modal-rendimento-inv" style="display:none; position:fixed; inset:0; z-index:1000; align-items:center; justify-content:center; background:rgba(0,0,0,.45); backdrop-filter:blur(3px);" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--bg); border-radius:18px; padding:28px 28px 24px; width:min(440px,92vw); max-height:80vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.18);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <div>
+        <div style="font-size:15px; font-weight:600;">Rendimento mês a mês</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:2px;">{% if filtrado %}{{ ativo_selecionado.nome }} · {% endif %}últimos 6 meses · proporcional à cota</div>
+      </div>
+      <button onclick="document.getElementById('modal-rendimento-inv').style.display='none'" style="background:none; border:none; cursor:pointer; color:var(--muted); padding:4px;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    {% set _max_r = rendimento_meses|map(attribute='valor')|max %}
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      {% for m in rendimento_meses %}
+      {% set _pct = ((m.valor / _max_r) * 100)|round(1) if _max_r > 0 else 0 %}
+      <div>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:12px; color:var(--muted); text-transform:capitalize;">{{ m.mes }}{% if m.ano %}/{{ m.ano }}{% endif %}</span>
+          <span style="font-size:14px; font-weight:700; color:{% if m.valor > 0 %}var(--green){% else %}var(--muted){% endif %};">{{ m.valor|brl }}</span>
+        </div>
+        <div style="height:6px; border-radius:3px; background:rgba(22,163,74,.10);">
+          <div style="height:100%; width:{{ _pct }}%; background:var(--green); border-radius:3px;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:18px; padding-top:14px; border-top:0.5px solid rgba(23,33,28,.08); display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; color:var(--muted);">Total no período</span>
+      <span style="font-size:16px; font-weight:700; color:var(--green);">{{ rendimento_total|brl }}</span>
     </div>
   </div>
 </div>
@@ -771,6 +808,43 @@ function toggleAcordI(btn){
   {% endif %}
 
 {% endif %}{# fim if ativo_tipo == 'carros' #}
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════════ RELATÓRIOS ═══ #}
+{# Somente leitura: quem publica é o admin. #}
+{% if 'relatorios' in home_tabs %}
+<div id="tab-relatorios" data-tab="relatorios" class="dtab-content {{ 'ativo' if tab == 'relatorios' }}">
+  {% if ativo_id %}
+  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;">
+    Relatório mensal · últimos 12 meses
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {% for m in relatorio_meses %}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;background:var(--bg);border:0.5px solid var(--border);border-radius:10px;{% if not m.disponivel %}opacity:.65;{% endif %}">
+      <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+        <span style="font-size:13px;font-weight:600;min-width:130px;{% if not m.disponivel %}color:var(--muted);{% endif %}">{{ m.rotulo }}</span>
+        {% if m.disponivel %}
+        <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--green);background:rgba(29,158,117,.10);border:0.5px solid rgba(29,158,117,.25);padding:3px 9px;border-radius:20px;white-space:nowrap;">RELATÓRIO DISPONÍVEL</span>
+        {% else %}
+        <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--muted);background:var(--bg2);border:0.5px solid var(--border);padding:3px 9px;border-radius:20px;white-space:nowrap;">RELATÓRIO INDISPONÍVEL</span>
+        {% endif %}
+      </div>
+      {% if m.disponivel %}
+      <a href="{{ url_for('portal.relatorio_download', rel_id=m.relatorio.id) }}"
+         style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:#fff;background:var(--accent);padding:8px 16px;border-radius:8px;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+        Baixar
+      </a>
+      {% else %}
+      <span style="font-size:12px;color:var(--muted);flex-shrink:0;padding:8px 16px;">Ainda não publicado</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="vazio" style="padding:48px 0;">Selecione um ativo para ver os relatórios.</div>
+  {% endif %}
 </div>
 {% endif %}
 

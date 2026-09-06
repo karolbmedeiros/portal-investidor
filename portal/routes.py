@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, abort, session as _sess
+from flask import (
+    Blueprint, render_template, request, redirect, url_for, abort,
+    send_file, session as _sess,
+)
 from middleware.auth_guard import requer_login
 from services.auth_service import usuario_logado, is_admin, preview_investidor_id, refresh_session_permissions
 
@@ -101,6 +104,7 @@ def home():
         if all_perms or "energia"          in u_perms or "saldo_creditos" in u_perms:   home_tabs.append("saldo_creditos")
         if all_perms or "dre"              in u_perms:                                 home_tabs.append("dre")
         if all_perms or "clientes"         in u_perms:                                 home_tabs.append("clientes")
+        if all_perms or "relatorios"       in u_perms:                                 home_tabs.append("relatorios")
         if all_perms or "financiamento"    in u_perms:                                 home_tabs.append("financiamento")
     ver_contas_pagar = bool(ativo_id and ativo_tipo == "usina" and (all_perms or "contas_pagar" in u_perms))
     ver_extrato_consolidado = bool(all_perms or "extrato_consolidado" in u_perms)
@@ -287,40 +291,23 @@ def home():
         except Exception:
             pass
     else:
-        # Rendimento: créditos nas contas bancárias das usinas × cota
+        # Rendimento: faturas pagas das UCs das usinas × cota
         try:
-            sb   = get_service_client()
-            hoje = date.today()
-            m6   = hoje.month - 6
-            inicio = date(hoje.year if m6 > 0 else hoje.year - 1, m6 if m6 > 0 else m6 + 12, 1)
+            from services.usina_service import recebimentos_por_mes_usina
             por_mes: dict = {}
             total_rend = 0.0
             for us in usinas:
-                razao = (us.get("razao_social") or us.get("nome") or "")
-                razao_busca = razao[:8]
-                razao_desc  = razao[:12]
-                contas = sb.from_("contas_bancarias").select("id") \
-                           .ilike("titular_nome", f"%{razao_busca}%").execute().data or []
                 cota = cotas.get(us["id"], 1.0)
-                for conta in contas:
-                    lanctos = sb.from_("lancamentos_bancarios") \
-                                 .select("valor,data_transacao") \
-                                 .eq("conta_bancaria_id", conta["id"]) \
-                                 .eq("tipo", "credito") \
-                                 .gte("data_transacao", str(inicio)) \
-                                 .ilike("descricao", f"%{razao_desc}%") \
-                                 .is_("deleted_at", "null") \
-                                 .execute().data or []
-                    for l in lanctos:
-                        v = float(l["valor"]) * cota
-                        total_rend += v
-                        ym = str(l["data_transacao"])[:7]
-                        por_mes[ym] = por_mes.get(ym, 0.0) + v
+                _tot, _serie = recebimentos_por_mes_usina(us["id"])
+                for r in _serie:
+                    v = r["valor"] * cota
+                    total_rend += v
+                    por_mes[r["ym"]] = por_mes.get(r["ym"], 0.0) + v
             if total_rend > 0:
                 rendimento_total = round(total_rend, 2)
             for ym, v in sorted(por_mes.items()):
                 mn = int(ym.split("-")[1]) - 1
-                rendimento_meses.append({"mes": _MESES[mn], "valor": round(v, 2)})
+                rendimento_meses.append({"mes": _MESES[mn], "ano": ym[:4], "valor": round(v, 2)})
         except Exception:
             pass
 
@@ -482,8 +469,16 @@ def home():
         dre_percentuais = _dre["percentuais"]
         dre_naturezas   = _dre["naturezas"]
 
+    # Relatório do Investidor: 12 meses do ativo selecionado. Só leitura —
+    # publicar e remover existem apenas no admin.
+    relatorio_meses = []
+    if "relatorios" in home_tabs and ativo_id:
+        from services.relatorio_investidor_service import listar_meses as _rel_meses
+        relatorio_meses = _rel_meses(ativo_tipo, ativo_id)
+
     return render_template(
         "portal/home.html",
+        relatorio_meses=relatorio_meses,
         usinas=usinas,
         all_usinas=all_usinas,
         ativos=ativos,
@@ -611,6 +606,25 @@ def classificar_lancamento_carro():
     from services.veiculos_service import classificar_lancamento_carros
     dados = _req.get_json() or {}
     return jsonify(classificar_lancamento_carros(dados.get("id"), dados.get("natureza"), dados.get("splits")))
+
+
+@portal_bp.route("/relatorios/<rel_id>/download")
+@requer_login
+def relatorio_download(rel_id):
+    """Serve o arquivo pelo id do relatório: o path do storage nunca sai daqui."""
+    from io import BytesIO
+    from services import relatorio_investidor_service as rel_svc
+    u = usuario_logado()
+    rel = rel_svc.buscar(rel_id)
+    if not rel:
+        abort(404)
+    if not rel_svc.pode_acessar(u, rel["ativo_tipo"], rel["ativo_id"]):
+        abort(403)
+    res = rel_svc.baixar(rel_id)
+    if not res["ok"]:
+        abort(404)
+    return send_file(BytesIO(res["conteudo"]), mimetype=res["mime_type"],
+                     as_attachment=True, download_name=res["nome"])
 
 
 @portal_bp.route("/documentos")

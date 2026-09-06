@@ -150,3 +150,37 @@ create policy "investidor_docs_visiveis" on documentos
 -- Storage → New bucket → nome: "documentos" → privado (sem acesso público)
 -- Ou via SQL:
 -- insert into storage.buckets (id, name, public) values ('documentos', 'documentos', false);
+
+-- ── Relatório do Investidor ───────────────────────────────────
+-- Relatório mensal de panorama (.pdf/.docx) publicado pelo admin.
+-- O investidor apenas baixa. Mês sem linha (ou com status
+-- 'indisponivel') é considerado indisponível — nenhum registro
+-- vazio é criado.
+--
+-- ativo_id é polimórfico: uuid da usina, ou slug da empresa de
+-- carros (que não tem tabela, é derivada de planilha).
+create table if not exists relatorios_investidor (
+  id              uuid primary key default gen_random_uuid(),
+  ativo_tipo      text not null check (ativo_tipo in ('usina','carros')),
+  ativo_id        text not null,
+  mes_referencia  text not null,          -- 'YYYY-MM'
+  storage_key     text not null,
+  nome_arquivo    text not null,
+  mime_type       text,
+  file_size       int,
+  status          text not null default 'disponivel'
+                  check (status in ('disponivel','indisponivel')),
+  data_publicacao timestamptz default now(),
+  data_upload     timestamptz default now(),
+  uploaded_by     uuid,
+  created_at      timestamptz default now(),
+  -- permite republicar o mesmo mês por upsert
+  unique (ativo_tipo, ativo_id, mes_referencia)
+);
+
+create index if not exists idx_relatorios_investidor_ativo
+  on relatorios_investidor (ativo_tipo, ativo_id, mes_referencia desc);
+
+-- Bucket privado (criado via API do storage neste projeto):
+-- insert into storage.buckets (id, name, public)
+--   values ('relatorios-investidor', 'relatorios-investidor', false);
