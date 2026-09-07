@@ -2124,8 +2124,14 @@ function atualizarNavFluxo() {
 function navFluxo(delta) {
   if (!_MESES_EXT.length) return;
   var novoIdx = Math.max(0, Math.min(_MESES_EXT.length - 1, _fluxoMesIdx + delta));
-  _sincronizarFluxo(_MESES_EXT[novoIdx]);
-  filtrarFluxo();
+  var mes = _MESES_EXT[novoIdx];
+  // Ver comentário equivalente no admin: as setas e o dropdown "Período" são o
+  // mesmo seletor de mês, senão filtrarFluxo desfazia a navegação.
+  var el = document.getElementById('filtro-mes');
+  if (el) el.value = mes;
+  if (el && el.value === mes) { filtrarExtrato(); return; }
+  _sincronizarFluxo(mes);
+  atualizarPnlCards(mes);
 }
 
 function filtrarFluxo() {

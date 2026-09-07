@@ -2034,7 +2034,19 @@ function _sincronizarFluxo(mes) {
   if(prev)prev.disabled=idx<=0;if(next)next.disabled=idx>=_MESES.length-1;
   const dr=document.getElementById('filtro-mes');if(dr&&dr.value!==mes)dr.value=mes;
 }
-function navFluxo(delta){if(!_MESES.length)return;_sincronizarFluxo(_MESES[Math.max(0,Math.min(_MESES.length-1,_fluxoMesIdx+delta))]);filtrarFluxo();}
+function navFluxo(delta){
+  if(!_MESES.length)return;
+  var mes=_MESES[Math.max(0,Math.min(_MESES.length-1,_fluxoMesIdx+delta))];
+  // As setas e o dropdown "Período" passam a ser o mesmo seletor de mês. Sem
+  // sincronizar, filtrarFluxo relia o dropdown ainda em "Todos", devolvia o
+  // gráfico para o último mês e os cards de Resultado Operacional nunca saíam
+  // de lá — a seta parecia não fazer nada. filtrarExtrato cuida de tudo junto:
+  // listas, totais, gráfico e cards.
+  var el=document.getElementById('filtro-mes');
+  if(el)el.value=mes;
+  if(el&&el.value===mes){filtrarExtrato();return;}
+  _sincronizarFluxo(mes);atualizarPnlCards(mes);
+}
 function nbTab(btn,panel,tab){document.querySelectorAll('.nb-tab-btn[data-panel="'+panel+'"]').forEach(b=>b.classList.remove('nb-tab-ativo'));btn.classList.add('nb-tab-ativo');var attr='data-tab-'+panel;document.querySelectorAll('['+attr+']').forEach(item=>{item.style.display=(tab==='todos'||item.getAttribute(attr)===tab)?'':'none';});}
 function toggleParcelasOcultas(el){var fin=el.getAttribute('data-fin');var table=el.closest('table');if(!table)return;var rows=table.querySelectorAll('tr.parcela-oculta[data-fin="'+fin+'"]');var oculto=rows.length&&rows[0].style.display==='none';rows.forEach(function(r){r.style.display=oculto?'table-row':'none';});var label=el.querySelector('.parcela-toggle-label');if(label){label.textContent=oculto?'▴ Ocultar parcelas pagas':'▾ Ver mais '+rows.length+' parcela'+(rows.length!==1?'s':'')+' paga'+(rows.length!==1?'s':'');}}
 function toggleConsolidado(){var body=document.getElementById('consolidado-body'),caret=document.getElementById('consolidado-caret');if(!body)return;var open=body.style.display!=='none';body.style.display=open?'none':'';if(caret)caret.style.transform=open?'':'rotate(180deg)';}
